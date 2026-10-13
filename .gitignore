@@ -1,0 +1,51 @@
+# --- Build outputs ---
+node_modules/
+dist/
+.angular/
+.cache/
+build/
+
+# --- Environment files ---
+.env
+.env.local
+.env.*.local
+*.env.local
+!.env.example
+!apps/api/.env.example
+!apps/web/.env.example
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Testing ---
+coverage/
+*.lcov
+.nyc_output/
+
+# --- Editor / IDE ---
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.DS_Store
+Thumbs.db
+
+# --- TypeScript ---
+*.tsbuildinfo
+
+# --- Prisma ---
+prisma/generated/
+
+# --- pnpm ---
+.pnpm-store/
+
+# --- OS ---
+Desktop.ini

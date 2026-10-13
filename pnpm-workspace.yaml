@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Explicitly approved build scripts for pnpm 12 security policy.
+# Only packages that genuinely require native builds are listed here.
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  esbuild: true
+  lmdb: true
+  msgpackr-extract: true
+  prisma: true

@@ -1,0 +1,32 @@
+{
+  "name": "bachina-labs-academy",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.15.0 <25.0.0",
+    "pnpm": ">=12.3.4"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "dev:web": "pnpm --filter web run dev",
+    "dev:api": "pnpm --filter api run dev",
+    "build": "pnpm --filter web run build && pnpm --filter api run build",
+    "build:web": "pnpm --filter web run build",
+    "build:api": "pnpm --filter api run build",
+    "lint": "pnpm --recursive run lint",
+    "lint:web": "pnpm --filter web run lint",
+    "lint:api": "pnpm --filter api run lint",
+    "test": "pnpm --recursive run test",
+    "test:web": "pnpm --filter web run test",
+    "test:api": "pnpm --filter api run test",
+    "typecheck": "pnpm --recursive run typecheck",
+    "typecheck:web": "pnpm --filter web run typecheck",
+    "typecheck:api": "pnpm --filter api run typecheck",
+    "format": "prettier --write \"**/*.{ts,js,html,json,yaml,yml,css,scss}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  }
+}

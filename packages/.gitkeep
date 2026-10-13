@@ -1,0 +1,2 @@
+# Placeholder — real shared packages will be added only when genuinely needed.
+# See docs/DEVELOPMENT_RULES.md §3 — avoid tight coupling through a giant common module.

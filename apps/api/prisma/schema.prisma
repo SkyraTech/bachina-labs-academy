@@ -1,0 +1,27 @@
+// This is your Prisma schema file — Step 1 Foundation
+// Authoritative Prisma schema location: apps/api/prisma/schema.prisma
+// One Prisma client, one schema, one migrations folder.
+//
+// Status: Foundation only — no business tables yet.
+// Business models will be added in Phase 2 after ERD approval.
+// See docs/DATABASE_ARCHITECTURE.md for the proposed entity design.
+//
+// DO NOT run prisma migrate deploy on production until Phase 2 ERD is approved.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/database/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Phase 2 models will be added here after approval ─────────────────────────
+// Proposed entities (from DATABASE_ARCHITECTURE.md):
+//   User, UserProfile, PasswordResetToken, AuthSession
+//   Category, Tag, Article, ArticleTag
+//   MediaAsset, Comment, ArticleStats, EmailDelivery
+//   SubscriptionPlan, UserSubscription, Feature, PlanFeature (entitlements)
+//   McpClientGrant (MCP authorization)
