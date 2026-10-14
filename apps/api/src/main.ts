@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
@@ -20,8 +21,9 @@ async function bootstrap(): Promise<void> {
     .split(',')
     .map((o) => o.trim());
 
-  // ── Security headers ──────────────────────────────────────────────────
+  // ── Security headers & Cookie parser ──────────────────────────────────
   app.use(helmet());
+  app.use(cookieParser());
 
   // ── CORS ──────────────────────────────────────────────────────────────
   app.enableCors({

@@ -1,46 +1,68 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { APP_GUARD } from '@nestjs/core';
 import { UsersModule } from '../users/users.module.js';
 import { UsersRepository } from '../users/users.repository.js';
+import { SessionsModule } from '../sessions/sessions.module.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { RegistrationService } from './services/registration.service.js';
 import { PasswordHashingService } from './services/password-hashing.service.js';
+import { EmailVerificationService } from './services/email-verification.service.js';
+import { VerificationTokenService } from './services/verification-token.service.js';
+import { EmailVerificationTokenRepository } from './repositories/email-verification-token.repository.js';
+import { RefreshTokenService } from './services/refresh-token.service.js';
+import { JwtTokenService } from './services/jwt-token.service.js';
+import { CookieService } from './services/cookie.service.js';
+import { LoginService } from './services/login.service.js';
+import { LogoutService } from './services/logout.service.js';
+import { JwtAccessGuard } from './guards/jwt-access.guard.js';
+import { OriginGuard } from './guards/origin.guard.js';
+import { RolesGuard } from '../../common/authorization/guards/roles.guard.js';
+import { VerifiedEmailGuard } from '../../common/authorization/guards/verified-email.guard.js';
 
-/**
- * AuthModule — NestJS module for authentication workflows.
- *
- * Phase 2.2.2 scope:
- *   POST /api/v1/auth/register — email/password registration.
- *
- * Architecture:
- *   AuthController        → accepts HTTP requests, delegates to services.
- *   RegistrationService   → orchestrates registration business logic.
- *   PasswordHashingService → Argon2id hashing and verification.
- *   UsersRepository       → direct data access for user creation.
- *   UsersService          → injected via UsersModule for email lookups.
- *
- * Why AuthModule imports UsersModule AND provides UsersRepository directly:
- *   - UsersModule exports UsersService for email lookups (findByEmail).
- *   - UsersRepository is also provided here because RegistrationService needs
- *     to call createUser, which is a write operation. UsersModule does not
- *     export UsersRepository (it has no reason to expose mutations publicly).
- *   - Both can coexist because PrismaService is global (DatabaseModule) and
- *     a second registration of UsersRepository in AuthModule does not create
- *     a second DB connection — it reuses the same PrismaService instance.
- *
- * Future additions (each in its own approved phase):
- *   - LoginService       — password verification and session issuance (Phase 3)
- *   - LogoutService      — session revocation (Phase 3)
- *   - GoogleOAuthService — OAuth identity linking (Phase 4)
- */
 @Module({
   imports: [
-    UsersModule, // provides UsersService (exports it)
+    UsersModule,
+    SessionsModule,
+    JwtModule.register({}),
   ],
   controllers: [AuthController],
   providers: [
     RegistrationService,
     PasswordHashingService,
-    UsersRepository, // needed for createUser — UsersModule does not export it
+    EmailVerificationService,
+    VerificationTokenService,
+    EmailVerificationTokenRepository,
+    UsersRepository,
+    RefreshTokenService,
+    JwtTokenService,
+    CookieService,
+    LoginService,
+    LogoutService,
+    OriginGuard,
+    JwtAccessGuard,
+    RolesGuard,
+    VerifiedEmailGuard,
+    {
+      provide: APP_GUARD,
+      useClass: OriginGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAccessGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+  exports: [
+    JwtTokenService,
+    JwtAccessGuard,
+    RolesGuard,
+    VerifiedEmailGuard,
+    LoginService,
+    LogoutService,
   ],
 })
 export class AuthModule {}

@@ -48,4 +48,19 @@ export interface CreateUserInput {
   passwordHash: string;
 }
 
+/**
+ * UserPasswordCredentials — internal credential-bearing representation.
+ * Strictly used by internal authentication services; NEVER exposed to public API contracts.
+ */
+export interface UserPasswordCredentials {
+  id: string;
+  email: string;
+  passwordHash: string | null;
+  role: UserRole;
+  status: UserStatus;
+  emailVerifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export { UserRole, UserStatus };

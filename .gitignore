@@ -10,6 +10,10 @@ build/
 .env.local
 .env.*.local
 *.env.local
+*.pem
+*.key
+certs/
+!certs/.gitkeep
 !.env.example
 !apps/api/.env.example
 !apps/web/.env.example

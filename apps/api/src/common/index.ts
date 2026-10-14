@@ -12,4 +12,4 @@
  * These will be implemented in Phase 3 (Auth) and later phases.
  * Do not add domain business logic here — domain logic belongs in module services.
  */
-export {};
+export * from './authorization/index.js';

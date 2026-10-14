@@ -8,6 +8,7 @@ import { RegistrationService } from './registration.service.js';
 import { UsersService } from '../../users/users.service.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { PasswordHashingService } from './password-hashing.service.js';
+import { EmailVerificationService } from './email-verification.service.js';
 import { UserRole, UserStatus } from '../../users/types/index.js';
 import type { SafeUser } from '../../users/types/index.js';
 import type { RegisterRequestDto } from '../dto/register-request.dto.js';
@@ -56,6 +57,9 @@ describe('RegistrationService', () => {
   let passwordHashingServiceMock: {
     hash: ReturnType<typeof vi.fn>;
   };
+  let emailVerificationServiceMock: {
+    issueVerificationEmail: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     usersServiceMock = {
@@ -68,6 +72,12 @@ describe('RegistrationService', () => {
     passwordHashingServiceMock = {
       hash: vi.fn().mockResolvedValue('$argon2id$v=19$mock-hash'),
     };
+    // Verification issuance is fire-and-keep-account by contract: registration
+    // must succeed regardless. Tests assert the call is made, and separately
+    // that a rejected promise does not break registration.
+    emailVerificationServiceMock = {
+      issueVerificationEmail: vi.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -75,6 +85,7 @@ describe('RegistrationService', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: UsersRepository, useValue: usersRepositoryMock },
         { provide: PasswordHashingService, useValue: passwordHashingServiceMock },
+        { provide: EmailVerificationService, useValue: emailVerificationServiceMock },
       ],
     }).compile();
 
@@ -212,6 +223,73 @@ describe('RegistrationService', () => {
       await expect(service.register(VALID_DTO)).rejects.toThrow(
         InternalServerErrorException,
       );
+    });
+  });
+
+  // ── Verification email issuance ────────────────────────────────────────────
+
+  describe('verification email issuance', () => {
+    it('issues a verification email after a successful registration', async () => {
+      await service.register(VALID_DTO);
+
+      expect(
+        emailVerificationServiceMock.issueVerificationEmail,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes the created user (id + email) to the verification service', async () => {
+      await service.register(VALID_DTO);
+
+      expect(
+        emailVerificationServiceMock.issueVerificationEmail,
+      ).toHaveBeenCalledWith({
+        id: MOCK_SAFE_USER.id,
+        email: MOCK_SAFE_USER.email,
+        role: MOCK_SAFE_USER.role,
+        status: MOCK_SAFE_USER.status,
+        emailVerifiedAt: MOCK_SAFE_USER.emailVerifiedAt,
+        createdAt: MOCK_SAFE_USER.createdAt,
+        updatedAt: MOCK_SAFE_USER.updatedAt,
+      });
+    });
+
+    // The account must survive a mail outage. This is the contract that lets
+    // registration return 201 even when SMTP/Resend is unavailable, with
+    // recovery through POST /resend-verification.
+    it('still returns the user when verification issuance rejects', async () => {
+      emailVerificationServiceMock.issueVerificationEmail.mockRejectedValue(
+        new Error('SMTP unavailable'),
+      );
+
+      const result = await service.register(VALID_DTO);
+
+      expect(result).toEqual(MOCK_SAFE_USER);
+    });
+
+    it('does NOT issue a verification email when the email already exists', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue(MOCK_SAFE_USER);
+
+      await expect(service.register(VALID_DTO)).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(
+        emailVerificationServiceMock.issueVerificationEmail,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does NOT issue a verification email when user creation fails', async () => {
+      usersRepositoryMock.createUser.mockRejectedValue(
+        new Error('Unexpected DB failure'),
+      );
+
+      await expect(service.register(VALID_DTO)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+
+      expect(
+        emailVerificationServiceMock.issueVerificationEmail,
+      ).not.toHaveBeenCalled();
     });
   });
 });

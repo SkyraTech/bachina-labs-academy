@@ -122,4 +122,35 @@ export class UsersRepository {
 
     return user;
   }
+
+  /**
+   * Internal-only credential lookup for authentication.
+   *
+   * Security rules:
+   *   - Only internal authentication services receive this result.
+   *   - NEVER expose this method to public controllers or general services.
+   *   - NEVER log the returned passwordHash.
+   *   - Returns null if the user does not exist.
+   *
+   * @param email — normalized (lowercase, trimmed) email address
+   */
+  async findPasswordCredentialsByEmail(
+    email: string,
+  ): Promise<import('./types/index.js').UserPasswordCredentials | null> {
+    this.logger.debug('findPasswordCredentialsByEmail: [redacted email]');
+
+    return await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        role: true,
+        status: true,
+        emailVerifiedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
 }

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DatabaseHealthService } from './database-health.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 interface LivenessResponse {
   status: 'ok';
@@ -37,6 +38,7 @@ interface ReadinessResponse {
  *   Liveness and readiness probes serve different monitoring purposes.
  */
 @ApiTags('health')
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly dbHealth: DatabaseHealthService) {}

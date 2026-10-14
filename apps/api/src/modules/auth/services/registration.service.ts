@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { UsersService } from '../../users/users.service.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { PasswordHashingService } from './password-hashing.service.js';
+import { EmailVerificationService } from './email-verification.service.js';
 import type { RegisterRequestDto } from '../dto/register-request.dto.js';
 import type { SafeUser } from '../../users/types/index.js';
 
@@ -19,7 +20,9 @@ import type { SafeUser } from '../../users/types/index.js';
  *   2. Perform a preliminary duplicate check for a meaningful conflict response.
  *   3. Hash the password using Argon2id via PasswordHashingService.
  *   4. Persist the user record via UsersRepository (email + hash only).
- *   5. Return SafeUser — passwordHash never leaves this service boundary.
+ *   5. Issue the verification email — AFTER the row is committed, and without
+ *      letting a delivery failure undo the account.
+ *   6. Return SafeUser — passwordHash never leaves this service boundary.
  *
  * Concurrency safety:
  *   The preliminary existence check (step 2) is NOT sufficient on its own.
@@ -52,6 +55,7 @@ export class RegistrationService {
     private readonly usersService: UsersService,
     private readonly usersRepository: UsersRepository,
     private readonly passwordHashingService: PasswordHashingService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   /**
@@ -61,6 +65,9 @@ export class RegistrationService {
    * @returns SafeUser — the created user record without passwordHash
    * @throws ConflictException if the email already exists (exact or case-insensitive match)
    * @throws InternalServerErrorException for unexpected hashing or persistence failures
+   *
+   * Email verification is issued AFTER the user row is committed, and its
+   * failure is deliberately non-fatal — see the call site below.
    */
   async register(dto: RegisterRequestDto): Promise<SafeUser> {
     const { email, password } = dto;
@@ -81,14 +88,14 @@ export class RegistrationService {
     const passwordHash = await this.passwordHashingService.hash(password);
 
     // ── Persist the user ─────────────────────────────────────────────────────
+    // The try/catch below covers ONLY persistence. Verification issuance is
+    // intentionally outside it — see the comment at that call site.
+    let user: SafeUser;
     try {
-      const user = await this.usersRepository.createUser({
+      user = await this.usersRepository.createUser({
         email,
         passwordHash,
       });
-
-      this.logger.log(`Registration successful for user: ${user.id}`);
-      return user;
     } catch (error: unknown) {
       // Handle concurrent duplicate registration — both exact and case-insensitive
       if (
@@ -114,5 +121,37 @@ export class RegistrationService {
         'An error occurred while processing your request',
       );
     }
+
+    this.logger.log(`Registration successful for user: ${user.id}`);
+
+    // ── Issue the verification email ───────────────────────────────────────
+    // Deliberately AFTER persistence has succeeded and OUTSIDE its try/catch.
+    //
+    // Outside the try/catch: that block maps persistence failures to 500 and
+    // would destroy a successfully created account over a transient SMTP
+    // blip. The account row is committed at this point, so a delivery failure
+    // must not roll anything back — the user recovers via
+    // POST /resend-verification.
+    //
+    // Awaited rather than fire-and-forget: an unawaited promise would surface
+    // as an unhandled rejection after the response is sent and would hide the
+    // failure from request logs entirely. Awaiting keeps ordering
+    // deterministic and testable.
+    //
+    // Wrapped in its own catch as defence in depth. issueVerificationEmail()
+    // already swallows transport and issuance failures internally, so this
+    // should be unreachable — but registration must not hinge on that staying
+    // true across future refactors. A delivery failure must NEVER convert a
+    // committed account into a 500.
+    try {
+      await this.emailVerificationService.issueVerificationEmail(user);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Verification email issuance threw unexpectedly; account preserved [userId=${user.id}]`,
+        { reason: error instanceof Error ? error.name : 'UNKNOWN' },
+      );
+    }
+
+    return user;
   }
 }

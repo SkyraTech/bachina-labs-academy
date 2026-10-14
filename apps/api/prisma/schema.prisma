@@ -90,6 +90,10 @@ enum UserStatus {
  * resetTokens     PasswordResetToken[]
  * sessions        AuthSession[]
  * emailDeliveries EmailDelivery[]
+ * Implemented in Step 2.2.3:
+ * emailVerificationTokens EmailVerificationToken[]  (single-use tokens backing
+ * POST /auth/verify-email and /auth/resend-verification; cascade-deleted with
+ * the user so no orphaned token rows survive account removal).
  */
 model User {
   id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -101,13 +105,160 @@ model User {
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  emailVerificationTokens EmailVerificationToken[]
+  sessions                UserSession[]
+
   @@map("users")
+}
+
+// ── Email verification (Step 2.2.3) ───────────────────────────────────────────
+
+/**
+ * EmailVerificationToken — single-use secret backing account email verification.
+ * Lifecycle
+ * ISSUED     row created at registration and on every resend. Exactly one
+ * raw token is returned to the caller, which is rendered into the
+ * verification email and then discarded.
+ * CONSUMED   consumed_at set on the first successful verification. A consumed
+ * token can never succeed again.
+ * EXPIRED    expires_at is 24h after creation (EMAIL_VERIFICATION_TTL_MINUTES).
+ * Expiry is evaluated at verification time; expired rows are
+ * deleted on the next issuance for that user.
+ * INVALIDATED on resend, the previous unconsumed token is DELETED rather than
+ * marked, so only the newest emailed link ever works.
+ * Token storage — hashes only, never plaintext
+ * The raw token is 32 cryptographically random bytes encoded base64url
+ * (256 bits). Only its SHA-256 hex digest is stored in token_hash. A database
+ * leak therefore does not expose usable verification links, and the digest is
+ * not reversible and not brute-forceable across 2^256 keyspace.
+ * Lookup during verification hashes the presented token and matches on the
+ * unique token_hash index, so the raw value is never persisted anywhere.
+ * Length: SHA-256 hex is EXACTLY 64 lowercase hex characters (32 bytes x 2),
+ * so token_hash is VARCHAR(64) rather than TEXT. The bound is a deliberate
+ * assertion about the hashing algorithm — if the digest algorithm ever
+ * changes, this length and its CHECK constraint must change with it. A
+ * CHECK constraint (char_length = 64) is maintained in the migration SQL,
+ * since Prisma cannot express CHECK constraints.
+ * Resend cooldown — serialized per user, not merely indexed
+ * A partial unique index limits the table to one unconsumed token per user,
+ * but it cannot enforce the 60-second cooldown: once a token is CONSUMED, the
+ * index no longer constrains that user, so a client could verify and
+ * immediately reissue. The cooldown is therefore enforced inside the issuing
+ * transaction, which serializes on the owning users row via
+ * SELECT ... FOR UPDATE:
+ * 1. Lock the users row (blocks every concurrent issuance for this user).
+ * 2. Read the LATEST token of ANY status — consumed tokens included, since
+ * they carry the most recent issuance timestamp.
+ * 3. Reject if now - latest.created_at < cooldown.
+ * 4. Delete outstanding tokens, insert exactly one replacement.
+ * 5. Commit, releasing the lock.
+ * Because step 2 considers consumed and superseded rows, consuming a token no
+ * longer resets the cooldown clock. Two simultaneous resends serialize on the
+ * lock, so the loser observes the winner's fresh row and is rejected.
+ * The partial unique index is retained as defence in depth — it still bounds
+ * the table if application logic is ever bypassed.
+ * Single-active-token invariant (defence in depth)
+ * The migration adds a partial unique index, maintained in SQL because Prisma
+ * cannot express partial indexes (same precedent as users_email_lower_key):
+ * CREATE UNIQUE INDEX "email_verification_tokens_user_active_key"
+ * ON "email_verification_tokens"("user_id")
+ * WHERE "consumed_at" IS NULL;
+ * At most ONE unconsumed token may exist per user. The row lock above is the
+ * primary cooldown and serialization mechanism; this index is the backstop
+ * that keeps the table bounded even if application logic is bypassed, and it
+ * is deliberately retained. Any INSERT that still races past the lock fails
+ * with P2002, which is mapped to the generic cooldown outcome rather than
+ * being surfaced, so a conflict can never leak account state.
+ * Registration and resend share one issuance path
+ * POST /register and POST /resend-verification both call the same locked
+ * issuance transaction. Registration finds no prior token, so it is never
+ * cooldown-blocked; a resend following registration immediately is rejected by
+ * the cooldown. Because both paths take the same users-row lock, they cannot
+ * create conflicting active tokens regardless of interleaving.
+ * Retention
+ * Outstanding (unconsumed) tokens are deleted on reissue, and expired
+ * unconsumed tokens are removed on the next issuance for that user. Consumed
+ * rows are RETAINED, because the most recent issuance timestamp — including
+ * consumed tokens — is what the cooldown check reads. Each account therefore
+ * accumulates at most one consumed row per verified session plus one
+ * outstanding row, which is bounded in practice. A periodic purge of consumed
+ * rows older than the TTL can be added later if needed; purging them early
+ * would reopen the cooldown bypass this design closes.
+ * Relations
+ * onDelete: Cascade — deleting a user removes their tokens, so no orphaned
+ * secret rows survive account removal.
+ */
+model EmailVerificationToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Supports "find this user's tokens newest-first" during resend/invalidation
+  // and bounds the scan when purging expired rows for a single account.
+  @@index([userId, createdAt])
+  @@map("email_verification_tokens")
+}
+
+// ── User sessions (Step 2.2.4A) ────────────────────────────────────────────────
+
+/**
+ * UserSession — PostgreSQL-backed persistence for hybrid JWT sessions.
+ * Architecture
+ * Short-lived JWT access token (15m) + rotating opaque refresh token
+ * backed by persistent database session state.
+ * Refresh token storage — hashes only, never plaintext
+ * The raw refresh token is a cryptographically secure random string.
+ * Only its SHA-256 hex digest (64 chars) is stored in refresh_token_hash.
+ * A database dump does not expose active refresh credentials.
+ * Enforced by a 64-char length CHECK constraint in PostgreSQL.
+ * Rotation & Concurrency
+ * Upon token refresh, the stored hash is replaced atomically using a
+ * compare-and-swap pattern. If a previously rotated token hash is
+ * presented, the attempted replay is rejected and the session can be
+ * revoked immediately for security.
+ * Lifecycle & Expiry
+ * - Without Remember Me: 24-hour absolute session expiry.
+ * - With Remember Me: 30-day absolute session expiry.
+ * - Revocation: revoked_at is set upon logout, logout-all, or security event.
+ * - Expiry: sessions past expires_at are rejected by all validation queries.
+ * Relations
+ * onDelete: Cascade — deleting a user deletes their sessions, cleaning up
+ * session credentials and IP/User-Agent metadata in accordance with GDPR.
+ */
+model UserSession {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.VarChar(64)
+  rememberMe       Boolean   @default(false) @map("remember_me")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revocationReason String?   @map("revocation_reason") @db.VarChar(50)
+  userAgent        String?   @map("user_agent") @db.VarChar(1024)
+  ipAddress        String?   @map("ip_address") @db.VarChar(45)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Supports "list sessions for user" (ordered by creation or activity)
+  // and bulk revocation per user
+  @@index([userId, createdAt])
+  // Supports cleanup of expired sessions
+  @@index([expiresAt])
+  @@map("user_sessions")
 }
 
 // ── Future business models will be added here per approved phase ───────────────
 //
 // Phase 2 (remaining) — Auth:
-//   UserProfile, PasswordResetToken, AuthSession
+//   UserProfile, PasswordResetToken
+//   (EmailVerificationToken — implemented in Step 2.2.3)
+//   (UserSession — implemented in Step 2.2.4A)
 //
 // Phase 3 — Content:
 //   Category, Tag, Article, ArticleTag, MediaAsset, Comment, ArticleStats
