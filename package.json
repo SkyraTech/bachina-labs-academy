@@ -23,7 +23,14 @@
     "typecheck": "pnpm --recursive run typecheck",
     "typecheck:web": "pnpm --filter web run typecheck",
     "typecheck:api": "pnpm --filter api run typecheck",
-    "format": "prettier --write \"**/*.{ts,js,html,json,yaml,yml,css,scss}\" --ignore-path .gitignore"
+    "format": "prettier --write \"**/*.{ts,js,html,json,yaml,yml,css,scss}\" --ignore-path .gitignore",
+    "db:generate": "pnpm --filter api run prisma:generate",
+    "db:validate": "pnpm --filter api run prisma:validate",
+    "db:format": "pnpm --filter api run prisma:format",
+    "db:migrate:dev": "pnpm --filter api run prisma:migrate:dev",
+    "db:migrate:status": "pnpm --filter api run prisma:migrate:status",
+    "db:migrate:deploy": "pnpm --filter api run prisma:migrate:deploy",
+    "db:studio": "pnpm --filter api run prisma:studio"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

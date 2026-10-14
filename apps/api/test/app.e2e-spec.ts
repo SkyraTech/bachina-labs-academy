@@ -7,7 +7,7 @@ import { AppModule } from './../src/app.module.js';
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -16,14 +16,39 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('/ (GET) - Root info', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res: { body: { name: string; version: string } }) => {
+        expect(res.body.name).toBe('Bachina Labs Academy API');
+        expect(res.body.version).toBe('1.0.0');
+      });
   });
 
-  afterEach(async () => {
-    await app.close();
+  it('/health (GET) - Liveness probe', () => {
+    return request(app.getHttpServer())
+      .get('/health')
+      .expect(200)
+      .expect((res: { body: { status: string; uptime: number; timestamp: string } }) => {
+        expect(res.body.status).toBe('ok');
+        expect(typeof res.body.uptime).toBe('number');
+        expect(res.body).toHaveProperty('timestamp');
+      });
+  });
+
+  it('/health/database (GET) - Database readiness probe', () => {
+    return request(app.getHttpServer())
+      .get('/health/database')
+      .expect(200)
+      .expect((res: { body: { status: string; database: string; timestamp: string } }) => {
+        expect(res.body.status).toBe('ok');
+        expect(res.body.database).toBe('connected');
+        expect(res.body).toHaveProperty('timestamp');
+      });
   });
 });

@@ -1,27 +1,109 @@
-// This is your Prisma schema file — Step 1 Foundation
-// Authoritative Prisma schema location: apps/api/prisma/schema.prisma
-// One Prisma client, one schema, one migrations folder.
+// Authoritative Prisma schema — apps/api/prisma/schema.prisma
+// One schema, one migrations folder, one generated client.
 //
-// Status: Foundation only — no business tables yet.
-// Business models will be added in Phase 2 after ERD approval.
-// See docs/DATABASE_ARCHITECTURE.md for the proposed entity design.
+// Database: bachina_labs_academy (PostgreSQL 17)
+// Role:     academy_dev_user (dedicated dev role — not postgres superuser)
+// Phase:    2.2.1 — Users table and Users domain foundation.
 //
-// DO NOT run prisma migrate deploy on production until Phase 2 ERD is approved.
+// DO NOT run prisma migrate deploy on production until ERD is approved for each phase.
+// DO NOT use prisma db push as a substitute for tracked migrations.
+// DO NOT run prisma migrate reset without explicit project-owner approval.
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/database/generated"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// ── Phase 2 models will be added here after approval ─────────────────────────
-// Proposed entities (from DATABASE_ARCHITECTURE.md):
-//   User, UserProfile, PasswordResetToken, AuthSession
-//   Category, Tag, Article, ArticleTag
-//   MediaAsset, Comment, ArticleStats, EmailDelivery
-//   SubscriptionPlan, UserSubscription, Feature, PlanFeature (entitlements)
-//   McpClientGrant (MCP authorization)
+// ── Enums ──────────────────────────────────────────────────────────────────────
+
+/**
+ * UserRole — controls access level within the Academy.
+ * AUTHOR  — default role for all newly registered users.
+ * Grants access to author-specific functionality after
+ * email verification is confirmed.
+ * ADMIN   — elevated role. NEVER assigned automatically from
+ * user-supplied input, email address, email domain,
+ * OAuth provider claim, or client request.
+ * Assigned only through controlled server-side tooling.
+ */
+enum UserRole {
+  AUTHOR
+  ADMIN
+}
+
+/**
+ * UserStatus — coarse lifecycle state of an account.
+ * ACTIVE    — default state after registration. The account is usable.
+ * Note: ACTIVE does NOT imply email verification is complete.
+ * Email verification is tracked separately via emailVerifiedAt.
+ * SUSPENDED — account temporarily restricted by an administrator.
+ * DISABLED  — account permanently deactivated.
+ */
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+// ── Business models ────────────────────────────────────────────────────────────
+
+/**
+ * User — core identity record for every registered Academy account.
+ * Email uniqueness:
+ * Prisma's @unique creates a standard B-tree index, which is case-sensitive
+ * under PostgreSQL's default collation. A separate PostgreSQL expression index
+ * on LOWER(email) is added in the migration SQL to enforce case-insensitive
+ * uniqueness at the database level. Application code MUST normalize email to
+ * lowercase before every insert and lookup.
+ * Password:
+ * Nullable because Google-only accounts may not have an Academy password.
+ * A null passwordHash MUST NOT be treated as an empty password.
+ * Future authentication services must reject password login when this is null.
+ * Email verification:
+ * emailVerifiedAt is null until verified. An unverified account may have
+ * ACTIVE status but must not receive access to protected author functionality.
+ * Email verification and account status are intentionally separate concerns.
+ * Future relations (added in later phases — do not define before models exist):
+ * profile        UserProfile?
+ * articles       Article[]
+ * comments       Comment[]
+ * uploads        MediaAsset[]
+ * resetTokens    PasswordResetToken[]
+ * sessions       AuthSession[]
+ * emailDeliveries EmailDelivery[]
+ */
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique @db.VarChar(320)
+  passwordHash    String?    @map("password_hash")
+  role            UserRole   @default(AUTHOR)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email])
+  @@map("users")
+}
+
+// ── Future business models will be added here per approved phase ───────────────
+//
+// Phase 2 (remaining) — Auth:
+//   UserProfile, PasswordResetToken, AuthSession
+//
+// Phase 3 — Content:
+//   Category, Tag, Article, ArticleTag, MediaAsset, Comment, ArticleStats
+//
+// Phase 4 — Email:
+//   EmailDelivery
+//
+// Phase 5 — Subscriptions & Entitlements:
+//   SubscriptionPlan, Feature, PlanFeature, UserSubscription
+//
+// Phase 6 — MCP:
+//   McpClientGrant
