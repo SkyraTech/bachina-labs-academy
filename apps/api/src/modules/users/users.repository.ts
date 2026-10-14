@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
-import type { UserLookupResult } from './types/index.js';
+import type { UserLookupResult, CreateUserInput, SafeUser } from './types/index.js';
 
 /**
  * UsersRepository — data access layer for the users domain.
@@ -81,6 +81,42 @@ export class UsersRepository {
 
     const user = await this.prisma.user.findUnique({
       where: { email },
+      select: this.safeSelect,
+    });
+
+    return user;
+  }
+
+  /**
+   * Creates a new user record.
+   *
+   * Security rules:
+   *   - Only email and passwordHash are accepted from the caller.
+   *   - role and status are NOT provided — Prisma model defaults apply
+   *     (AUTHOR and ACTIVE respectively), enforced at the database level.
+   *   - emailVerifiedAt is always null — the column has no default so Prisma
+   *     inserts NULL unless explicitly set.
+   *   - id is database-generated via gen_random_uuid() — no client-supplied ID.
+   *   - NEVER log the incoming passwordHash value.
+   *   - Do not catch Prisma errors here — the caller (RegistrationService)
+   *     is responsible for handling PrismaClientKnownRequestError (P2002)
+   *     and converting it to a controlled application error.
+   *
+   * @param input — { email, passwordHash } — email must already be normalized
+   * @returns SafeUser — the created user without passwordHash
+   */
+  async createUser(input: CreateUserInput): Promise<SafeUser> {
+    this.logger.debug('createUser: [redacted email]');
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: input.email,
+        passwordHash: input.passwordHash,
+        // role:   uses model default → AUTHOR
+        // status: uses model default → ACTIVE
+        // emailVerifiedAt: null (no default — Prisma inserts NULL)
+        // id: database-generated → gen_random_uuid()
+      },
       select: this.safeSelect,
     });
 

@@ -29,4 +29,23 @@ export interface SafeUser {
  */
 export type UserLookupResult = SafeUser | null;
 
+/**
+ * CreateUserInput — the minimal, trusted set of fields accepted by the
+ * persistence layer when inserting a new user record.
+ *
+ * Security rules:
+ *   - role and status are NOT included — they are assigned by Prisma model
+ *     defaults (AUTHOR and ACTIVE respectively). Client-supplied values are
+ *     never accepted.
+ *   - emailVerifiedAt is NOT included — always null at creation. Verification
+ *     is set by a separate, authenticated workflow (Step 2.2.3).
+ *   - id is NOT included — PostgreSQL generates it via gen_random_uuid().
+ *   - passwordHash is the already-hashed value from PasswordHashingService.
+ *     The repository MUST NOT receive or log plaintext passwords.
+ */
+export interface CreateUserInput {
+  email: string;
+  passwordHash: string;
+}
+
 export { UserRole, UserStatus };

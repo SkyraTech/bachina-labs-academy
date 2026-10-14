@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 import appConfig from './config/app.config';
 
 /**
@@ -31,14 +34,38 @@ import appConfig from './config/app.config';
       envFilePath: ['.env.local', '.env'],
     }),
 
+    // ── Rate limiting (in-memory, no external dependency) ────────────────
+    // Limit: 10 requests per 60 seconds per IP (global default).
+    // Applied globally via APP_GUARD below.
+    // Limitation: in-memory storage resets on process restart and does not
+    // share state across horizontally-scaled instances. A distributed cache
+    // (e.g. Redis) should be introduced if the API is load-balanced.
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60_000, // 60 seconds window (in ms for @nestjs/throttler v6)
+          limit: 10,   // max 10 requests per IP per window
+        },
+      ],
+    }),
+
     // ── Database (global — provides PrismaService to all modules) ───────
     DatabaseModule,
 
     // ── Domain modules (added per phase) ───────────────────────────────
     HealthModule,
-    UsersModule, // Phase 2.2.1 — users table and domain foundation
+    UsersModule,   // Phase 2.2.1 — users table and domain foundation
+    AuthModule,    // Phase 2.2.2 — email/password registration
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Apply ThrottlerGuard globally — covers all controllers and routes
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
+
