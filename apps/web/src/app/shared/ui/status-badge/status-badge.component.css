@@ -1,0 +1,11 @@
+:host {
+  display: inline-flex;
+}
+
+.badge-base {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  border-radius: 9999px;
+  border-width: 1px;
+}

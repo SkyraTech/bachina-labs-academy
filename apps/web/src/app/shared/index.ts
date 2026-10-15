@@ -1,13 +1,7 @@
 /**
- * Shared barrel — re-exports reusable UI primitives as they are implemented.
- *
- * Planned contents (to be added in Phase 4+):
- *   components/    — Button, Card, Badge, Input, Dialog, Toast, Table, etc.
- *   directives/    — ClickOutside, IntersectionObserver, etc.
- *   pipes/         — DateAgo, TruncateText, etc.
- *   icons/         — Icon wrapper component (Lucide-style)
- *
- * Components here must be standalone Angular components.
- * No business logic or API calls in shared components.
+ * Shared barrel — re-exports reusable UI primitives, layout helpers, and models.
  */
-export {};
+export * from './ui';
+export * from './ui/form/models';
+export * from './ui/data-table/models';
+export * from './ui/dialog/models';

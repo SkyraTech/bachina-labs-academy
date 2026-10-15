@@ -1,0 +1,184 @@
+<div class="flex flex-col gap-16 lg:gap-20 py-4 sm:py-8">
+  <!-- Hero Section -->
+  <section class="text-center max-w-4xl mx-auto flex flex-col items-center gap-6">
+    <!-- Eyebrow Badge -->
+    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-brand)]/10 border border-[var(--color-brand)]/30 text-[var(--color-brand)] text-xs font-bold tracking-wider uppercase backdrop-blur-md">
+      <span class="w-2 h-2 rounded-full bg-[var(--color-brand)] animate-pulse"></span>
+      <span>The Bachina Labs Academy</span>
+    </div>
+
+    <!-- Headline -->
+    <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text)] leading-[1.15]">
+      Build knowledge.<br />
+      <span class="hero-gradient-text">Share what matters.</span>
+    </h1>
+
+    <!-- Supporting Text -->
+    <p class="text-base sm:text-lg lg:text-xl text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto">
+      Discover practical engineering insights, publish in-depth technical guides, and learn from architects who build at scale.
+    </p>
+
+    <!-- CTA Buttons -->
+    <div class="flex items-center justify-center gap-4 flex-wrap w-full pt-1">
+      <a routerLink="/articles" class="cta-primary">
+        <span>Explore articles</span>
+        <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </a>
+      <a routerLink="/register" class="cta-secondary">
+        <span>Start writing</span>
+      </a>
+    </div>
+
+    <!-- Trending Topics Pills -->
+    <div class="flex items-center justify-center gap-2 flex-wrap pt-3">
+      <span class="text-xs font-semibold text-[var(--color-text-muted)] mr-1">Trending:</span>
+      <a routerLink="/articles" class="topic-tag">#Architecture</a>
+      <a routerLink="/articles" class="topic-tag">#NestJS</a>
+      <a routerLink="/articles" class="topic-tag">#PostgreSQL</a>
+      <a routerLink="/articles" class="topic-tag">#AngularSignals</a>
+      <a routerLink="/articles" class="topic-tag">#DevOps</a>
+    </div>
+  </section>
+
+  <!-- Featured Architecture Blueprint Showcase -->
+  <section class="showcase-card" aria-label="Featured Technical Blueprint">
+    <div class="flex items-center justify-between px-5 py-3.5 bg-black/20 border-b border-white/[0.08]">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+      </div>
+      <span class="text-xs font-mono font-semibold text-[var(--color-brand)] uppercase tracking-wider">
+        Featured Blueprint · Architecture
+      </span>
+      <span class="text-xs text-[var(--color-text-muted)]">By Skyra Tech · 8 min read</span>
+    </div>
+
+    <div class="p-6 sm:p-8 flex flex-col gap-4 text-left">
+      <h2 class="text-xl sm:text-2xl font-bold text-[var(--color-text)] m-0">
+        Architecting Resilient Distributed Event Streams with PostgreSQL & NestJS
+      </h2>
+
+      <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0">
+        A production blueprint for high-throughput event processing using advisory-locked transactional outbox tables and strict domain isolation.
+      </p>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">PostgreSQL 17</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">Prisma ORM</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">Zoneless Signals</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">RS256 JWT</span>
+      </div>
+
+      <pre class="font-mono text-xs sm:text-sm p-4 rounded-xl bg-black/40 border border-white/[0.08] text-slate-300 overflow-x-auto leading-relaxed my-1"><code>// Advisory-locked transactional event dispatcher
+SELECT event_id, payload, created_at
+FROM event_outbox
+WHERE processed_at IS NULL
+ORDER BY created_at ASC
+FOR UPDATE SKIP LOCKED
+LIMIT 50;</code></pre>
+
+      <div class="flex items-center gap-6 flex-wrap pt-3 border-t border-white/[0.08] text-xs text-[var(--color-text-secondary)]">
+        <div class="flex items-center gap-1.5">
+          <span class="text-emerald-400 font-bold">●</span>
+          <span class="font-bold text-[var(--color-text)]">1.2ms</span>
+          <span>latency</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-orange-400 font-bold">●</span>
+          <span class="font-bold text-[var(--color-text)]">Zero</span>
+          <span>Zone.js runtime overhead</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-sky-400 font-bold">●</span>
+          <span class="font-bold text-[var(--color-text)]">100%</span>
+          <span>Cookie-only authentication</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Platform Statistics Strip -->
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto w-full" aria-label="Platform Statistics">
+    <div class="stat-card">
+      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">120+</div>
+      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">In-depth Technical Guides</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">15k+</div>
+      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">Monthly Engineering Readers</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">100%</div>
+      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">Open Community Knowledge</div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="max-w-6xl mx-auto w-full flex flex-col gap-10" aria-labelledby="features-heading">
+    <div class="text-center max-w-xl mx-auto flex flex-col gap-2">
+      <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Platform Capabilities</span>
+      <h2 id="features-heading" class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] m-0">
+        Built for developers who value craft.
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Card 1 -->
+      <div class="feature-card">
+        <div class="w-12 h-12 rounded-xl bg-[var(--color-brand)]/15 border border-[var(--color-brand)]/30 text-[var(--color-brand)] flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Publish with confidence</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
+          Draft, refine and share useful technical articles with an intuitive authoring experience and editorial workflows.
+        </p>
+        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Markdown</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">LaTeX</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Revisions</span>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="feature-card">
+        <div class="w-12 h-12 rounded-xl bg-[var(--color-brand)]/15 border border-[var(--color-brand)]/30 text-[var(--color-brand)] flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Explore engineering knowledge</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
+          Discover practical insights across modern software disciplines, from architecture and systems to cloud engineering.
+        </p>
+        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Architecture</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">PostgreSQL</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">DevOps</span>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="feature-card md:col-span-2 lg:col-span-1">
+        <div class="w-12 h-12 rounded-xl bg-[var(--color-brand)]/15 border border-[var(--color-brand)]/30 text-[var(--color-brand)] flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Build your professional voice</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
+          Share ideas, document lessons, and grow your technical presence alongside a vibrant community of engineers.
+        </p>
+        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Portfolio</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Analytics</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Community</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

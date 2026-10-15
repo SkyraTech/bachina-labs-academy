@@ -1,0 +1,135 @@
+/* ============================================================
+   AuthLayoutComponent Styles — Focused Ambient Authentication Shell
+   ============================================================ */
+
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--color-bg);
+  background-image: radial-gradient(circle at 50% 40%, rgba(249, 115, 22, 0.12), transparent 55%);
+  background-repeat: no-repeat;
+  color: var(--color-text);
+}
+
+:host-context([data-theme="light"]) .auth-shell {
+  background-image: radial-gradient(circle at 50% 35%, rgba(249, 115, 22, 0.07), transparent 50%);
+}
+
+/* Top minimal header */
+.auth-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 72px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(11, 15, 23, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+:host-context([data-theme="light"]) .auth-header {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.auth-header-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  height: 100%;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 1.125rem;
+  transition: opacity 150ms ease;
+}
+
+.brand-link:hover {
+  opacity: 0.9;
+}
+
+.brand-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
+}
+
+/* Main Form Area */
+.auth-main {
+  flex: 1 1 auto;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.auth-card-wrapper {
+  width: 100%;
+  max-width: 480px;
+}
+
+.auth-card {
+  position: relative;
+  border-radius: 24px;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(249, 115, 22, 0.15);
+  padding: 2.5rem;
+  overflow: hidden;
+}
+
+:host-context([data-theme="light"]) .auth-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(226, 232, 240, 0.9);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(249, 115, 22, 0.15);
+}
+
+/* Top decorative glow line */
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #f97316 50%, transparent 100%);
+}
+
+/* Minimal Footer */
+.auth-footer {
+  position: relative;
+  z-index: 10;
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}

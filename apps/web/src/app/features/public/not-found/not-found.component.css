@@ -1,0 +1,78 @@
+/* ============================================================
+   NotFoundComponent Styles
+   ============================================================ */
+
+:host {
+  display: block;
+}
+
+.notfound-container {
+  min-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.notfound-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(234, 88, 12, 0.08) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f97316;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.25);
+}
+
+.notfound-code {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #f97316;
+  margin-bottom: 0.5rem;
+}
+
+.notfound-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+.notfound-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  max-width: 440px;
+  margin: 0 auto 2rem;
+}
+
+.notfound-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4);
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.notfound-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -5px rgba(249, 115, 22, 0.55);
+}

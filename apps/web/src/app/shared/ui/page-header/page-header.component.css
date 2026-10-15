@@ -1,0 +1,18 @@
+:host {
+  display: block;
+}
+
+.page-header-root {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .page-header-root {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

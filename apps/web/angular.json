@@ -67,7 +67,10 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runnerConfig": "vitest.config.mts"
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

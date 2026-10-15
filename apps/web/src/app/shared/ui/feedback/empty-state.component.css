@@ -1,0 +1,30 @@
+:host {
+  display: block;
+}
+
+.empty-state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  border-radius: 1rem;
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface);
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.empty-state-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-surface);
+  color: var(--color-brand-deep);
+  border: 1px solid var(--color-brand-muted);
+}

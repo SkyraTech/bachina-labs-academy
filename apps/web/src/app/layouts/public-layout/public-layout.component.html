@@ -1,0 +1,143 @@
+<div class="layout-shell">
+  <!-- Top Sticky Frosted Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <!-- Left: Brand Logo & Navigation -->
+      <div class="flex items-center gap-8">
+        <a routerLink="/" class="brand-link" aria-label="Bachina Labs Academy Home">
+          <div class="brand-badge">BL</div>
+          <div class="flex items-center gap-2">
+            <span class="brand-title">Bachina Labs</span>
+            <span class="brand-pill">Academy</span>
+          </div>
+        </a>
+
+        <!-- Desktop Nav Links -->
+        <nav class="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+          @for (item of navItems; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+              class="nav-link"
+            >
+              {{ item.label }}
+            </a>
+          }
+        </nav>
+      </div>
+
+      <!-- Right: Controls & Actions -->
+      <div class="flex items-center gap-3">
+        <app-theme-selector></app-theme-selector>
+
+        <div class="hidden sm:flex items-center gap-2 ml-1">
+          <a routerLink="/login" class="header-signin">Sign in</a>
+          <a routerLink="/register" class="header-btn">Get started</a>
+        </div>
+
+        <!-- Mobile Hamburger -->
+        <button
+          type="button"
+          (click)="toggleMobileMenu()"
+          class="md:hidden flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--color-border)] text-[var(--color-text)] cursor-pointer"
+          [attr.aria-expanded]="mobileMenuOpen()"
+          aria-label="Toggle navigation menu"
+        >
+          @if (mobileMenuOpen()) {
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          } @else {
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer Menu -->
+    @if (mobileMenuOpen()) {
+      <div class="md:hidden border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-5 shadow-2xl">
+        <nav class="flex flex-col space-y-2" aria-label="Mobile Navigation">
+          @for (item of navItems; track item.path) {
+            <a
+              [routerLink]="item.path"
+              (click)="closeMobileMenu()"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+              class="nav-link text-base py-2.5"
+            >
+              {{ item.label }}
+            </a>
+          }
+        </nav>
+        <div class="pt-4 mt-4 border-t border-[var(--color-border)] flex flex-col gap-2">
+          <a routerLink="/login" (click)="closeMobileMenu()" class="header-signin text-center py-2.5">Sign in</a>
+          <a routerLink="/register" (click)="closeMobileMenu()" class="header-btn text-center py-2.5">Get started</a>
+        </div>
+      </div>
+    }
+  </header>
+
+  <!-- Main Content Outlet -->
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Structured Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <div class="brand-badge" style="width: 28px; height: 28px; font-size: 0.75rem;">BL</div>
+            <span class="font-bold text-base text-[var(--color-text)]">Bachina Labs Academy</span>
+          </div>
+          <p class="text-sm text-[var(--color-text-secondary)] max-w-sm leading-relaxed mb-4">
+            A modern engineering knowledge hub for technical writers, architects, and development teams by Skyra Tech.
+          </p>
+          <div class="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>All systems operational</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Platform</div>
+          <div class="footer-links">
+            <a routerLink="/articles" class="footer-link">Articles & Guides</a>
+            <a routerLink="/articles" class="footer-link">Architecture Blueprints</a>
+            <a routerLink="/articles" class="footer-link">Featured Authors</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Workspaces</div>
+          <div class="footer-links">
+            <a routerLink="/author" class="footer-link">Author Studio</a>
+            <a routerLink="/admin" class="footer-link">Admin Area</a>
+            <a routerLink="/account" class="footer-link">Account Security</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-col-title">About</div>
+          <div class="footer-links">
+            <a routerLink="/" class="footer-link">Skyra Tech</a>
+            <a routerLink="/" class="footer-link">Writing Guidelines</a>
+            <a routerLink="/" class="footer-link">Privacy & Security</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 Bachina Labs Academy. Developed by <strong class="text-[var(--color-text)]">Skyra Tech</strong>. All rights reserved.</p>
+        <div class="flex items-center gap-6">
+          <span class="text-xs">PostgreSQL 17 · Angular 22 Zoneless · NestJS 12</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>

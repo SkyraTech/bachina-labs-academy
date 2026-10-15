@@ -1,0 +1,7 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}

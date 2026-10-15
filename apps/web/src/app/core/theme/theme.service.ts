@@ -11,7 +11,7 @@ const THEME_STORAGE_KEY = 'bla-theme';
  *
  * Uses `data-theme` attribute on <html> element to drive CSS token switching.
  * Persists user preference in localStorage; falls back to system preference.
- * Safe for SSR (isPlatformBrowser guard).
+ * Safe for SSR and JSDOM environments.
  *
  * Usage:
  *   inject(ThemeService).setTheme('dark')
@@ -33,14 +33,16 @@ export class ThemeService {
       this.applyTheme(this.mode());
 
       // Listen for OS-level theme changes when mode is 'system'
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      mediaQuery.addEventListener('change', () => {
-        if (this.mode() === 'system') {
-          const resolved = mediaQuery.matches ? 'dark' : 'light';
-          this.resolvedTheme.set(resolved);
-          this.applyToDocument(resolved);
-        }
-      });
+      if (typeof window.matchMedia === 'function') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener?.('change', () => {
+          if (this.mode() === 'system') {
+            const resolved = mediaQuery.matches ? 'dark' : 'light';
+            this.resolvedTheme.set(resolved);
+            this.applyToDocument(resolved);
+          }
+        });
+      }
     }
   }
 
@@ -69,10 +71,10 @@ export class ThemeService {
 
   private resolveTheme(mode: ThemeMode): ResolvedTheme {
     if (mode === 'system') {
-      if (this.isBrowser) {
+      if (this.isBrowser && typeof window.matchMedia === 'function') {
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
-      return 'light'; // SSR default
+      return 'light'; // SSR or JSDOM default
     }
     return mode;
   }
