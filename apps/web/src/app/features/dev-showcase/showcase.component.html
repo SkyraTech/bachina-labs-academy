@@ -1,0 +1,285 @@
+<div class="showcase-container">
+  <!-- Top Showcase Banner -->
+  <header class="showcase-header">
+    <div class="header-main">
+      <div class="eyebrow-badge">
+        <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+        <span>DEVELOPMENT-ONLY · ISOLATED UI COMPONENT SHOWCASE</span>
+      </div>
+      <h1 class="showcase-main-title">Bachina Labs Reusable UI Component Library</h1>
+      <p class="showcase-subtitle">
+        Interactive SaaS design system review demonstrating dynamic forms, configurable tables, CDK dialogs, and toast feedback. Excluded from production routing.
+      </p>
+    </div>
+
+    <div class="header-theme-control">
+      <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Active Theme:</span>
+      <app-theme-selector></app-theme-selector>
+    </div>
+  </header>
+
+  <!-- Showcase Content Sections -->
+  <div class="showcase-sections-grid">
+    <!-- SECTION 1: Dynamic Form System -->
+    <section class="showcase-card" aria-labelledby="heading-forms">
+      <div class="card-header">
+        <div>
+          <span class="section-tag">Deliverable 1</span>
+          <h2 id="heading-forms" class="card-title">Dynamic Form & Interactive Validation</h2>
+          <p class="card-subtitle">
+            Schema-driven reactive forms with real label associations, custom validation, conditional fields, and autofocus on submit.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <app-dynamic-form
+          [fields]="sampleFormFields"
+          [actions]="sampleFormActions"
+          (formSubmit)="onFormSubmit($event)"
+          (formReset)="onFormReset()"
+        ></app-dynamic-form>
+
+        @if (submittedPayload()) {
+          <div class="payload-preview" role="region" aria-label="Submitted Form Data">
+            <div class="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+              <span class="text-xs font-mono font-bold text-emerald-500 uppercase tracking-wider">
+                ✓ Validated Submission Output:
+              </span>
+              <button
+                type="button"
+                (click)="submittedPayload.set(null)"
+                class="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              >
+                Clear output
+              </button>
+            </div>
+            <pre class="payload-code"><code>{{ submittedPayload() | json }}</code></pre>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- SECTION 2: Configurable Data Table -->
+    <section class="showcase-card" aria-labelledby="heading-table">
+      <div class="card-header">
+        <div class="flex-1">
+          <span class="section-tag">Deliverable 2</span>
+          <h2 id="heading-table" class="card-title">Configurable Data Table</h2>
+          <p class="card-subtitle">
+            Generic typed table with client-side & server-side modes, multi-column sorting, search, pagination, selection, and mobile card view.
+          </p>
+        </div>
+
+        <div class="table-test-controls">
+          <button
+            type="button"
+            (click)="toggleTableMode()"
+            class="control-btn"
+            [class.control-active]="tableMode() === 'server'"
+          >
+            Mode: {{ tableMode() | uppercase }}
+          </button>
+
+          <button
+            type="button"
+            (click)="toggleTableLoading()"
+            class="control-btn"
+            [class.control-active]="tableLoading()"
+          >
+            {{ tableLoading() ? 'Stop Loading' : 'Simulate Loading' }}
+          </button>
+
+          <button
+            type="button"
+            (click)="toggleTableEmpty()"
+            class="control-btn"
+            [class.control-active]="tableEmpty()"
+          >
+            {{ tableEmpty() ? 'Show Rows' : 'Simulate Empty' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <app-data-table
+          [data]="tableEmpty() ? [] : sampleArticles"
+          [columns]="sampleTableColumns"
+          [actions]="sampleTableActions"
+          [mode]="tableMode()"
+          [loading]="tableLoading()"
+          [selectable]="true"
+          [tableTitle]="'Workspace Article Index (' + (tableEmpty() ? 0 : sampleArticles.length) + ' items)'"
+          (queryChange)="onTableQueryChange($event)"
+          (selectionChange)="onTableSelectionChange($event)"
+        ></app-data-table>
+
+        <div class="table-state-info">
+          @if (selectedTableRows().length > 0) {
+            <span class="text-xs font-semibold text-[var(--color-brand)]">
+              Selected Rows: {{ selectedTableRows().length }} items
+            </span>
+          }
+          @if (lastServerQuery()) {
+            <span class="text-xs text-[var(--color-text-secondary)]">
+              Last Emitted Server Query: Page {{ lastServerQuery()?.page }}, Search: "{{ lastServerQuery()?.search ?? '' }}"
+            </span>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Dialog & Confirmation Infrastructure -->
+    <section class="showcase-card" aria-labelledby="heading-dialogs">
+      <div class="card-header">
+        <div>
+          <span class="section-tag">Deliverable 3</span>
+          <h2 id="heading-dialogs" class="card-title">Accessible Dialogs & Modals (CDK Overlay)</h2>
+          <p class="card-subtitle">
+            Focus-trapped, keyboard-accessible dialogs with backdrop containment, Escape dismissal, and destructive confirmation styling.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body flex flex-col gap-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            (click)="triggerConfirmDialog()"
+            class="action-btn btn-brand"
+          >
+            Standard Confirmation Dialog
+          </button>
+
+          <button
+            type="button"
+            (click)="triggerDangerDialog()"
+            class="action-btn btn-danger"
+          >
+            Destructive Danger Dialog
+          </button>
+
+          <button
+            type="button"
+            (click)="openEditDialog(sampleArticles[0])"
+            class="action-btn btn-secondary"
+          >
+            Modal Form Dialog Container
+          </button>
+        </div>
+
+        @if (lastDialogResult()) {
+          <div class="dialog-result-box" role="status">
+            <span class="font-bold text-[var(--color-text)]">Last Dialog Result:</span>
+            <span class="text-[var(--color-text-secondary)]">{{ lastDialogResult() }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- SECTION 4: Toast Notifications -->
+    <section class="showcase-card" aria-labelledby="heading-toasts">
+      <div class="card-header">
+        <div>
+          <span class="section-tag">Deliverable 4</span>
+          <h2 id="heading-toasts" class="card-title">Reactive Toast Notification System</h2>
+          <p class="card-subtitle">
+            Signal-powered notifications with automatic dismissal, duplicate suppression, ARIA live announcements, and mobile positioning.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body flex flex-col gap-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            (click)="triggerToast('success')"
+            class="action-btn bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Success Toast
+          </button>
+
+          <button
+            type="button"
+            (click)="triggerToast('error')"
+            class="action-btn btn-danger"
+          >
+            Error Toast
+          </button>
+
+          <button
+            type="button"
+            (click)="triggerToast('warning')"
+            class="action-btn bg-amber-600 text-white hover:bg-amber-700"
+          >
+            Warning Toast
+          </button>
+
+          <button
+            type="button"
+            (click)="triggerToast('info')"
+            class="action-btn btn-brand"
+          >
+            Info Toast
+          </button>
+
+          <button
+            type="button"
+            (click)="triggerDuplicateToast()"
+            class="action-btn btn-secondary"
+          >
+            Duplicate Suppression Test (Click rapidly)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Shared Feedback Primitives -->
+    <section class="showcase-card" aria-labelledby="heading-primitives">
+      <div class="card-header">
+        <div>
+          <span class="section-tag">Deliverable 5</span>
+          <h2 id="heading-primitives" class="card-title">Loading Skeletons & Status Badges</h2>
+          <p class="card-subtitle">
+            Theme-aware animated placeholder elements and semantic SaaS status indicators.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Badges -->
+        <div class="flex flex-col gap-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Status Badges</span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <app-status-badge status="active" label="Active Author"></app-status-badge>
+            <app-status-badge status="published" label="Published Guide"></app-status-badge>
+            <app-status-badge status="pending" label="Pending Review"></app-status-badge>
+            <app-status-badge status="archived" label="Archived"></app-status-badge>
+            <app-status-badge status="suspended" label="Suspended"></app-status-badge>
+          </div>
+        </div>
+
+        <!-- Skeletons -->
+        <div class="flex flex-col gap-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Loading Skeletons</span>
+          <div class="space-y-2">
+            <app-loading-skeleton height="24px" width="60%"></app-loading-skeleton>
+            <app-loading-skeleton height="16px" width="100%"></app-loading-skeleton>
+            <app-loading-skeleton height="16px" width="85%"></app-loading-skeleton>
+          </div>
+        </div>
+
+        <!-- Empty State Preview -->
+        <div class="flex flex-col gap-3 md:col-span-2 pt-4 border-t border-[var(--color-border)]">
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Empty State Primitive</span>
+          <app-empty-state
+            title="No Drafts In Progress"
+            description="You have not created any drafts in this workspace yet. Start by creating a new technical guide."
+            actionLabel="Create First Guide"
+            (action)="triggerToast('info')"
+          ></app-empty-state>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

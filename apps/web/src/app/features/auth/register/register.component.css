@@ -1,0 +1,172 @@
+/* ============================================================
+   RegisterComponent Scoped Styles — Clean Minimal SaaS
+   ============================================================ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.auth-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.25rem 2rem;
+}
+
+@media (max-width: 640px) {
+  .auth-card-content {
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+.auth-header-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.form-wrapper {
+  width: 100%;
+}
+
+.auth-footer-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.switch-prompt {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.auth-link {
+  font-weight: 600;
+  color: var(--color-brand, #f97316);
+  text-decoration: none;
+  margin-left: 0.35rem;
+  transition: color 0.15s ease;
+}
+
+.auth-link:hover {
+  color: var(--color-brand-hover, #ea580c);
+  text-decoration: underline;
+}
+
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.35;
+}
+
+/* Success View */
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+}
+
+.success-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.email-highlight {
+  color: var(--color-brand, #f97316);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.instructions-panel {
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border);
+  width: 100%;
+}
+
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  padding-top: 0.5rem;
+}
+
+.cta-primary {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--btn-radius, 11px);
+  background-color: var(--btn-primary-bg, #ea580c);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  box-sizing: border-box;
+}
+
+.cta-primary:hover {
+  transform: translateY(-1px);
+  background-color: var(--btn-primary-hover, #c2410c);
+  box-shadow: 0 8px 20px rgba(194, 65, 12, 0.45);
+}
+
+.cta-primary:active {
+  transform: translateY(0);
+  background-color: var(--btn-primary-pressed, #9a3412);
+}
+
+.cta-primary:focus-visible {
+  outline: 2px solid var(--color-brand, #f97316);
+  outline-offset: 2px;
+}
+
+.resend-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}

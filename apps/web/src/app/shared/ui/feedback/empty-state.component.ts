@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -16,4 +16,6 @@ export class EmptyStateComponent {
   readonly icon = input<string>('');
   readonly title = input.required<string>();
   readonly description = input<string>();
+  readonly actionLabel = input<string>();
+  readonly action = output<void>();
 }

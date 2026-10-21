@@ -3,7 +3,7 @@
    Brand Colors: Orange #F97316 · Deep Orange #C2410C · Charcoal #20242B
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -12,11 +12,19 @@
   --color-brand-deep: var(--color-brand-deep);
   --color-brand-surface: var(--color-brand-surface);
   --color-brand-muted: var(--color-brand-muted);
+  --color-brand-selection: var(--color-brand-selection);
+
+  --color-coral: var(--color-coral);
+  --color-coral-surface: var(--color-coral-surface);
+  --color-coral-border: var(--color-coral-border);
 
   --color-bg: var(--color-bg);
+  --color-workspace-bg: var(--color-workspace-bg);
   --color-surface: var(--color-surface);
   --color-surface-elevated: var(--color-surface-elevated);
   --color-surface-hover: var(--color-surface-hover);
+  --color-surface-active: var(--color-surface-active);
+  --color-editorial-dark: var(--color-editorial-dark);
 
   --color-text-main: var(--color-text);
   --color-text-secondary: var(--color-text-secondary);
@@ -26,37 +34,67 @@
   --color-border-strong: var(--color-border-strong);
   --color-border-focus: var(--color-border-focus);
 
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
 /* ============================================================
    Branding Tokens — Light Theme (default)
+   Bachina Labs Academy — Premium Editorial SaaS
    ============================================================ */
 :root,
 [data-theme='light'] {
-  --color-brand: #f97316;
+  --color-brand: #f97316;               /* Supporting brand orange */
   --color-brand-hover: #ea580c;
-  --color-brand-deep: #c2410c;
-  --color-brand-deep-hover: #9a3412;
-  --color-brand-surface: #fff7ed;
+  --color-brand-deep: #ea580c;          /* Primary brand orange */
+  --color-brand-deep-hover: #c2410c;
+  --color-brand-surface: #fff0e5;       /* Subtle orange surface #FFF0E5 */
   --color-brand-muted: #fed7aa;
+  --color-brand-selection: #fff0e5;
 
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-surface-active: #e2e8f0;
+  --color-coral: #d94f45;               /* Coral secondary accent #D94F45 */
+  --color-coral-surface: #fff0ed;       /* Subtle coral surface #FFF0ED */
+  --color-coral-border: #fca5a5;
 
-  --color-text: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
-  --color-text-disabled: #94a3b8;
+  --color-bg: #f6f1e8;                  /* Target: Page background #F6F1E8 */
+  --color-workspace-bg: #faf8f5;        /* Target: Workspace background #FAF8F5 */
+  --color-surface: #ffffff;             /* Target: Primary card surface #FFFFFF */
+  --color-surface-elevated: #fcf8f2;    /* Target: Warm elevated surface #FCF8F2 */
+  --color-surface-hover: #f5efe6;
+  --color-surface-active: #ece4d8;
+  --color-editorial-dark: #15191d;
+
+  --color-text: #151515;                /* Target: Primary text #151515 */
+  --color-text-secondary: #57534e;      /* Target: Secondary text #57534E */
+  --color-text-muted: #78716c;
+  --color-text-disabled: #a8a29e;
   --color-text-on-brand: #ffffff;
 
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-border-focus: #f97316;
+  --color-border: #e7ded3;              /* Target: Borders #E7DED3 */
+  --color-border-strong: #d5c8b8;
+  --color-border-focus: #ea580c;
+
+  /* Button Design System Tokens — Client Approved Unified Vibrant Orange (#EA580C) */
+  --btn-primary-bg: #ea580c;
+  --btn-primary-hover: #c2410c;
+  --btn-primary-pressed: #9a3412;
+  --btn-primary-text: #ffffff;
+  --btn-primary-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  --btn-primary-shadow-hover: 0 8px 20px rgba(194, 65, 12, 0.45);
+
+  --btn-primary-vibrant: #ea580c;
+  --btn-primary-vibrant-hover: #c2410c;
+  --btn-primary-vibrant-pressed: #9a3412;
+
+  --btn-primary-standard: #ea580c;
+  --btn-primary-standard-hover: #c2410c;
+  --btn-primary-standard-pressed: #9a3412;
+
+  --btn-destructive-bg: #dc2626;         /* Accessible red for destructive actions */
+  --btn-destructive-hover: #b91c1c;      /* Destructive hover */
+  --btn-destructive-pressed: #991b1b;    /* Destructive pressed */
+
+  --btn-radius: 11px;                    /* Standardized 11-12px border radius */
 
   --color-success: #10b981;
   --color-warning: #f59e0b;
@@ -66,35 +104,207 @@
 
 /* ============================================================
    Branding Tokens — Dark Theme
+   Bachina Labs Academy — Deep Charcoal Premium Editorial
    ============================================================ */
 [data-theme='dark'] {
-  --color-brand: #f97316;
-  --color-brand-hover: #fb923c;
+  --color-brand: #fb923c;               /* Brand orange for icons/accents #FB923C */
+  --color-brand-hover: #f97316;
   --color-brand-deep: #ea580c;
   --color-brand-deep-hover: #c2410c;
-  --color-brand-surface: rgba(249, 115, 22, 0.12);
-  --color-brand-muted: rgba(249, 115, 22, 0.25);
+  --color-brand-surface: rgba(251, 146, 60, 0.12);
+  --color-brand-muted: rgba(251, 146, 60, 0.25);
+  --color-brand-selection: #3c281f;     /* Subtle orange selection #3C281F */
 
-  --color-bg: #0b0f17;
-  --color-surface: #111827;
-  --color-surface-elevated: #1e293b;
-  --color-surface-hover: #1f293d;
-  --color-surface-active: #283548;
+  --color-coral: #f07868;               /* Coral dark-theme accent #F07868 */
+  --color-coral-surface: rgba(240, 120, 104, 0.15);
+  --color-coral-border: rgba(240, 120, 104, 0.3);
 
-  --color-text: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-disabled: #475569;
+  --color-bg: #111416;                  /* Target: Page background #111416 */
+  --color-workspace-bg: #15191d;        /* Target: Workspace background #15191D */
+  --color-surface: #1d2226;             /* Target: Primary dark surface #1D2226 */
+  --color-surface-elevated: #272d32;    /* Target: Elevated dark surface #272D32 */
+  --color-surface-hover: #262c32;
+  --color-surface-active: #2f363d;
+
+  --color-editorial-dark: #0d1012;      /* Target: Dark editorial section #0D1012 */
+
+  --color-text: #f8f5f0;                /* Target: Primary text #F8F5F0 */
+  --color-text-secondary: #b0b8c0;      /* Target: Secondary text #B0B8C0 */
+  --color-text-muted: #727e8a;
+  --color-text-disabled: #4e5760;
   --color-text-on-brand: #ffffff;
 
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.15);
-  --color-border-focus: #f97316;
+  --color-border: #353d43;              /* Target: Borders #353D43 */
+  --color-border-strong: #48535b;
+  --color-border-focus: #fb923c;
+
+  /* Button Design System Tokens — Dark Theme Unified Vibrant Orange */
+  --btn-primary-bg: #ea580c;
+  --btn-primary-hover: #c2410c;
+  --btn-primary-pressed: #9a3412;
+  --btn-primary-text: #ffffff;
+  --btn-primary-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  --btn-primary-shadow-hover: 0 8px 20px rgba(194, 65, 12, 0.45);
+
+  --btn-primary-vibrant: #ea580c;
+  --btn-primary-vibrant-hover: #c2410c;
+  --btn-primary-vibrant-pressed: #9a3412;
+
+  --btn-primary-standard: #ea580c;
+  --btn-primary-standard-hover: #c2410c;
+  --btn-primary-standard-pressed: #9a3412;
+
+  --btn-destructive-bg: #dc2626;
+  --btn-destructive-hover: #b91c1c;
+  --btn-destructive-pressed: #991b1b;
+
+  --btn-radius: 11px;
 
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-error: #f87171;
   --color-info: #38bdf8;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--color-brand, #f97316);
+  outline-offset: 2px;
+}
+
+/* Support prefers-reduced-motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Angular CDK Dialog Overlay Integration */
+.cdk-overlay-container {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.cdk-overlay-backdrop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  opacity: 0;
+}
+
+.cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+  opacity: 1;
+}
+
+.academy-dialog-backdrop {
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.academy-dialog-panel {
+  pointer-events: auto;
+  box-sizing: border-box;
+  z-index: 1000;
+  display: flex;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  outline: 0;
+  margin: auto;
+}
+
+/* ============================================================
+   Button Design System Utilities
+   Clean Minimal SaaS + Author Workspace + Bachina Labs Orange Edition
+   ============================================================ */
+.btn-primary-vibrant,
+.btn-primary-standard,
+.btn-brand,
+.cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--btn-primary-bg, #ea580c);
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: var(--btn-radius, 11px);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+.btn-primary-vibrant:hover:not(:disabled),
+.btn-primary-standard:hover:not(:disabled),
+.btn-brand:hover:not(:disabled),
+.cta-primary:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover, #c2410c);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(194, 65, 12, 0.45);
+}
+.btn-primary-vibrant:active:not(:disabled),
+.btn-primary-standard:active:not(:disabled),
+.btn-brand:active:not(:disabled),
+.cta-primary:active:not(:disabled) {
+  background-color: var(--btn-primary-pressed, #9a3412);
+  transform: translateY(0);
+}
+.btn-primary-vibrant:focus-visible,
+.btn-primary-standard:focus-visible,
+.btn-brand:focus-visible,
+.cta-primary:focus-visible {
+  outline: 2px solid var(--color-brand, #f97316);
+  outline-offset: 2px;
+}
+
+.btn-destructive {
+  background-color: var(--btn-destructive-bg, #dc2626);
+  color: #ffffff;
+  border-radius: var(--btn-radius, 11px);
+  transition: all 0.18s ease-in-out;
+}
+.btn-destructive:hover:not(:disabled) {
+  background-color: var(--btn-destructive-hover, #b91c1c);
+}
+.btn-destructive:active:not(:disabled) {
+  background-color: var(--btn-destructive-pressed, #991b1b);
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--btn-radius, 11px);
+  transition: all 0.18s ease-in-out;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-text-secondary);
 }
 
 

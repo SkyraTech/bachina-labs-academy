@@ -78,7 +78,7 @@ export class RolesGuard implements CanActivate {
       this.logger.warn(
         `User ${user.id} with role ${user.role} denied access to route requiring [${requiredRoles.join(
           ', ',
-        )}]`,
+        )}] [action=security.authorization_denied, outcome=failure]`,
       );
       throw new ForbiddenException('Insufficient permissions.');
     }

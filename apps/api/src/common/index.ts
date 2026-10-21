@@ -13,3 +13,4 @@
  * Do not add domain business logic here — domain logic belongs in module services.
  */
 export * from './authorization/index.js';
+export * from './observability/index.js';

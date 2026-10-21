@@ -12,11 +12,11 @@
     </div>
 
     <nav class="sidebar-nav" aria-label="Sidebar Navigation">
-      @for (item of sidebarItems; track item.path) {
+      @for (item of sidebarItems(); track item.path) {
         <a
           [routerLink]="item.path"
           routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.path === '/author' || item.path === '/admin' }"
+          [routerLinkActiveOptions]="{ exact: item.path === '/author' || item.path === '/admin' || item.path === '/account/security' }"
           class="sidebar-link"
         >
           @switch (item.iconType) {
@@ -62,6 +62,61 @@
     </div>
   </aside>
 
+  <!-- Mobile Drawer Overlay -->
+  @if (mobileDrawerOpen()) {
+    <div
+      class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-xs"
+      (click)="closeMobileDrawer()"
+      aria-hidden="true"
+    ></div>
+
+    <div class="fixed inset-y-0 left-0 w-64 bg-[var(--color-surface)] border-r border-[var(--color-border)] z-50 lg:hidden flex flex-col p-4 shadow-xl">
+      <div class="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
+        <a routerLink="/" (click)="closeMobileDrawer()" class="brand-link">
+          <div class="brand-badge">BL</div>
+          <span>Academy</span>
+        </a>
+        <button
+          type="button"
+          (click)="closeMobileDrawer()"
+          class="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+          aria-label="Close menu"
+        >
+          ✕
+        </button>
+      </div>
+
+      <nav class="flex-1 py-4 space-y-1">
+        @for (item of sidebarItems(); track item.path) {
+          <a
+            [routerLink]="item.path"
+            (click)="closeMobileDrawer()"
+            routerLinkActive="active"
+            class="sidebar-link"
+          >
+            {{ item.label }}
+          </a>
+        }
+      </nav>
+
+      <div class="pt-4 border-t border-[var(--color-border)] space-y-2">
+        @if (currentUser()) {
+          <div class="px-2 py-1 text-xs text-[var(--color-text-secondary)]">
+            <span class="block font-semibold text-[var(--color-text)] truncate">{{ userEmail() }}</span>
+            <span class="text-[10px] text-[var(--color-brand)] font-bold uppercase">{{ userRole() }}</span>
+          </div>
+        }
+        <button
+          type="button"
+          (click)="onSignOut(); closeMobileDrawer()"
+          class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  }
+
   <!-- Main Layout Column -->
   <div class="dashboard-main-col">
     <!-- Top Workspace Bar -->
@@ -82,12 +137,46 @@
 
       <div class="flex items-center gap-3">
         <app-theme-selector></app-theme-selector>
-        <a routerLink="/account" class="account-link">
+
+        @if (currentUser()) {
+          <div class="user-identity-pill hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div class="user-avatar-circle w-6 h-6 rounded-full bg-[var(--color-brand)] text-white text-xs font-bold flex items-center justify-center">
+              {{ userInitial() }}
+            </div>
+            <div class="flex flex-col text-left">
+              <span class="text-xs font-semibold text-[var(--color-text-primary)] max-w-[150px] truncate leading-tight">
+                {{ userEmail() }}
+              </span>
+              <span class="text-[10px] uppercase font-bold tracking-wider text-[var(--color-brand)] leading-none">
+                {{ userRole() }}
+              </span>
+            </div>
+          </div>
+        }
+
+        <a routerLink="/account/security" class="account-link" title="Account Security">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          <span class="hidden sm:inline">Account</span>
+          <span class="hidden md:inline">Security</span>
         </a>
+
+        <button
+          type="button"
+          id="topbar-sign-out"
+          (click)="onSignOut()"
+          [disabled]="signingOut()"
+          class="signout-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/70 dark:text-red-400 border border-red-200 dark:border-red-900/50 transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          @if (signingOut()) {
+            <span>Signing out...</span>
+          } @else {
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="hidden sm:inline">Sign out</span>
+          }
+        </button>
       </div>
     </header>
 

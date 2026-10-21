@@ -1,7 +1,24 @@
+import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 import { PublicLayoutComponent } from './layouts/public-layout/public-layout.component';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
+import { authGuard, guestGuard, roleGuard } from './core';
+
+/**
+ * Isolated development-only showcase routes.
+ * Excluded in production builds when isDevMode() evaluates to false.
+ */
+const devRoutes: Routes = isDevMode()
+  ? [
+      {
+        path: 'dev/showcase',
+        loadComponent: () =>
+          import('./features/dev-showcase/showcase.component').then((m) => m.ShowcaseComponent),
+        title: 'UI Component Showcase · Bachina Labs Academy (Dev Only)',
+      },
+    ]
+  : [];
 
 /**
  * Bachina Labs Academy — Application Route Configuration.
@@ -13,6 +30,7 @@ import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-l
  * - 404 Not Found fallback
  */
 export const routes: Routes = [
+  ...devRoutes,
   // Public Platform Routes
   {
     path: '',
@@ -50,27 +68,33 @@ export const routes: Routes = [
     children: [
       {
         path: 'login',
+        canActivate: [guestGuard],
         loadComponent: () =>
-          import('./features/auth/login/login-placeholder.component').then(
-            (m) => m.LoginPlaceholderComponent,
-          ),
+          import('./features/auth/login/login.component').then((m) => m.LoginComponent),
         title: 'Sign In · Bachina Labs Academy',
       },
       {
         path: 'register',
+        canActivate: [guestGuard],
         loadComponent: () =>
-          import('./features/auth/register/register-placeholder.component').then(
-            (m) => m.RegisterPlaceholderComponent,
-          ),
+          import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
         title: 'Create Account · Bachina Labs Academy',
       },
       {
         path: 'verify-email',
         loadComponent: () =>
-          import('./features/auth/verify-email/verify-email-placeholder.component').then(
-            (m) => m.VerifyEmailPlaceholderComponent,
+          import('./features/auth/verify-email/verify-email.component').then(
+            (m) => m.VerifyEmailComponent,
           ),
         title: 'Verify Email · Bachina Labs Academy',
+      },
+      {
+        path: 'resend-verification',
+        loadComponent: () =>
+          import('./features/auth/resend-verification/resend-verification.component').then(
+            (m) => m.ResendVerificationComponent,
+          ),
+        title: 'Resend Verification · Bachina Labs Academy',
       },
     ],
   },
@@ -82,6 +106,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'author',
+        canActivate: [authGuard, roleGuard(['AUTHOR'])],
         loadComponent: () =>
           import('./features/author/author-placeholder.component').then(
             (m) => m.AuthorDashboardPlaceholderComponent,
@@ -90,6 +115,7 @@ export const routes: Routes = [
       },
       {
         path: 'author/articles',
+        canActivate: [authGuard, roleGuard(['AUTHOR'])],
         loadComponent: () =>
           import('./features/author/author-placeholder.component').then(
             (m) => m.AuthorDashboardPlaceholderComponent,
@@ -98,6 +124,7 @@ export const routes: Routes = [
       },
       {
         path: 'author/articles/new',
+        canActivate: [authGuard, roleGuard(['AUTHOR'])],
         loadComponent: () =>
           import('./features/author/author-placeholder.component').then(
             (m) => m.AuthorDashboardPlaceholderComponent,
@@ -106,6 +133,7 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
         loadComponent: () =>
           import('./features/admin/admin-placeholder.component').then(
             (m) => m.AdminDashboardPlaceholderComponent,
@@ -114,6 +142,7 @@ export const routes: Routes = [
       },
       {
         path: 'account',
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
         loadComponent: () =>
           import('./features/account/account-placeholder.component').then(
             (m) => m.AccountPlaceholderComponent,
@@ -122,9 +151,10 @@ export const routes: Routes = [
       },
       {
         path: 'account/security',
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
         loadComponent: () =>
-          import('./features/account/account-placeholder.component').then(
-            (m) => m.AccountPlaceholderComponent,
+          import('./features/account/security/security.component').then(
+            (m) => m.SecurityComponent,
           ),
         title: 'Account Security · Bachina Labs Academy',
       },

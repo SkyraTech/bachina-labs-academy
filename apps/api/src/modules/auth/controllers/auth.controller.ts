@@ -80,6 +80,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Register a new account',
     description:
@@ -122,6 +123,7 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Verify an email address',
     description:
@@ -265,6 +267,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Refresh access JWT and rotate refresh token',
     description:
@@ -293,6 +296,7 @@ export class AuthController {
    */
   @Get('me')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Get current authenticated user',
     description:
@@ -376,6 +380,7 @@ export class AuthController {
    */
   @Get('sessions')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
     summary: 'List active device sessions',
     description:
@@ -401,6 +406,7 @@ export class AuthController {
    */
   @Delete('sessions/:sessionId')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Revoke an active device session',
     description:

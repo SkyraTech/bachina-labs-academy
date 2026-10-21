@@ -11,4 +11,5 @@ export interface FormActionConfig {
   readonly variant?: FormActionVariant;
   readonly icon?: string;
   readonly disabled?: boolean;
+  readonly fullWidth?: boolean;
 }

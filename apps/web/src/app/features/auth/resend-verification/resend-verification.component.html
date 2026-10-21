@@ -1,0 +1,39 @@
+<div class="auth-card-content">
+  <div class="auth-header-block">
+    <h1 class="auth-title">Resend verification</h1>
+    <p class="auth-subtitle">Enter your registered email address to receive a new single-use verification link.</p>
+  </div>
+
+  @if (cooldownRemaining() > 0) {
+    <div class="cooldown-pill" role="status" aria-live="polite">
+      <svg class="w-4 h-4 text-[var(--color-brand)] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>Next resend available in <strong>{{ cooldownRemaining() }}s</strong></span>
+    </div>
+  }
+
+  <div class="form-wrapper">
+    <app-dynamic-form
+      [fields]="fields"
+      [actions]="actions"
+      [loading]="submitting()"
+      [disabled]="cooldownRemaining() > 0"
+      [errorMessage]="serverError()"
+      [successMessage]="successMessage()"
+      [fullWidthActions]="true"
+      (formSubmit)="onSubmit($event)"
+    ></app-dynamic-form>
+  </div>
+
+  <div class="auth-footer-block">
+    <p class="switch-prompt">
+      Remembered your credentials?
+      <a routerLink="/login" class="auth-link">Sign in</a>
+    </p>
+
+    <div class="secondary-links">
+      <a routerLink="/register" class="subtle-link">Create a new account</a>
+    </div>
+  </div>
+</div>

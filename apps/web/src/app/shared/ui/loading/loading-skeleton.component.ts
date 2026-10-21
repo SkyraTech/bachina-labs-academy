@@ -9,19 +9,8 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './loading-skeleton.component.html',
   styleUrl: './loading-skeleton.component.css',
-  template: `
-    <div
-      class="animate-pulse bg-[var(--color-surface-hover)] border border-[var(--color-border)]"
-      [ngClass]="shapeClasses()"
-      [style.width]="width()"
-      [style.height]="height()"
-      role="status"
-      aria-label="Loading content"
-    >
-      <span class="sr-only">Loading...</span>
-    </div>
-  `,
 })
 export class LoadingSkeletonComponent {
   readonly width = input<string>('100%');

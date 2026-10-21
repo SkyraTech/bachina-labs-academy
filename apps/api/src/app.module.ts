@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
+import { ObservabilityModule } from './common/observability/observability.module';
+import { HttpExceptionFilter } from './common/observability/http-exception.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -10,6 +13,7 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailModule } from './modules/email/email.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
+import { AuditModule } from './modules/audit/audit.module';
 import appConfig from './config/app.config';
 import emailConfig from './config/email.config';
 import jwtConfig from './config/jwt.config';
@@ -55,6 +59,7 @@ import jwtConfig from './config/jwt.config';
 
     // ── Database (global — provides PrismaService to all modules) ───────
     DatabaseModule,
+    ObservabilityModule,
 
     // ── Domain modules (added per phase) ───────────────────────────────
     HealthModule,
@@ -62,14 +67,20 @@ import jwtConfig from './config/jwt.config';
     AuthModule,    // Phase 2.2.2 — email/password registration
     EmailModule,   // Phase 2.2.3 — transactional email (Mailpit/Resend)
     SessionsModule, // Phase 2.2.4A — session persistence foundation
+    AuditModule,   // Phase Q-2.3B — durable database audit logging foundation
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Apply ThrottlerGuard globally — covers all controllers and routes
+    // Apply AppThrottlerGuard globally — covers all controllers and routes with identity-aware tracking
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: AppThrottlerGuard,
+    },
+    // Global exception filter for structured error logging & sanitized responses
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
   ],
 })

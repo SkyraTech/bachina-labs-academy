@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { UserSession } from '@prisma/client';
+import type { Prisma, UserSession } from '@prisma/client';
 import { SessionsRepository } from './sessions.repository';
 import type {
   CreateSessionInput,
@@ -53,18 +53,23 @@ export class SessionsService {
    */
   async createSession(
     params: Omit<CreateSessionInput, 'expiresAt'> & { now?: Date },
+    tx?: Prisma.TransactionClient,
   ): Promise<SafeSession> {
     const now = params.now ?? new Date();
     const expiresAt = this.calculateExpiry(params.rememberMe, now);
 
-    const record = await this.sessionsRepository.createSession({
+    const input = {
       userId: params.userId,
       refreshTokenHash: params.refreshTokenHash,
       rememberMe: params.rememberMe,
       expiresAt,
       userAgent: params.userAgent,
       ipAddress: params.ipAddress,
-    });
+    };
+
+    const record = tx
+      ? await this.sessionsRepository.createSession(input, tx)
+      : await this.sessionsRepository.createSession(input);
 
     return this.toSafeSession(record);
   }
@@ -153,13 +158,22 @@ export class SessionsService {
     reason: RevocationReason = 'USER_LOGOUT_ALL',
     exceptSessionId?: string,
     now: Date = new Date(),
+    tx?: Prisma.TransactionClient,
   ): Promise<number> {
-    return await this.sessionsRepository.revokeAllUserSessions(
-      userId,
-      now,
-      reason,
-      exceptSessionId,
-    );
+    return tx
+      ? await this.sessionsRepository.revokeAllUserSessions(
+          userId,
+          now,
+          reason,
+          exceptSessionId,
+          tx,
+        )
+      : await this.sessionsRepository.revokeAllUserSessions(
+          userId,
+          now,
+          reason,
+          exceptSessionId,
+        );
   }
 
   /**
@@ -171,13 +185,22 @@ export class SessionsService {
     userId: string,
     reason: RevocationReason = 'USER_LOGOUT',
     now: Date = new Date(),
+    tx?: Prisma.TransactionClient,
   ): Promise<boolean> {
-    return await this.sessionsRepository.revokeUserSession(
-      sessionId,
-      userId,
-      now,
-      reason,
-    );
+    return tx
+      ? await this.sessionsRepository.revokeUserSession(
+          sessionId,
+          userId,
+          now,
+          reason,
+          tx,
+        )
+      : await this.sessionsRepository.revokeUserSession(
+          sessionId,
+          userId,
+          now,
+          reason,
+        );
   }
 
   /**

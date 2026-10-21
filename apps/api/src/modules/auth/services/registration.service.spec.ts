@@ -9,6 +9,8 @@ import { UsersService } from '../../users/users.service.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { PasswordHashingService } from './password-hashing.service.js';
 import { EmailVerificationService } from './email-verification.service.js';
+import { PrismaService } from '../../../database/prisma.service.js';
+import { AuditService } from '../../audit/audit.service.js';
 import { UserRole, UserStatus } from '../../users/types/index.js';
 import type { SafeUser } from '../../users/types/index.js';
 import type { RegisterRequestDto } from '../dto/register-request.dto.js';
@@ -28,10 +30,12 @@ import type { RegisterRequestDto } from '../dto/register-request.dto.js';
  *   8.  Concurrent duplicate — P2002 from DB throws ConflictException
  *   9.  Unexpected DB errors throw InternalServerErrorException
  *   10. ConflictException message does not expose implementation details
+ *   11. Transactional audit event auth.user.registered is recorded with Option A
+ *   12. Audit recording failure rolls back user creation and throws InternalServerErrorException
  */
 
 const MOCK_SAFE_USER: SafeUser = {
-  id: 'a1b2c3d4-0000-0000-0000-000000000001',
+  id: 'a1b2c3d4-0000-4000-8000-000000000001',
   email: 'alice@example.com',
   role: UserRole.AUTHOR,
   status: UserStatus.ACTIVE,
@@ -60,6 +64,17 @@ describe('RegistrationService', () => {
   let emailVerificationServiceMock: {
     issueVerificationEmail: ReturnType<typeof vi.fn>;
   };
+  let prismaMock: {
+    $transaction: ReturnType<typeof vi.fn>;
+  };
+  let auditServiceMock: {
+    recordTransactional: ReturnType<typeof vi.fn>;
+  };
+
+  const mockTx = {
+    user: { create: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
 
   beforeEach(async () => {
     usersServiceMock = {
@@ -78,6 +93,15 @@ describe('RegistrationService', () => {
     emailVerificationServiceMock = {
       issueVerificationEmail: vi.fn().mockResolvedValue(undefined),
     };
+    prismaMock = {
+      $transaction: vi.fn(async (callback: (tx: any) => Promise<any>) => callback(mockTx)),
+    };
+    auditServiceMock = {
+      recordTransactional: vi.fn().mockResolvedValue({
+        id: 'mock-audit-id',
+        action: 'auth.user.registered',
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -86,6 +110,8 @@ describe('RegistrationService', () => {
         { provide: UsersRepository, useValue: usersRepositoryMock },
         { provide: PasswordHashingService, useValue: passwordHashingServiceMock },
         { provide: EmailVerificationService, useValue: emailVerificationServiceMock },
+        { provide: PrismaService, useValue: prismaMock },
+        { provide: AuditService, useValue: auditServiceMock },
       ],
     }).compile();
 
@@ -290,6 +316,60 @@ describe('RegistrationService', () => {
       expect(
         emailVerificationServiceMock.issueVerificationEmail,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Transactional audit integration ──────────────────────────────────────────
+
+  describe('transactional audit integration', () => {
+    it('records auth.user.registered within the shared Prisma transaction', async () => {
+      await service.register(VALID_DTO);
+
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+      expect(usersRepositoryMock.createUser).toHaveBeenCalledWith(
+        { email: VALID_DTO.email, passwordHash: '$argon2id$v=19$mock-hash' },
+        mockTx,
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledTimes(1);
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          action: 'auth.user.registered',
+          outcome: 'SUCCESS',
+          resourceType: 'USER',
+          resourceId: null,
+          metadata: {
+            role: 'AUTHOR',
+            registrationMethod: 'EMAIL_PASSWORD',
+          },
+        }),
+      );
+    });
+
+    it('rolls back user creation and throws InternalServerErrorException if audit fails', async () => {
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit insertion failure: check constraint violated'),
+      );
+
+      await expect(service.register(VALID_DTO)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+
+      // Verify verification email was NOT sent
+      expect(
+        emailVerificationServiceMock.issueVerificationEmail,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does not record an audit event if preliminary conflict check throws', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue(MOCK_SAFE_USER);
+
+      await expect(service.register(VALID_DTO)).rejects.toThrow(
+        ConflictException,
+      );
+
+      expect(auditServiceMock.recordTransactional).not.toHaveBeenCalled();
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
   });
 });

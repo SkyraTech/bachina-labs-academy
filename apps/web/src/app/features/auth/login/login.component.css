@@ -1,0 +1,120 @@
+/* ============================================================
+   LoginComponent Scoped Styles — Clean Minimal SaaS
+   ============================================================ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.auth-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.25rem 2rem;
+}
+
+@media (max-width: 640px) {
+  .auth-card-content {
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+.auth-header-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.unverified-banner {
+  display: flex;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  box-sizing: border-box;
+}
+
+.unverified-icon {
+  margin-top: 0.125rem;
+}
+
+.unverified-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.resend-action-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand, #f97316);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.resend-action-link:hover {
+  color: var(--color-brand-hover, #ea580c);
+  text-decoration: underline;
+}
+
+.form-wrapper {
+  width: 100%;
+}
+
+.auth-footer-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.switch-prompt {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.auth-link {
+  font-weight: 600;
+  color: var(--color-brand, #f97316);
+  text-decoration: none;
+  margin-left: 0.35rem;
+  transition: color 0.15s ease;
+}
+
+.auth-link:hover {
+  color: var(--color-brand-hover, #ea580c);
+  text-decoration: underline;
+}
+
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.35;
+}

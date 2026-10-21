@@ -33,7 +33,7 @@
     "db:studio": "pnpm --filter api run prisma:studio"
   },
   "devDependencies": {
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.3"
+    "prettier": "~3.9.10",
+    "typescript": "~6.0.3"
   }
 }

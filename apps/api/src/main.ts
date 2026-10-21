@@ -5,13 +5,18 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { StructuredLoggerService } from './common/observability/structured-logger.service';
 
 async function bootstrap(): Promise<void> {
-  const logger = new Logger('Bootstrap');
+  const structuredLogger = new StructuredLoggerService();
 
   const app = await NestFactory.create(AppModule, {
-    logger: ['log', 'warn', 'error', 'debug', 'verbose'],
+    logger: structuredLogger,
+    bufferLogs: true,
   });
+
+  app.useLogger(structuredLogger);
+  const logger = new Logger('Bootstrap');
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
@@ -20,6 +25,19 @@ async function bootstrap(): Promise<void> {
     .get<string>('CORS_ALLOWED_ORIGINS', 'http://localhost:4200')
     .split(',')
     .map((o) => o.trim());
+
+  // ── Reverse proxy trust ───────────────────────────────────────────────
+  const trustProxy = configService.get<boolean | number | string | string[]>(
+    'app.trustProxy',
+    false,
+  );
+  if (trustProxy !== false) {
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.set('trust proxy', trustProxy);
+    logger.log(`Reverse proxy trust configured: ${JSON.stringify(trustProxy)}`);
+  } else {
+    logger.log('Reverse proxy trust: disabled (direct connection mode)');
+  }
 
   // ── Security headers & Cookie parser ──────────────────────────────────
   app.use(helmet());
@@ -74,6 +92,7 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error('Fatal startup error:', err);
+  const structuredLogger = new StructuredLoggerService();
+  structuredLogger.fatal('Fatal startup error', err);
   process.exit(1);
 });

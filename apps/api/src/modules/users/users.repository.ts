@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserLookupResult, CreateUserInput, SafeUser } from './types/index.js';
 
@@ -105,10 +106,14 @@ export class UsersRepository {
    * @param input — { email, passwordHash } — email must already be normalized
    * @returns SafeUser — the created user without passwordHash
    */
-  async createUser(input: CreateUserInput): Promise<SafeUser> {
+  async createUser(
+    input: CreateUserInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<SafeUser> {
     this.logger.debug('createUser: [redacted email]');
+    const client = tx ?? this.prisma;
 
-    const user = await this.prisma.user.create({
+    const user = await client.user.create({
       data: {
         email: input.email,
         passwordHash: input.passwordHash,

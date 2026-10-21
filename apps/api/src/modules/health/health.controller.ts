@@ -8,6 +8,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DatabaseHealthService } from './database-health.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
 interface LivenessResponse {
   status: 'ok';
@@ -33,12 +34,17 @@ interface ReadinessResponse {
  *                        Returns 200 when DB is reachable, 503 when not.
  *                        Does NOT expose connection strings or credentials.
  *
+ * Rate limiting:
+ *   Exempt from application-level rate limits via @SkipThrottle().
+ *   Operational health and readiness probes must not receive HTTP 429.
+ *
  * Separation rationale:
  *   A database outage should not make the application appear to be dead.
  *   Liveness and readiness probes serve different monitoring purposes.
  */
 @ApiTags('health')
 @Public()
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(private readonly dbHealth: DatabaseHealthService) {}

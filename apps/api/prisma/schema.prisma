@@ -107,6 +107,7 @@ model User {
 
   emailVerificationTokens EmailVerificationToken[]
   sessions                UserSession[]
+  auditLogs               AuditLog[]
 
   @@map("users")
 }
@@ -251,6 +252,43 @@ model UserSession {
   // Supports cleanup of expired sessions
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+// ── Durable database audit logging (Phase Q-2.3B) ──────────────────────────────
+
+/**
+ * AuditLog — durable, append-only security and business event ledger.
+ *
+ * Captures critical identity lifecycle events, authentication successes,
+ * session revocations, and high-risk security incidents.
+ *
+ * Foreign Key & Privacy:
+ * actorId is a nullable UUID referencing users.id with onDelete: SetNull and
+ * onUpdate: NoAction. Deleting a user anonymizes the actor link while preserving
+ * the event record for regulatory and operational accountability.
+ */
+model AuditLog {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId      String?   @map("actor_id") @db.Uuid
+  actorType    String    @map("actor_type") @db.VarChar(20)
+  action       String    @db.VarChar(100)
+  resourceType String    @map("resource_type") @db.VarChar(50)
+  resourceId   String?   @map("resource_id") @db.VarChar(64)
+  outcome      String    @db.VarChar(20)
+  traceId      String?   @map("trace_id") @db.Char(32)
+  requestId    String?   @map("request_id") @db.VarChar(64)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  userAgent    String?   @map("user_agent") @db.VarChar(512)
+  metadata     Json      @default("{}") @db.JsonB
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "audit_logs_actor_id_fkey")
+
+  @@index([createdAt(sort: Desc)], map: "audit_logs_created_at_idx")
+  @@index([actorId, createdAt(sort: Desc)], map: "audit_logs_actor_id_created_at_idx")
+  @@index([resourceType, resourceId, createdAt(sort: Desc)], map: "audit_logs_resource_type_resource_id_created_at_idx")
+  @@index([requestId], map: "audit_logs_request_id_idx")
+  @@map("audit_logs")
 }
 
 // ── Future business models will be added here per approved phase ───────────────

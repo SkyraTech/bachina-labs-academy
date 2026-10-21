@@ -10,7 +10,7 @@
 .dashboard-shell {
   min-height: 100vh;
   display: flex;
-  background-color: var(--color-bg);
+  background-color: var(--color-workspace-bg, #15191d);
   color: var(--color-text);
 }
 
@@ -23,6 +23,10 @@
   top: 0;
   height: 100vh;
   flex-direction: column;
+}
+
+:host-context([data-theme="dark"]) .dashboard-sidebar {
+  background: var(--color-workspace-bg, #15191d);
 }
 
 @media (min-width: 1024px) {
@@ -68,8 +72,8 @@
   font-size: 0.6875rem;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
-  background: rgba(249, 115, 22, 0.15);
-  color: #f97316;
+  background: var(--color-brand-surface);
+  color: var(--color-brand);
   font-weight: 600;
 }
 
@@ -101,10 +105,10 @@
 }
 
 .sidebar-link.active {
-  color: #f97316;
-  background: rgba(249, 115, 22, 0.12);
+  color: var(--color-brand);
+  background: var(--color-brand-selection);
   font-weight: 600;
-  border-left: 2px solid #f97316;
+  border-left: 3px solid var(--color-brand);
 }
 
 .sidebar-footer {
@@ -140,7 +144,7 @@
 .dashboard-topbar {
   height: 72px;
   border-bottom: 1px solid var(--color-border);
-  background: rgba(11, 15, 23, 0.75);
+  background: rgba(21, 25, 29, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   position: sticky;
@@ -153,7 +157,7 @@
 }
 
 :host-context([data-theme="light"]) .dashboard-topbar {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(250, 248, 245, 0.88);
 }
 
 .workspace-badge {

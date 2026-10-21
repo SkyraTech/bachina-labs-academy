@@ -16,7 +16,16 @@
       {{ description() }}
     </p>
   }
-  <div class="mt-6 flex items-center gap-3 empty:hidden">
+  <div class="mt-6 flex items-center justify-center gap-3 empty:hidden">
+    @if (actionLabel()) {
+      <button
+        type="button"
+        (click)="action.emit()"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-[11px] bg-[var(--btn-primary-bg,#ea580c)] text-white hover:bg-[var(--btn-primary-hover,#c2410c)] active:bg-[var(--btn-primary-pressed,#9a3412)] transition-colors cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] focus-visible:ring-offset-2"
+      >
+        {{ actionLabel() }}
+      </button>
+    }
     <ng-content></ng-content>
   </div>
 </div>

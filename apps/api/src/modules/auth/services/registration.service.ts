@@ -5,6 +5,9 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../database/prisma.service.js';
+import { AuditService } from '../../audit/audit.service.js';
+import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
 import { UsersService } from '../../users/users.service.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { PasswordHashingService } from './password-hashing.service.js';
@@ -19,8 +22,8 @@ import type { SafeUser } from '../../users/types/index.js';
  *   1. Receive an already-validated and email-normalized RegisterRequestDto.
  *   2. Perform a preliminary duplicate check for a meaningful conflict response.
  *   3. Hash the password using Argon2id via PasswordHashingService.
- *   4. Persist the user record via UsersRepository (email + hash only).
- *   5. Issue the verification email — AFTER the row is committed, and without
+ *   4. Persist the user record and audit log atomically via Prisma transaction.
+ *   5. Issue the verification email — AFTER the transaction is committed, and without
  *      letting a delivery failure undo the account.
  *   6. Return SafeUser — passwordHash never leaves this service boundary.
  *
@@ -56,6 +59,8 @@ export class RegistrationService {
     private readonly usersRepository: UsersRepository,
     private readonly passwordHashingService: PasswordHashingService,
     private readonly emailVerificationService: EmailVerificationService,
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -77,7 +82,9 @@ export class RegistrationService {
     // Not relied upon for uniqueness enforcement — see concurrency note above.
     const existing = await this.usersService.findByEmail(email);
     if (existing) {
-      this.logger.warn('Registration attempted for existing email [redacted]');
+      this.logger.warn(
+        'Registration conflict: email already exists [action=auth.registration, outcome=failure]',
+      );
       throw new ConflictException(
         'An account with this email address already exists.',
       );
@@ -87,14 +94,36 @@ export class RegistrationService {
     // Argon2id with OWASP-aligned parameters. Never log the result.
     const passwordHash = await this.passwordHashingService.hash(password);
 
-    // ── Persist the user ─────────────────────────────────────────────────────
-    // The try/catch below covers ONLY persistence. Verification issuance is
-    // intentionally outside it — see the comment at that call site.
+    // ── Persist the user and mandatory transactional audit log ───────────────
+    // Atomically creates the user record and audit record in a single transaction.
+    // Verification issuance is intentionally outside it — see the comment at that call site.
     let user: SafeUser;
     try {
-      user = await this.usersRepository.createUser({
-        email,
-        passwordHash,
+      user = await this.prisma.$transaction(async (tx) => {
+        const created = await this.usersRepository.createUser(
+          {
+            email,
+            passwordHash,
+          },
+          tx,
+        );
+
+        await this.auditService.recordTransactional(tx, {
+          action: 'auth.user.registered',
+          actor: AuditActorFactory.fromRegistrationTarget({
+            id: created.id,
+            role: created.role as 'AUTHOR' | 'ADMIN',
+          }),
+          resourceType: 'USER',
+          resourceId: null, // Privacy Option A
+          outcome: 'SUCCESS',
+          metadata: {
+            role: created.role as 'AUTHOR' | 'ADMIN',
+            registrationMethod: 'EMAIL_PASSWORD',
+          },
+        });
+
+        return created;
       });
     } catch (error: unknown) {
       // Handle concurrent duplicate registration — both exact and case-insensitive
@@ -103,7 +132,7 @@ export class RegistrationService {
         error.code === 'P2002'
       ) {
         this.logger.warn(
-          'Concurrent duplicate registration blocked by DB constraint',
+          'Concurrent duplicate registration blocked by DB constraint [action=auth.registration, outcome=failure]',
         );
         throw new ConflictException(
           'An account with this email address already exists.',
@@ -111,7 +140,7 @@ export class RegistrationService {
       }
 
       // Any other persistence failure — log without exposing internals
-      this.logger.error('Unexpected error during user creation', {
+      this.logger.error('Unexpected error during user creation [action=auth.registration, outcome=failure]', {
         errorCode:
           error instanceof Prisma.PrismaClientKnownRequestError
             ? error.code
@@ -122,7 +151,9 @@ export class RegistrationService {
       );
     }
 
-    this.logger.log(`Registration successful for user: ${user.id}`);
+    this.logger.log(
+      `Registration successful for user: ${user.id} [action=auth.registration, outcome=success]`,
+    );
 
     // ── Issue the verification email ───────────────────────────────────────
     // Deliberately AFTER persistence has succeeded and OUTSIDE its try/catch.

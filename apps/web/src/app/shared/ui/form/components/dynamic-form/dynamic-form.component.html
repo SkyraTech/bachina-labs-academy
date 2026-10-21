@@ -1,0 +1,74 @@
+<form [formGroup]="formGroup" (ngSubmit)="onSubmit()" class="dynamic-form" novalidate>
+  <!-- Form Level Error Banner -->
+  @if (errorMessage()) {
+    <div class="form-banner form-banner-error" role="alert">
+      <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+      </svg>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- Form Level Success Banner -->
+  @if (successMessage()) {
+    <div class="form-banner form-banner-success" role="status">
+      <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+      </svg>
+      <span>{{ successMessage() }}</span>
+    </div>
+  }
+
+  <!-- Form Sections -->
+  @for (section of normalizedSections(); track section.id) {
+    <section class="form-section">
+      @if (section.title) {
+        <div class="section-header">
+          <h3 class="section-title">{{ section.title }}</h3>
+          @if (section.description) {
+            <p class="section-description">{{ section.description }}</p>
+          }
+        </div>
+      }
+
+      <div class="fields-grid" [class.grid-12]="(section.columns ?? 12) === 12">
+        @for (field of section.fields; track field.name) {
+          @if (isFieldVisible(field)) {
+            <div class="field-col" [style.grid-column]="'span ' + (field.colSpan ?? 12)">
+              <app-form-field [field]="field" [form]="formGroup"></app-form-field>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Actions Bar -->
+  @if (actions() && actions().length > 0) {
+    <div class="form-actions-bar" [class.actions-full-width]="fullWidthActions()">
+      @for (action of actions(); track action.id) {
+        <button
+          [type]="action.type === 'submit' ? 'submit' : 'button'"
+          [disabled]="action.disabled || disabled() || loading() || submitting()"
+          (click)="handleAction(action)"
+          class="form-action-btn"
+          [class.btn-full-width]="fullWidthActions() || action.fullWidth"
+          [class.btn-brand]="action.variant === 'brand' || !action.variant"
+          [class.btn-secondary]="action.variant === 'secondary'"
+          [class.btn-danger]="action.variant === 'danger'"
+          [class.btn-ghost]="action.variant === 'ghost'"
+        >
+          @if (action.type === 'submit' && (loading() || submitting())) {
+            <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Saving...</span>
+          } @else {
+            <span>{{ action.label }}</span>
+          }
+        </button>
+      }
+    </div>
+  }
+</form>

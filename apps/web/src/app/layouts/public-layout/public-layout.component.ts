@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeSelectorComponent } from '../../shared/ui/theme-selector/theme-selector.component';
@@ -26,6 +26,13 @@ export class PublicLayoutComponent {
     { label: 'Home', path: '/' },
     { label: 'Articles', path: '/articles' },
   ];
+
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.mobileMenuOpen()) {
+      this.closeMobileMenu();
+    }
+  }
 
   protected toggleMobileMenu(): void {
     this.mobileMenuOpen.update((open) => !open);

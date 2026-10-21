@@ -12,8 +12,16 @@ describe('LogoutService', () => {
   let refreshTokenServiceMock: any;
   let cookieServiceMock: any;
 
+  let prismaMock: any;
+  let auditServiceMock: any;
+
+  const mockTx = {
+    userSession: { updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
+
   const mockUser: AuthenticatedUser = {
-    id: '11111111-1111-1111-1111-111111111111',
+    id: '11111111-1111-4111-8111-111111111111',
     email: 'user@example.com',
     role: UserRole.AUTHOR,
     status: UserStatus.ACTIVE,
@@ -41,6 +49,15 @@ describe('LogoutService', () => {
     cookieServiceMock = {
       clearAuthCookies: vi.fn(),
     };
+    prismaMock = {
+      $transaction: vi.fn(async (cb: any) => cb(mockTx)),
+    };
+    auditServiceMock = {
+      recordTransactional: vi.fn().mockResolvedValue({
+        id: 'mock-audit-id',
+        action: 'auth.session.revoked',
+      }),
+    };
 
     service = new LogoutService(
       sessionsRepositoryMock,
@@ -48,6 +65,8 @@ describe('LogoutService', () => {
       jwtTokenServiceMock,
       refreshTokenServiceMock,
       cookieServiceMock,
+      prismaMock,
+      auditServiceMock,
     );
   });
 
@@ -150,13 +169,51 @@ describe('LogoutService', () => {
 
       const result = await service.logoutAll(mockUser, res);
 
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
       expect(sessionsServiceMock.revokeAllUserSessions).toHaveBeenCalledWith(
         mockUser.id,
         'USER_LOGOUT_ALL',
+        undefined,
+        expect.any(Date),
+        mockTx,
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          action: 'auth.session.revoked_all',
+          outcome: 'SUCCESS',
+          resourceType: 'SESSION',
+          resourceId: null, // Bulk revocation
+          metadata: {
+            revocationReason: 'LOGOUT_ALL',
+            sessionsCount: 3,
+          },
+        }),
       );
       expect(cookieServiceMock.clearAuthCookies).toHaveBeenCalledWith(res);
       expect(result.revokedCount).toBe(3);
       expect(result.message).toBe('All sessions logged out successfully.');
+    });
+
+    it('does NOT record audit event if zero sessions were revoked (idempotent no-op)', async () => {
+      sessionsServiceMock.revokeAllUserSessions.mockResolvedValue(0);
+      const res = {} as any;
+
+      const result = await service.logoutAll(mockUser, res);
+
+      expect(auditServiceMock.recordTransactional).not.toHaveBeenCalled();
+      expect(result.revokedCount).toBe(0);
+    });
+
+    it('rolls back session revocations if audit recording fails', async () => {
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit write failure'),
+      );
+      const res = {} as any;
+
+      await expect(service.logoutAll(mockUser, res)).rejects.toThrow(
+        'Audit write failure',
+      );
     });
   });
 
@@ -204,16 +261,31 @@ describe('LogoutService', () => {
   });
 
   describe('revokeSession()', () => {
-    it('revokes designated session and clears cookies if it is the current session', async () => {
+    it('revokes designated session, records audit event, and clears cookies if it is current session', async () => {
       sessionsServiceMock.revokeUserSession.mockResolvedValue(true);
       const res = {} as any;
 
       const result = await service.revokeSession(mockUser.sessionId, mockUser, res);
 
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
       expect(sessionsServiceMock.revokeUserSession).toHaveBeenCalledWith(
         mockUser.sessionId,
         mockUser.id,
         'USER_LOGOUT',
+        expect.any(Date),
+        mockTx,
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          action: 'auth.session.revoked',
+          outcome: 'SUCCESS',
+          resourceType: 'SESSION',
+          resourceId: mockUser.sessionId,
+          metadata: {
+            revocationReason: 'USER_INITIATED',
+          },
+        }),
       );
       expect(cookieServiceMock.clearAuthCookies).toHaveBeenCalledWith(res);
       expect(result.isCurrentSession).toBe(true);
@@ -230,6 +302,15 @@ describe('LogoutService', () => {
         'other-device-uuid',
         mockUser.id,
         'USER_LOGOUT',
+        expect.any(Date),
+        mockTx,
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          action: 'auth.session.revoked',
+          resourceId: 'other-device-uuid',
+        }),
       );
       expect(cookieServiceMock.clearAuthCookies).not.toHaveBeenCalled();
       expect(result.isCurrentSession).toBe(false);
@@ -243,6 +324,21 @@ describe('LogoutService', () => {
       await expect(
         service.revokeSession('unowned-uuid', mockUser, res),
       ).rejects.toThrow(NotFoundException);
+      expect(auditServiceMock.recordTransactional).not.toHaveBeenCalled();
+      expect(cookieServiceMock.clearAuthCookies).not.toHaveBeenCalled();
+    });
+
+    it('rolls back session revocation if audit recording fails', async () => {
+      sessionsServiceMock.revokeUserSession.mockResolvedValue(true);
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit insertion failed'),
+      );
+      const res = {} as any;
+
+      await expect(
+        service.revokeSession(mockUser.sessionId, mockUser, res),
+      ).rejects.toThrow('Audit insertion failed');
+
       expect(cookieServiceMock.clearAuthCookies).not.toHaveBeenCalled();
     });
   });

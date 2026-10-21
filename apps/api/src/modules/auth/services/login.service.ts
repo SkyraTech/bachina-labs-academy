@@ -2,6 +2,8 @@ import {
   Injectable,
   Logger,
   UnauthorizedException,
+  HttpException,
+  HttpStatus,
   OnModuleInit,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -12,9 +14,15 @@ import { PasswordHashingService } from './password-hashing.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { JwtTokenService } from './jwt-token.service';
 import { CookieService } from './cookie.service';
-import type { LoginRequestDto } from '../dto/login-request.dto';
-import type { LoginResponseDto } from '../dto/login-response.dto';
-import type { RefreshResponseDto } from '../dto/refresh-response.dto';
+import { AuthAbuseService } from './auth-abuse.service';
+import { getClientIp } from '../../../common/utils/client-ip.util';
+import { RequestContextService } from '../../../common/observability/request-context.service';
+import { PrismaService } from '../../../database/prisma.service.js';
+import { AuditService } from '../../audit/audit.service.js';
+import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
+import type { LoginRequestDto } from '../dto/login-request.dto.js';
+import type { LoginResponseDto } from '../dto/login-response.dto.js';
+import type { RefreshResponseDto } from '../dto/refresh-response.dto.js';
 
 @Injectable()
 export class LoginService implements OnModuleInit {
@@ -29,6 +37,9 @@ export class LoginService implements OnModuleInit {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly jwtTokenService: JwtTokenService,
     private readonly cookieService: CookieService,
+    private readonly authAbuseService: AuthAbuseService,
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -56,43 +67,95 @@ export class LoginService implements OnModuleInit {
   ): Promise<LoginResponseDto> {
     const email = dto.email.trim().toLowerCase();
     const rememberMe = Boolean(dto.rememberMe);
+    const ipAddress = getClientIp(req);
+
+    // Anti-automation & brute-force abuse check (IP and privacy-preserving email digest)
+    const abuseCheck = this.authAbuseService.checkLoginAllowed(ipAddress, email);
+    if (abuseCheck.blocked) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          message: 'Too many failed login attempts. Please wait before retrying.',
+          error: 'Too Many Requests',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
 
     const creds = await this.usersRepository.findPasswordCredentialsByEmail(email);
 
     // Mitigate user enumeration timing differences: if user not found or has no password,
     // execute dummy Argon2id verification so response time matches an incorrect password.
     if (!creds || !creds.passwordHash) {
+      this.logger.warn(
+        `Authentication failed: invalid credentials [action=auth.login, outcome=failure, ip=${ipAddress}]`,
+      );
+      this.authAbuseService.recordFailedAttempt(ipAddress, email);
       await this.passwordHashingService.verify(this.dummyPasswordHash, dto.password).catch(() => false);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     const isMatch = await this.passwordHashingService.verify(creds.passwordHash, dto.password);
     if (!isMatch) {
+      this.logger.warn(
+        `Authentication failed: invalid credentials [action=auth.login, outcome=failure, ip=${ipAddress}]`,
+      );
+      this.authAbuseService.recordFailedAttempt(ipAddress, email);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     if (creds.status !== 'ACTIVE') {
+      this.logger.warn(
+        `Authentication rejected: inactive account [action=auth.login, outcome=failure, userId=${creds.id}]`,
+      );
       throw new UnauthorizedException('Your account is not active. Please contact support.');
     }
 
     if (!creds.emailVerifiedAt) {
+      this.logger.warn(
+        `Authentication rejected: unverified email [action=auth.login, outcome=failure, userId=${creds.id}]`,
+      );
       throw new UnauthorizedException('Please verify your email address before logging in.');
     }
 
+    // Reset failed authentication counter on successful verification
+    this.authAbuseService.recordSuccessfulLogin(ipAddress, email);
+
     // Capture device metadata
     const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']).slice(0, 1024) : null;
-    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
 
     // Issue opaque refresh token
     const { rawToken, tokenHash } = this.refreshTokenService.generateRefreshToken();
 
-    // Persist session in PostgreSQL
-    const safeSession = await this.sessionsService.createSession({
-      userId: creds.id,
-      refreshTokenHash: tokenHash,
-      rememberMe,
-      userAgent,
-      ipAddress,
+    // Persist session and mandatory transactional audit log in PostgreSQL
+    const safeSession = await this.prisma.$transaction(async (tx) => {
+      const session = await this.sessionsService.createSession(
+        {
+          userId: creds.id,
+          refreshTokenHash: tokenHash,
+          rememberMe,
+          userAgent,
+          ipAddress,
+        },
+        tx,
+      );
+
+      await this.auditService.recordTransactional(tx, {
+        action: 'auth.login.succeeded',
+        actor: AuditActorFactory.fromVerifiedLogin({
+          id: creds.id,
+          role: creds.role as 'AUTHOR' | 'ADMIN',
+        }),
+        resourceType: 'SESSION',
+        resourceId: session.id, // Privacy Option A: actual session UUID
+        outcome: 'SUCCESS',
+        metadata: {
+          authMethod: 'PASSWORD',
+          rememberMe,
+        },
+      });
+
+      return session;
     });
 
     // Sign RS256 JWT access token
@@ -108,6 +171,13 @@ export class LoginService implements OnModuleInit {
       rememberMe,
       sessionExpiresAt: safeSession.expiresAt,
     });
+
+    // Authoritative security boundary: bind verified user identity to request context
+    RequestContextService.setUserId(creds.id);
+
+    this.logger.log(
+      `Authentication successful [action=auth.login, outcome=success, userId=${creds.id}, sessionId=${safeSession.id}]`,
+    );
 
     return {
       message: 'Login successful.',
@@ -183,6 +253,13 @@ export class LoginService implements OnModuleInit {
       rememberMe: session.rememberMe,
       sessionExpiresAt: session.expiresAt,
     });
+
+    // Authoritative security boundary: bind verified user identity to request context
+    RequestContextService.setUserId(user.id);
+
+    this.logger.log(
+      `Session refresh successful [action=auth.session.refresh, outcome=success, userId=${user.id}, sessionId=${session.id}]`,
+    );
 
     return {
       message: 'Session refreshed successfully.',

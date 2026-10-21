@@ -14,6 +14,7 @@ export interface DialogConfig {
   readonly width?: string;
   readonly closable?: boolean;
   readonly dismissableMask?: boolean;
+  readonly onConfirm?: () => Promise<boolean | void> | boolean | void;
 }
 
 /**

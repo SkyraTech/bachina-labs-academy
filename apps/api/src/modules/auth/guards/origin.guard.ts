@@ -11,6 +11,7 @@ import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
 } from '../services/cookie.service.js';
+import { LogSanitizer } from '../../../common/observability/log-sanitizer.js';
 
 @Injectable()
 export class OriginGuard implements CanActivate {
@@ -71,7 +72,9 @@ export class OriginGuard implements CanActivate {
     // 2. Validate Origin header if present
     if (origin !== undefined) {
       if (typeof origin !== 'string' || origin === 'null' || origin.trim() === '') {
-        this.logger.warn(`Blocked state-changing request with invalid/null Origin: ${origin}`);
+        this.logger.warn(
+          `Blocked state-changing request with invalid/null Origin: ${origin} [action=security.origin_rejected, outcome=failure]`,
+        );
         throw new ForbiddenException('Invalid or untrusted origin.');
       }
 
@@ -79,12 +82,16 @@ export class OriginGuard implements CanActivate {
       try {
         parsedOrigin = new URL(origin);
       } catch {
-        this.logger.warn(`Blocked state-changing request with malformed Origin: ${origin}`);
+        this.logger.warn(
+          `Blocked state-changing request with malformed Origin: ${origin} [action=security.origin_rejected, outcome=failure]`,
+        );
         throw new ForbiddenException('Malformed Origin header.');
       }
 
       if (parsedOrigin.protocol !== 'http:' && parsedOrigin.protocol !== 'https:') {
-        this.logger.warn(`Blocked state-changing request with unsupported protocol: ${parsedOrigin.protocol}`);
+        this.logger.warn(
+          `Blocked state-changing request with unsupported protocol: ${parsedOrigin.protocol} [action=security.origin_rejected, outcome=failure]`,
+        );
         throw new ForbiddenException('Origin protocol not allowed.');
       }
 
@@ -93,21 +100,23 @@ export class OriginGuard implements CanActivate {
       // Check contradictory Origin vs Sec-Fetch-Site combinations
       if (secFetchSite === 'same-origin' && !isSameHost(normalizedOrigin)) {
         this.logger.warn(
-          `Contradictory headers: Sec-Fetch-Site=same-origin but Origin=${normalizedOrigin} host=${host}`,
+          `Contradictory headers: Sec-Fetch-Site=same-origin but Origin=${normalizedOrigin} host=${host} [action=security.origin_rejected, outcome=failure]`,
         );
         throw new ForbiddenException('Contradictory Origin and Fetch Metadata headers.');
       }
 
       if (secFetchSite === 'cross-site' && isSameHost(normalizedOrigin)) {
         this.logger.warn(
-          `Contradictory headers: Sec-Fetch-Site=cross-site but Origin matches host=${host}`,
+          `Contradictory headers: Sec-Fetch-Site=cross-site but Origin matches host=${host} [action=security.origin_rejected, outcome=failure]`,
         );
         throw new ForbiddenException('Contradictory Origin and Fetch Metadata headers.');
       }
 
       // Check against allowlist
       if (!isAllowed(normalizedOrigin)) {
-        this.logger.warn(`Rejected state-changing request from untrusted origin: ${normalizedOrigin}`);
+        this.logger.warn(
+          `Rejected state-changing request from untrusted origin: ${normalizedOrigin} [action=security.origin_rejected, outcome=failure]`,
+        );
         throw new ForbiddenException('Origin not allowed.');
       }
 
@@ -120,7 +129,9 @@ export class OriginGuard implements CanActivate {
     // 3a. Browser Fetch Metadata evaluation
     if (secFetchSite !== undefined) {
       if (secFetchSite === 'cross-site') {
-        this.logger.warn('Rejected cross-site state-changing request without allowed Origin');
+        this.logger.warn(
+          'Rejected cross-site state-changing request without allowed Origin [action=security.origin_rejected, outcome=failure]',
+        );
         throw new ForbiddenException('Cross-site request blocked.');
       }
 
@@ -134,7 +145,9 @@ export class OriginGuard implements CanActivate {
             throw new ForbiddenException('Malformed Referer header.');
           }
           if (!isAllowed(refererOrigin)) {
-            this.logger.warn(`Rejected state-changing request with untrusted Referer: ${referer}`);
+            this.logger.warn(
+              `Rejected state-changing request with untrusted Referer origin: ${refererOrigin} [action=security.origin_rejected, outcome=failure]`,
+            );
             throw new ForbiddenException('Untrusted referer header.');
           }
         }
@@ -144,7 +157,9 @@ export class OriginGuard implements CanActivate {
       if (secFetchSite === 'none') {
         const secFetchMode = request.headers['sec-fetch-mode'];
         if (secFetchMode === 'navigate') {
-          this.logger.warn('Blocked navigational state-changing request');
+          this.logger.warn(
+            'Blocked navigational state-changing request [action=security.origin_rejected, outcome=failure]',
+          );
           throw new ForbiddenException('Navigational state-changing request blocked.');
         }
         return true;
@@ -162,7 +177,9 @@ export class OriginGuard implements CanActivate {
         throw new ForbiddenException('Malformed Referer header.');
       }
       if (!isAllowed(refererOrigin)) {
-        this.logger.warn(`Rejected state-changing request with untrusted Referer: ${referer}`);
+        this.logger.warn(
+          `Rejected state-changing request with untrusted Referer origin: ${refererOrigin} [action=security.origin_rejected, outcome=failure]`,
+        );
         throw new ForbiddenException('Untrusted referer header.');
       }
       return true;
@@ -173,8 +190,9 @@ export class OriginGuard implements CanActivate {
     // Arbitrary client-identification headers (X-Requested-With, X-Client-Platform, etc.)
     // are client-controlled and do NOT qualify as proof of caller identity.
     if (isSensitiveAuthRoute) {
+      const sanitizedUrl = LogSanitizer.sanitizeUrl(url);
       this.logger.warn(
-        `Blocked sensitive state-changing request (${url}) missing Origin or trustworthy Fetch Metadata context`,
+        `Blocked sensitive state-changing request (${sanitizedUrl}) missing Origin or trustworthy Fetch Metadata context [action=security.origin_rejected, outcome=failure]`,
       );
       throw new ForbiddenException('Missing Origin or client identity for state-changing request.');
     }

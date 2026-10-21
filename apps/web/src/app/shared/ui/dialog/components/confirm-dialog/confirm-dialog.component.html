@@ -1,0 +1,91 @@
+<div class="confirm-dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+  <!-- Dialog Header -->
+  <div class="dialog-header">
+    <div class="header-content">
+      <div
+        class="dialog-icon-wrapper"
+        [class.icon-danger]="data.destructive || data.type === 'danger'"
+        [class.icon-confirm]="data.type === 'confirm'"
+        [class.icon-info]="data.type === 'info'"
+      >
+        @if (data.destructive || data.type === 'danger') {
+          <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        } @else if (data.type === 'info') {
+          <svg class="w-5 h-5 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        } @else {
+          <svg class="w-5 h-5 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        }
+      </div>
+
+      <h2 id="dialog-title" class="dialog-title">{{ data.title }}</h2>
+    </div>
+
+    @if (data.closable ?? true) {
+      <button
+        type="button"
+        (click)="onCancel()"
+        aria-label="Close dialog"
+        class="dialog-close-btn"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    }
+  </div>
+
+  <!-- Dialog Body -->
+  <div class="dialog-body">
+    <p id="dialog-description" class="dialog-message">
+      {{ data.message }}
+    </p>
+
+    @if (errorMessage()) {
+      <div class="dialog-error-banner" role="alert">
+        <svg class="w-4 h-4 shrink-0 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-xs text-red-500 font-medium">{{ errorMessage() }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
+    @if (data.cancelLabel) {
+      <button
+        type="button"
+        (click)="onCancel()"
+        [disabled]="loading()"
+        class="dialog-btn btn-secondary"
+      >
+        {{ data.cancelLabel }}
+      </button>
+    }
+
+    <button
+      type="button"
+      (click)="onConfirm()"
+      [disabled]="loading()"
+      class="dialog-btn"
+      [class.btn-danger]="data.destructive || data.type === 'danger'"
+      [class.btn-brand]="!data.destructive && data.type !== 'danger'"
+    >
+      @if (loading()) {
+        <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Processing...</span>
+      } @else {
+        <span>{{ data.confirmLabel ?? 'Confirm' }}</span>
+      }
+    </button>
+  </div>
+</div>

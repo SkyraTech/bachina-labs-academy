@@ -29,13 +29,13 @@
   z-index: 10;
   height: 72px;
   border-bottom: 1px solid var(--color-border);
-  background: rgba(11, 15, 23, 0.82);
+  background: rgba(17, 20, 22, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
 :host-context([data-theme="light"]) .auth-header {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(246, 241, 232, 0.88);
 }
 
 .auth-header-container {
@@ -97,19 +97,17 @@
 .auth-card {
   position: relative;
   border-radius: 24px;
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(249, 115, 22, 0.15);
+  background: var(--color-surface, #1d2226);
+  border: 1px solid var(--color-border, #353d43);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(251, 146, 60, 0.12);
   padding: 2.5rem;
   overflow: hidden;
 }
 
 :host-context([data-theme="light"]) .auth-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(226, 232, 240, 0.9);
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(249, 115, 22, 0.15);
+  background: #ffffff;
+  border-color: var(--color-border, #e7ded3);
+  box-shadow: 0 20px 40px -12px rgba(21, 21, 21, 0.08), 0 0 0 1px rgba(234, 88, 12, 0.1);
 }
 
 /* Top decorative glow line */

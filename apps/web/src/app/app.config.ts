@@ -4,15 +4,16 @@ import {
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
+import { authRefreshInterceptor } from './core/auth/interceptors/auth-refresh.interceptor';
 
 /**
  * Angular application configuration.
  *
  * Configured according to modern Angular 22 standards:
  * - Completely zoneless runtime via provideZonelessChangeDetection()
- * - Fetch-based modern HttpClient
+ * - Fetch-based modern HttpClient with auth refresh interceptor
  * - View transitions & input binding on router
  * - Light/dark/system theme synchronization via [data-theme="dark"]
  */
@@ -21,6 +22,6 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
-    provideHttpClient(withFetch()),
+    provideHttpClient(withFetch(), withInterceptors([authRefreshInterceptor])),
   ],
 };

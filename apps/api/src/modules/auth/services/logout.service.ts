@@ -13,6 +13,9 @@ import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
 } from './cookie.service.js';
+import { PrismaService } from '../../../database/prisma.service.js';
+import { AuditService } from '../../audit/audit.service.js';
+import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
 import type { AuthenticatedUser } from '../types/jwt.types.js';
 import type { LogoutResponseDto } from '../dto/logout-response.dto.js';
 import type { LogoutAllResponseDto } from '../dto/logout-all-response.dto.js';
@@ -29,6 +32,8 @@ export class LogoutService {
     private readonly jwtTokenService: JwtTokenService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly cookieService: CookieService,
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -74,7 +79,9 @@ export class LogoutService {
 
     // 3. If an active session was authoritatively identified, revoke it
     if (sessionIdToRevoke) {
-      this.logger.debug(`Revoking current session: ${sessionIdToRevoke}`);
+      this.logger.log(
+        `Revoking current session: ${sessionIdToRevoke} [action=auth.session.revoke, outcome=success]`,
+      );
       await this.sessionsService.revokeSession(sessionIdToRevoke, 'USER_LOGOUT');
     }
 
@@ -93,12 +100,35 @@ export class LogoutService {
     currentUser: AuthenticatedUser,
     res: Response,
   ): Promise<LogoutAllResponseDto> {
-    this.logger.debug(`Revoking all sessions for user: ${currentUser.id}`);
-
-    const revokedCount = await this.sessionsService.revokeAllUserSessions(
-      currentUser.id,
-      'USER_LOGOUT_ALL',
+    this.logger.log(
+      `Revoking all sessions for user: ${currentUser.id} [action=auth.session.revoke_all, outcome=success]`,
     );
+
+    const revokedCount = await this.prisma.$transaction(async (tx) => {
+      const count = await this.sessionsService.revokeAllUserSessions(
+        currentUser.id,
+        'USER_LOGOUT_ALL',
+        undefined,
+        new Date(),
+        tx,
+      );
+
+      if (count > 0) {
+        await this.auditService.recordTransactional(tx, {
+          action: 'auth.session.revoked_all',
+          actor: AuditActorFactory.fromAuthenticatedPrincipal(currentUser),
+          resourceType: 'SESSION',
+          resourceId: null, // Privacy Option A: null for bulk
+          outcome: 'SUCCESS',
+          metadata: {
+            revocationReason: 'LOGOUT_ALL',
+            sessionsCount: count,
+          },
+        });
+      }
+
+      return count;
+    });
 
     // Clear current browser cookies
     this.cookieService.clearAuthCookies(res);
@@ -147,15 +177,30 @@ export class LogoutService {
   ): Promise<RevokeSessionResponseDto> {
     const isCurrentSession = sessionId === currentUser.sessionId;
 
-    const revoked = await this.sessionsService.revokeUserSession(
-      sessionId,
-      currentUser.id,
-      'USER_LOGOUT',
-    );
+    await this.prisma.$transaction(async (tx) => {
+      const revoked = await this.sessionsService.revokeUserSession(
+        sessionId,
+        currentUser.id,
+        'USER_LOGOUT',
+        new Date(),
+        tx,
+      );
 
-    if (!revoked) {
-      throw new NotFoundException('Session not found.');
-    }
+      if (!revoked) {
+        throw new NotFoundException('Session not found.');
+      }
+
+      await this.auditService.recordTransactional(tx, {
+        action: 'auth.session.revoked',
+        actor: AuditActorFactory.fromAuthenticatedPrincipal(currentUser),
+        resourceType: 'SESSION',
+        resourceId: sessionId, // Privacy Option A: actual session UUID
+        outcome: 'SUCCESS',
+        metadata: {
+          revocationReason: 'USER_INITIATED',
+        },
+      });
+    });
 
     if (isCurrentSession) {
       this.cookieService.clearAuthCookies(res);

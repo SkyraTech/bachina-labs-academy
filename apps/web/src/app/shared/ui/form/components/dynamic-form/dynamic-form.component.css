@@ -1,0 +1,187 @@
+.dynamic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.form-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-banner-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.form-banner-success {
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.section-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.section-description {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: 0.25rem 0 0;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.125rem 1rem;
+}
+
+@media (max-width: 640px) {
+  .fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-col {
+    grid-column: span 1 !important;
+  }
+}
+
+.field-col {
+  min-width: 0;
+}
+
+.form-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.form-actions-bar.actions-full-width {
+  justify-content: stretch;
+  border-top: none;
+  padding-top: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.form-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 1.25rem;
+  border-radius: var(--btn-radius, 11px);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease-in-out, box-shadow 0.18s ease-in-out, background-color 0.18s ease-in-out;
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-full-width,
+.actions-full-width .form-action-btn {
+  width: 100%;
+}
+
+.form-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-brand {
+  background-color: var(--btn-primary-bg, #ea580c);
+  color: #ffffff;
+  border-color: var(--btn-primary-bg, #ea580c);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+}
+
+.btn-brand:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover, #c2410c);
+  border-color: var(--btn-primary-hover, #c2410c);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(194, 65, 12, 0.45);
+}
+
+.btn-brand:active:not(:disabled) {
+  background-color: var(--btn-primary-pressed, #9a3412);
+  border-color: var(--btn-primary-pressed, #9a3412);
+  transform: translateY(0);
+}
+
+.btn-brand:focus-visible {
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.35);
+  outline: 2px solid var(--color-brand, #f97316);
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-text-secondary);
+}
+
+.btn-secondary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.2);
+}
+
+.btn-danger {
+  background-color: var(--btn-destructive-bg, #dc2626);
+  color: #ffffff;
+  border-color: var(--btn-destructive-bg, #dc2626);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--btn-destructive-hover, #b91c1c);
+  border-color: var(--btn-destructive-hover, #b91c1c);
+}
+
+.btn-danger:active:not(:disabled) {
+  background-color: var(--btn-destructive-pressed, #991b1b);
+  border-color: var(--btn-destructive-pressed, #991b1b);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}

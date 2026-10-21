@@ -37,7 +37,9 @@ import {
  * those claims need a real lock manager to observe.
  */
 
-const USER_ID = 'a1b2c3d4-0000-0000-0000-000000000001';
+import { AuditService } from '../../audit/audit.service.js';
+
+const USER_ID = 'a1b2c3d4-0000-4000-8000-000000000001';
 const TOKEN_HASH = 'f'.repeat(64);
 const EXPIRES_AT = new Date('2026-10-15T09:00:00.000Z');
 const NOW = new Date('2026-10-14T09:00:00.000Z');
@@ -48,17 +50,21 @@ type Tx = ReturnType<typeof makeTx>;
 /** The transaction client handed to the callback. */
 function makeTx() {
   return {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: USER_ID }]),
+    $queryRaw: vi.fn().mockResolvedValue([{ id: USER_ID, status: 'ACTIVE' }]),
     emailVerificationToken: {
       findFirst: vi.fn().mockResolvedValue(null),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       create: vi.fn().mockResolvedValue({
-        id: 'e1f2a3b4-0000-0000-0000-000000000005',
+        id: 'e1f2a3b4-0000-4000-8000-000000000005',
         userId: USER_ID,
         expiresAt: EXPIRES_AT,
         consumedAt: null,
         createdAt: NOW,
       }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    user: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
 }
@@ -89,17 +95,27 @@ function prismaError(code: string): Prisma.PrismaClientKnownRequestError {
   });
 }
 
-describe('EmailVerificationTokenRepository.issueToken', () => {
+describe('EmailVerificationTokenRepository', () => {
   let tx: Tx;
   let repository: EmailVerificationTokenRepository;
+  let auditServiceMock: {
+    recordTransactional: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     tx = makeTx();
+    auditServiceMock = {
+      recordTransactional: vi.fn().mockResolvedValue({
+        id: 'mock-audit-id',
+        action: 'auth.email.verified',
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmailVerificationTokenRepository,
         { provide: PrismaService, useValue: prismaWith(tx) },
+        { provide: AuditService, useValue: auditServiceMock },
       ],
     }).compile();
 
@@ -418,6 +434,69 @@ describe('EmailVerificationTokenRepository.issueToken', () => {
       expect(isActiveTokenConflict(new Error('boom'))).toBe(false);
       expect(isCooldownError(undefined)).toBe(false);
       expect(isUserNotFound(null)).toBe(false);
+    });
+  });
+
+  // ── consumeTokenAndVerifyUser ───────────────────────────────────────────────
+
+  describe('consumeTokenAndVerifyUser', () => {
+    it('consumes token, updates user, and records auth.email.verified atomically in tx', async () => {
+      const result = await repository.consumeTokenAndVerifyUser(
+        'e1f2a3b4-0000-4000-8000-000000000005',
+        USER_ID,
+        NOW,
+      );
+
+      expect(result).toEqual({ consumed: true, newlyVerified: true });
+      expect(tx.emailVerificationToken.updateMany).toHaveBeenCalledWith({
+        where: { id: 'e1f2a3b4-0000-4000-8000-000000000005', consumedAt: null },
+        data: { consumedAt: NOW },
+      });
+      expect(tx.user.updateMany).toHaveBeenCalledWith({
+        where: { id: USER_ID, emailVerifiedAt: null, status: 'ACTIVE' },
+        data: { emailVerifiedAt: NOW },
+      });
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          action: 'auth.email.verified',
+          outcome: 'SUCCESS',
+          resourceType: 'USER',
+          resourceId: null,
+          metadata: {
+            tokenCategory: 'EMAIL_VERIFICATION',
+            verificationMethod: 'LINK',
+          },
+        }),
+      );
+    });
+
+    it('does not record audit log if token was already consumed (token update count = 0)', async () => {
+      tx.emailVerificationToken.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await repository.consumeTokenAndVerifyUser(
+        'e1f2a3b4-0000-4000-8000-000000000005',
+        USER_ID,
+        NOW,
+      );
+
+      expect(result).toEqual({ consumed: false, newlyVerified: false });
+      expect(tx.user.updateMany).not.toHaveBeenCalled();
+      expect(auditServiceMock.recordTransactional).not.toHaveBeenCalled();
+    });
+
+    it('rolls back transaction if audit recording fails', async () => {
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit write rejected'),
+      );
+
+      await expect(
+        repository.consumeTokenAndVerifyUser(
+          'e1f2a3b4-0000-4000-8000-000000000005',
+          USER_ID,
+          NOW,
+        ),
+      ).rejects.toThrow('Audit write rejected');
     });
   });
 });

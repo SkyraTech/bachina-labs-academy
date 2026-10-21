@@ -31,9 +31,9 @@
       </a>
     </div>
 
-    <!-- Trending Topics Pills -->
+    <!-- Topics Pills -->
     <div class="flex items-center justify-center gap-2 flex-wrap pt-3">
-      <span class="text-xs font-semibold text-[var(--color-text-muted)] mr-1">Trending:</span>
+      <span class="text-xs font-semibold text-[var(--color-text-muted)] mr-1">Topics:</span>
       <a routerLink="/articles" class="topic-tag">#Architecture</a>
       <a routerLink="/articles" class="topic-tag">#NestJS</a>
       <a routerLink="/articles" class="topic-tag">#PostgreSQL</a>
@@ -42,77 +42,50 @@
     </div>
   </section>
 
-  <!-- Featured Architecture Blueprint Showcase -->
-  <section class="showcase-card" aria-label="Featured Technical Blueprint">
-    <div class="flex items-center justify-between px-5 py-3.5 bg-black/20 border-b border-white/[0.08]">
+  <!-- Featured Editorial Spotlight & Pipeline Preview -->
+  <section class="showcase-card" aria-label="Editorial Spotlight">
+    <div class="flex items-center justify-between px-5 py-3.5 bg-[var(--color-surface-hover)] border-b border-[var(--color-border)]">
       <div class="flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
         <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
       </div>
-      <span class="text-xs font-mono font-semibold text-[var(--color-brand)] uppercase tracking-wider">
-        Featured Blueprint · Architecture
-      </span>
-      <span class="text-xs text-[var(--color-text-muted)]">By Skyra Tech · 8 min read</span>
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--color-coral-surface)] text-[var(--color-coral)] border border-[var(--color-coral-border)]">
+          Editorial Spotlight
+        </span>
+        <span class="hidden sm:inline text-xs font-mono font-semibold text-[var(--color-brand)] uppercase tracking-wider">
+          Platform Preview
+        </span>
+      </div>
+      <span class="text-xs text-[var(--color-text-muted)]">Publishing in preparation</span>
     </div>
 
     <div class="p-6 sm:p-8 flex flex-col gap-4 text-left">
       <h2 class="text-xl sm:text-2xl font-bold text-[var(--color-text)] m-0">
-        Architecting Resilient Distributed Event Streams with PostgreSQL & NestJS
+        Curating Engineering Knowledge & Architecture Blueprints
       </h2>
 
       <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0">
-        A production blueprint for high-throughput event processing using advisory-locked transactional outbox tables and strict domain isolation.
+        Bachina Labs Academy is an engineering knowledge hub where technical authors and software architects share production-grade patterns, systems designs, and practical guides. The publishing pipeline and reader catalog are being prepared for the upcoming platform release.
       </p>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">PostgreSQL 17</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">Prisma ORM</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">Zoneless Signals</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-white/5 text-[var(--color-text-secondary)] border border-white/10">RS256 JWT</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Architecture Patterns</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Systems Design</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Author Workspaces</span>
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Peer-Reviewed Guides</span>
       </div>
 
-      <pre class="font-mono text-xs sm:text-sm p-4 rounded-xl bg-black/40 border border-white/[0.08] text-slate-300 overflow-x-auto leading-relaxed my-1"><code>// Advisory-locked transactional event dispatcher
-SELECT event_id, payload, created_at
-FROM event_outbox
-WHERE processed_at IS NULL
-ORDER BY created_at ASC
-FOR UPDATE SKIP LOCKED
-LIMIT 50;</code></pre>
-
-      <div class="flex items-center gap-6 flex-wrap pt-3 border-t border-white/[0.08] text-xs text-[var(--color-text-secondary)]">
-        <div class="flex items-center gap-1.5">
-          <span class="text-emerald-400 font-bold">●</span>
-          <span class="font-bold text-[var(--color-text)]">1.2ms</span>
-          <span>latency</span>
+      <div class="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Author registration and account security are active. Full article library coming next.</span>
         </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-orange-400 font-bold">●</span>
-          <span class="font-bold text-[var(--color-text)]">Zero</span>
-          <span>Zone.js runtime overhead</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-sky-400 font-bold">●</span>
-          <span class="font-bold text-[var(--color-text)]">100%</span>
-          <span>Cookie-only authentication</span>
-        </div>
+        <a routerLink="/articles" class="text-xs font-semibold text-[var(--color-brand)] hover:underline">
+          View knowledge base scaffold →
+        </a>
       </div>
-    </div>
-  </section>
-
-  <!-- Key Platform Statistics Strip -->
-  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto w-full" aria-label="Platform Statistics">
-    <div class="stat-card">
-      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">120+</div>
-      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">In-depth Technical Guides</div>
-    </div>
-    <div class="stat-card">
-      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">15k+</div>
-      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">Monthly Engineering Readers</div>
-    </div>
-    <div class="stat-card">
-      <div class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)]">100%</div>
-      <div class="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-1 font-medium">Open Community Knowledge</div>
     </div>
   </section>
 
@@ -135,12 +108,12 @@ LIMIT 50;</code></pre>
         </div>
         <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Publish with confidence</h3>
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
-          Draft, refine and share useful technical articles with an intuitive authoring experience and editorial workflows.
+          Draft, refine and structure useful technical guides in a dedicated author workspace with intuitive editorial tools.
         </p>
         <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Markdown</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">LaTeX</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Revisions</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Author Studio</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Draft Workspace</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Editorial Flow</span>
         </div>
       </div>
 
@@ -153,12 +126,12 @@ LIMIT 50;</code></pre>
         </div>
         <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Explore engineering knowledge</h3>
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
-          Discover practical insights across modern software disciplines, from architecture and systems to cloud engineering.
+          Discover practical insights across modern software disciplines, from systems architecture and data engineering to cloud platforms.
         </p>
         <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Architecture</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">PostgreSQL</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">DevOps</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Systems Design</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Cloud Platforms</span>
         </div>
       </div>
 
@@ -171,12 +144,12 @@ LIMIT 50;</code></pre>
         </div>
         <h3 class="text-xl font-bold text-[var(--color-text)] m-0">Build your professional voice</h3>
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
-          Share ideas, document lessons, and grow your technical presence alongside a vibrant community of engineers.
+          Document engineering lessons, share technical blueprints, and grow alongside a focused community of developers.
         </p>
         <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Portfolio</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Analytics</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Community</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Engineering Craft</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Author Community</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Knowledge Base</span>
         </div>
       </div>
     </div>

@@ -25,6 +25,13 @@ describe('HealthController', () => {
     controller = module.get<HealthController>(HealthController);
   });
 
+  describe('throttler exemption', () => {
+    it('should have SkipThrottle metadata on the controller class', () => {
+      const skipMetadata = Reflect.getMetadata('THROTTLER:SKIPdefault', HealthController);
+      expect(skipMetadata).toBe(true);
+    });
+  });
+
   describe('check (liveness)', () => {
     it('should return liveness status ok without calling the database', () => {
       const result = controller.check();

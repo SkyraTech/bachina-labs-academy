@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { UserSession } from '@prisma/client';
+import { Prisma, type UserSession } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import type {
   CreateSessionInput,
@@ -18,9 +18,13 @@ export class SessionsRepository {
   /**
    * Persists a newly established session record.
    */
-  async createSession(input: CreateSessionInput): Promise<UserSession> {
+  async createSession(
+    input: CreateSessionInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<UserSession> {
+    const client = tx ?? this.prisma;
     this.logger.debug(`createSession: userId=${input.userId}`);
-    return await this.prisma.userSession.create({
+    return await client.userSession.create({
       data: {
         userId: input.userId,
         refreshTokenHash: input.refreshTokenHash,
@@ -173,9 +177,11 @@ export class SessionsRepository {
     revokedAt: Date,
     reason?: RevocationReason,
     exceptSessionId?: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<number> {
+    const client = tx ?? this.prisma;
     this.logger.debug(`revokeAllUserSessions: userId=${userId}`);
-    const result = await this.prisma.userSession.updateMany({
+    const result = await client.userSession.updateMany({
       where: {
         userId,
         revokedAt: null,
@@ -200,11 +206,13 @@ export class SessionsRepository {
     userId: string,
     revokedAt: Date = new Date(),
     reason: RevocationReason = 'USER_LOGOUT',
+    tx?: Prisma.TransactionClient,
   ): Promise<boolean> {
+    const client = tx ?? this.prisma;
     this.logger.debug(
       `revokeUserSession: sessionId=${sessionId}, userId=${userId}, reason=${reason}`,
     );
-    const result = await this.prisma.userSession.updateMany({
+    const result = await client.userSession.updateMany({
       where: {
         id: sessionId,
         userId,

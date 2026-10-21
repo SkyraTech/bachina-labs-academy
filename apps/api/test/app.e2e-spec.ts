@@ -51,4 +51,21 @@ describe('AppController (e2e)', () => {
         expect(res.body).toHaveProperty('timestamp');
       });
   });
+
+  it('/health (GET) - Repeated polling is exempt from rate limits (>10 requests)', async () => {
+    // Default throttler limit is 10 req/min. Send 15 consecutive requests.
+    for (let i = 0; i < 15; i++) {
+      const res = await request(app.getHttpServer()).get('/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+    }
+  });
+
+  it('/health/database (GET) - Repeated readiness polling is exempt from rate limits (>10 requests)', async () => {
+    for (let i = 0; i < 15; i++) {
+      const res = await request(app.getHttpServer()).get('/health/database');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+    }
+  });
 });

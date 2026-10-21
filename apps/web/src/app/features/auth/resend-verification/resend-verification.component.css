@@ -1,0 +1,109 @@
+/* ============================================================
+   ResendVerificationComponent Scoped Styles — Clean Minimal SaaS
+   ============================================================ */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.auth-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.25rem 2rem;
+}
+
+@media (max-width: 640px) {
+  .auth-card-content {
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+.auth-header-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cooldown-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: var(--color-brand, #f97316);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin: 0 auto;
+}
+
+.form-wrapper {
+  width: 100%;
+}
+
+.auth-footer-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.switch-prompt {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.auth-link {
+  font-weight: 600;
+  color: var(--color-brand, #f97316);
+  text-decoration: none;
+  margin-left: 0.35rem;
+  transition: color 0.15s ease;
+}
+
+.auth-link:hover {
+  color: var(--color-brand-hover, #ea580c);
+  text-decoration: underline;
+}
+
+.secondary-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.subtle-link {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.subtle-link:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}

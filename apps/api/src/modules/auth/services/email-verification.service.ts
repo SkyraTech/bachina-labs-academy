@@ -113,12 +113,16 @@ export class EmailVerificationService {
     if (token === null) {
       // Covers both "never existed" and "already consumed", because the
       // repository only surfaces unconsumed rows on this path's cousin query.
-      this.logger.warn('Verification rejected: token not found or already used');
+      this.logger.warn(
+        'Verification rejected: token not found or already used [action=auth.email_verification, outcome=failure]',
+      );
       throw this.invalidToken();
     }
 
     if (this.isExpired(token.expiresAt)) {
-      this.logger.warn(`Verification rejected: token expired [tokenId=${token.id}]`);
+      this.logger.warn(
+        `Verification rejected: token expired [action=auth.email_verification, outcome=failure, tokenId=${token.id}]`,
+      );
       throw this.invalidToken();
     }
 
@@ -132,13 +136,13 @@ export class EmailVerificationService {
     if (!result.consumed) {
       // Concurrent replay lost the compare-and-swap. Same generic error.
       this.logger.warn(
-        `Verification rejected: token already consumed concurrently [tokenId=${token.id}]`,
+        `Verification rejected: token already consumed concurrently [action=auth.email_verification, outcome=failure, tokenId=${token.id}]`,
       );
       throw this.invalidToken();
     }
 
     this.logger.log(
-      `Email verified [userId=${token.userId}, newlyVerified=${String(result.newlyVerified)}]`,
+      `Email verified [action=auth.email_verification, outcome=success, userId=${token.userId}, newlyVerified=${String(result.newlyVerified)}]`,
     );
   }
 

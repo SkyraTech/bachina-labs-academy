@@ -11,12 +11,15 @@ import { PasswordHashingService } from './password-hashing.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { JwtTokenService } from './jwt-token.service';
 import { CookieService } from './cookie.service';
+import { AuthAbuseService } from './auth-abuse.service';
+import { PrismaService } from '../../../database/prisma.service';
+import { AuditService } from '../../audit/audit.service';
 import type { UserPasswordCredentials } from '../../users/types';
 
 const MOCK_DATE = new Date('2026-10-14T12:00:00.000Z');
 
 const MOCK_CREDENTIALS: UserPasswordCredentials = {
-  id: '11111111-1111-1111-1111-111111111111',
+  id: '11111111-1111-4111-8111-111111111111',
   email: 'author@skyra-tech.com',
   passwordHash: '$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$WJt...',
   role: UserRole.AUTHOR,
@@ -54,6 +57,22 @@ describe('LoginService', () => {
     setAuthCookies: ReturnType<typeof vi.fn>;
     clearAuthCookies: ReturnType<typeof vi.fn>;
   };
+  let authAbuseMock: {
+    checkLoginAllowed: ReturnType<typeof vi.fn>;
+    recordFailedAttempt: ReturnType<typeof vi.fn>;
+    recordSuccessfulLogin: ReturnType<typeof vi.fn>;
+  };
+  let prismaMock: {
+    $transaction: ReturnType<typeof vi.fn>;
+  };
+  let auditServiceMock: {
+    recordTransactional: ReturnType<typeof vi.fn>;
+  };
+
+  const mockTx = {
+    userSession: { create: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
 
   beforeEach(async () => {
     usersRepositoryMock = {
@@ -85,6 +104,20 @@ describe('LoginService', () => {
       setAuthCookies: vi.fn(),
       clearAuthCookies: vi.fn(),
     };
+    authAbuseMock = {
+      checkLoginAllowed: vi.fn().mockReturnValue({ blocked: false, retryAfterSeconds: 0 }),
+      recordFailedAttempt: vi.fn(),
+      recordSuccessfulLogin: vi.fn(),
+    };
+    prismaMock = {
+      $transaction: vi.fn(async (callback: (tx: any) => Promise<any>) => callback(mockTx)),
+    };
+    auditServiceMock = {
+      recordTransactional: vi.fn().mockResolvedValue({
+        id: 'mock-audit-id',
+        action: 'auth.login.succeeded',
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -96,6 +129,9 @@ describe('LoginService', () => {
         { provide: RefreshTokenService, useValue: refreshTokenMock },
         { provide: JwtTokenService, useValue: jwtTokenMock },
         { provide: CookieService, useValue: cookieServiceMock },
+        { provide: AuthAbuseService, useValue: authAbuseMock },
+        { provide: PrismaService, useValue: prismaMock },
+        { provide: AuditService, useValue: auditServiceMock },
       ],
     }).compile();
 
@@ -144,7 +180,21 @@ describe('LoginService', () => {
       );
     });
 
-    it('rejects incorrect password with generic error', async () => {
+    it('rejects with 429 when abuse protection blocks the attempt', async () => {
+      authAbuseMock.checkLoginAllowed.mockReturnValue({ blocked: true, retryAfterSeconds: 300 });
+
+      await expect(
+        service.login(
+          { email: 'author@skyra-tech.com', password: 'password123', rememberMe: false },
+          mockReq,
+          mockRes,
+        ),
+      ).rejects.toThrow(/Too many failed login attempts/);
+
+      expect(usersRepositoryMock.findPasswordCredentialsByEmail).not.toHaveBeenCalled();
+    });
+
+    it('rejects incorrect password with generic error and records failed attempt', async () => {
       usersRepositoryMock.findPasswordCredentialsByEmail.mockResolvedValue(MOCK_CREDENTIALS);
       passwordHashingMock.verify.mockResolvedValue(false);
 
@@ -156,6 +206,7 @@ describe('LoginService', () => {
         ),
       ).rejects.toThrow(new UnauthorizedException('Invalid email or password.'));
 
+      expect(authAbuseMock.recordFailedAttempt).toHaveBeenCalledWith('127.0.0.1', 'author@skyra-tech.com');
       expect(cookieServiceMock.setAuthCookies).not.toHaveBeenCalled();
     });
 
@@ -205,6 +256,81 @@ describe('LoginService', () => {
           mockRes,
         ),
       ).rejects.toThrow(/not active/i);
+    });
+
+    it('records auth.login.succeeded within shared Prisma transaction', async () => {
+      usersRepositoryMock.findPasswordCredentialsByEmail.mockResolvedValue(MOCK_CREDENTIALS);
+      passwordHashingMock.verify.mockResolvedValue(true);
+      sessionsServiceMock.createSession.mockResolvedValue({
+        id: 'session-uuid',
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+
+      await service.login(
+        { email: 'author@skyra-tech.com', password: 'password123', rememberMe: true },
+        mockReq,
+        mockRes,
+      );
+
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+      expect(sessionsServiceMock.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: MOCK_CREDENTIALS.id,
+          rememberMe: true,
+        }),
+        mockTx,
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        mockTx,
+        expect.objectContaining({
+          action: 'auth.login.succeeded',
+          outcome: 'SUCCESS',
+          resourceType: 'SESSION',
+          resourceId: 'session-uuid',
+          metadata: {
+            authMethod: 'PASSWORD',
+            rememberMe: true,
+          },
+        }),
+      );
+    });
+
+    it('aborts transaction and does not set cookies if audit recording fails', async () => {
+      usersRepositoryMock.findPasswordCredentialsByEmail.mockResolvedValue(MOCK_CREDENTIALS);
+      passwordHashingMock.verify.mockResolvedValue(true);
+      sessionsServiceMock.createSession.mockResolvedValue({
+        id: 'session-uuid',
+        expiresAt: new Date(Date.now() + 86400000),
+      });
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit table constraint violation'),
+      );
+
+      await expect(
+        service.login(
+          { email: 'author@skyra-tech.com', password: 'password123', rememberMe: false },
+          mockReq,
+          mockRes,
+        ),
+      ).rejects.toThrow('Audit table constraint violation');
+
+      expect(cookieServiceMock.setAuthCookies).not.toHaveBeenCalled();
+    });
+
+    it('does not record audit log if password check fails', async () => {
+      usersRepositoryMock.findPasswordCredentialsByEmail.mockResolvedValue(MOCK_CREDENTIALS);
+      passwordHashingMock.verify.mockResolvedValue(false);
+
+      await expect(
+        service.login(
+          { email: 'author@skyra-tech.com', password: 'wrongpassword', rememberMe: false },
+          mockReq,
+          mockRes,
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(auditServiceMock.recordTransactional).not.toHaveBeenCalled();
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
   });
 

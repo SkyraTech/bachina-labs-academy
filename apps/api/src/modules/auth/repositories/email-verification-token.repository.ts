@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service.js';
+import { AuditService } from '../../audit/audit.service.js';
+import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
 import type { VerificationTokenRecord } from '../types/email-verification.types.js';
 
 /**
@@ -74,7 +76,10 @@ export class EmailVerificationTokenRepository {
     createdAt: true,
   } as const;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * Issues a token for a user under a per-user row lock, enforcing the cooldown.
@@ -298,6 +303,19 @@ export class EmailVerificationTokenRepository {
         const userUpdate = await tx.user.updateMany({
           where: { id: userId, emailVerifiedAt: null, status: 'ACTIVE' },
           data: { emailVerifiedAt: consumedAt },
+        });
+
+        // Step 3 — Record mandatory transactional audit log in the exact same transaction
+        await this.auditService.recordTransactional(tx, {
+          action: 'auth.email.verified',
+          actor: AuditActorFactory.fromRegistrationTarget({ id: userId }),
+          resourceType: 'USER',
+          resourceId: null, // Privacy Option A
+          outcome: 'SUCCESS',
+          metadata: {
+            tokenCategory: 'EMAIL_VERIFICATION',
+            verificationMethod: 'LINK',
+          },
         });
 
         return { consumed: true, newlyVerified: userUpdate.count === 1 };

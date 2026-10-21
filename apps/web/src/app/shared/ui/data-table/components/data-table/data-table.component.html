@@ -1,0 +1,319 @@
+<div class="data-table-container">
+  <!-- Table Header / Toolbar -->
+  <div class="table-toolbar">
+    <div class="toolbar-left">
+      @if (tableTitle()) {
+        <h3 class="table-title">{{ tableTitle() }}</h3>
+      }
+    </div>
+
+    <div class="toolbar-right">
+      @if (searchable()) {
+        <div class="search-input-wrapper">
+          <svg class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="search"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="onSearchChange($event)"
+            [placeholder]="searchPlaceholder()"
+            aria-label="Search records"
+            class="table-search-input"
+          />
+          @if (searchQuery()) {
+            <button
+              type="button"
+              (click)="onSearchChange('')"
+              aria-label="Clear search"
+              class="search-clear-btn"
+            >
+              &times;
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  @if (error()) {
+    <div class="table-error-banner" role="alert">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-red-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-sm font-medium text-red-500">{{ error() }}</span>
+      </div>
+      <button type="button" (click)="retry.emit()" class="retry-btn">
+        Retry
+      </button>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="table-loading-container" aria-live="polite" aria-busy="true">
+      <div class="space-y-3 p-4">
+        <app-loading-skeleton height="40px"></app-loading-skeleton>
+        <app-loading-skeleton height="40px"></app-loading-skeleton>
+        <app-loading-skeleton height="40px"></app-loading-skeleton>
+      </div>
+    </div>
+  }
+
+  <!-- Desktop & Tablet Table Representation -->
+  @if (!loading()) {
+    <div class="desktop-table-wrapper">
+      <table class="saas-table" role="table">
+        <thead>
+          <tr class="table-header-row">
+            @if (selectable()) {
+              <th scope="col" class="th-selection">
+                <input
+                  type="checkbox"
+                  [checked]="areAllCurrentRowsSelected()"
+                  (change)="toggleSelectAll()"
+                  aria-label="Select all rows on current page"
+                  class="table-checkbox"
+                />
+              </th>
+            }
+            @for (col of columns(); track col.field) {
+              @if (!col.hidden) {
+                <th
+                  scope="col"
+                  [class.th-sortable]="col.sortable"
+                  [class.text-left]="col.align === 'left' || !col.align"
+                  [class.text-center]="col.align === 'center'"
+                  [class.text-right]="col.align === 'right'"
+                  [style.width]="col.width ?? null"
+                  [style.min-width]="col.minWidth ?? null"
+                  [attr.aria-sort]="col.sortable ? (sortField() === col.field ? (sortOrder() === 'asc' ? 'ascending' : 'descending') : 'none') : null"
+                  (click)="onSort(col)"
+                  class="th-cell"
+                >
+                  <div class="th-content" [class.justify-center]="col.align === 'center'" [class.justify-end]="col.align === 'right'">
+                    <span>{{ col.header }}</span>
+                    @if (col.sortable) {
+                      <span class="sort-icon-wrapper" aria-hidden="true">
+                        @if (sortField() === col.field) {
+                          @if (sortOrder() === 'asc') {
+                            <svg class="w-3.5 h-3.5 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                            </svg>
+                          } @else {
+                            <svg class="w-3.5 h-3.5 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          }
+                        } @else {
+                          <svg class="w-3.5 h-3.5 text-[var(--color-text-muted)] opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          </svg>
+                        }
+                      </span>
+                    }
+                  </div>
+                </th>
+              }
+            }
+            @if (actions().length > 0) {
+              <th scope="col" class="th-actions text-right">
+                <span>Actions</span>
+              </th>
+            }
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (row of displayRows(); track $index) {
+            <tr
+              class="table-data-row"
+              [class.row-selected]="isRowSelected(row)"
+              (click)="selectable() ? toggleRowSelection(row) : null"
+            >
+              @if (selectable()) {
+                <td class="td-selection" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    [checked]="isRowSelected(row)"
+                    (change)="toggleRowSelection(row)"
+                    aria-label="Select row"
+                    class="table-checkbox"
+                  />
+                </td>
+              }
+              @for (col of columns(); track col.field) {
+                @if (!col.hidden) {
+                  <td
+                    class="td-cell"
+                    [class.text-left]="col.align === 'left' || !col.align"
+                    [class.text-center]="col.align === 'center'"
+                    [class.text-right]="col.align === 'right'"
+                  >
+                    @if (col.cellTemplate) {
+                      <ng-container
+                        *ngTemplateOutlet="col.cellTemplate; context: { $implicit: row[col.field], row: row }"
+                      ></ng-container>
+                    } @else {
+                      <span>{{ getCellValue(row, col) }}</span>
+                    }
+                  </td>
+                }
+              }
+              @if (actions().length > 0) {
+                <td class="td-actions text-right" (click)="$event.stopPropagation()">
+                  <div class="row-actions-group">
+                    @for (action of actions(); track action.id) {
+                      @if (isActionVisible(action, row)) {
+                        <button
+                          type="button"
+                          [disabled]="isActionDisabled(action, row)"
+                          (click)="executeAction(action, row, $event)"
+                          class="row-action-btn"
+                          [class.btn-brand]="action.variant === 'brand'"
+                          [class.btn-secondary]="action.variant === 'secondary' || !action.variant"
+                          [class.btn-danger]="action.variant === 'danger'"
+                          [class.btn-ghost]="action.variant === 'ghost'"
+                          [attr.aria-label]="action.label"
+                        >
+                          {{ action.label }}
+                        </button>
+                      }
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View (< 640px) -->
+    <div class="mobile-cards-wrapper">
+      @for (row of displayRows(); track $index) {
+        <div class="mobile-row-card" [class.row-selected]="isRowSelected(row)">
+          <div class="mobile-card-header">
+            @if (selectable()) {
+              <input
+                type="checkbox"
+                [checked]="isRowSelected(row)"
+                (change)="toggleRowSelection(row)"
+                aria-label="Select item"
+                class="table-checkbox"
+              />
+            }
+            <span class="text-xs font-semibold text-[var(--color-text-muted)]">Record #{{ startRecord() + $index }}</span>
+          </div>
+
+          <div class="mobile-card-body">
+            @for (col of columns(); track col.field) {
+              @if (!col.hidden) {
+                <div class="mobile-card-field">
+                  <span class="mobile-field-label">{{ col.header }}:</span>
+                  <div class="mobile-field-value">
+                    @if (col.cellTemplate) {
+                      <ng-container
+                        *ngTemplateOutlet="col.cellTemplate; context: { $implicit: row[col.field], row: row }"
+                      ></ng-container>
+                    } @else {
+                      <span>{{ getCellValue(row, col) }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          @if (actions().length > 0) {
+            <div class="mobile-card-actions">
+              @for (action of actions(); track action.id) {
+                @if (isActionVisible(action, row)) {
+                  <button
+                    type="button"
+                    [disabled]="isActionDisabled(action, row)"
+                    (click)="executeAction(action, row, $event)"
+                    class="row-action-btn w-full"
+                    [class.btn-brand]="action.variant === 'brand'"
+                    [class.btn-secondary]="action.variant === 'secondary' || !action.variant"
+                    [class.btn-danger]="action.variant === 'danger'"
+                    [class.btn-ghost]="action.variant === 'ghost'"
+                  >
+                    {{ action.label }}
+                  </button>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Empty State -->
+    @if (displayRows().length === 0) {
+      <div class="table-empty-container">
+        <app-empty-state
+          [title]="emptyTitle()"
+          [description]="emptyMessage()"
+        ></app-empty-state>
+      </div>
+    }
+  }
+
+  <!-- Pagination Bar -->
+  @if (!loading() && totalRecords() > 0) {
+    <nav class="table-pagination-bar" aria-label="Table pagination">
+      <div class="pagination-info">
+        <span>Showing <strong>{{ startRecord() }}</strong> to <strong>{{ endRecord() }}</strong> of <strong>{{ totalRecords() }}</strong> records</span>
+      </div>
+
+      <div class="pagination-controls">
+        <div class="page-size-selector">
+          <label for="table-page-size" class="text-xs text-[var(--color-text-secondary)]">Rows per page:</label>
+          <select
+            id="table-page-size"
+            [ngModel]="currentPageSize()"
+            (ngModelChange)="onPageSizeChange($event)"
+            class="page-size-select"
+          >
+            @for (size of pageSizeOptions(); track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="pagination-buttons">
+          <button
+            type="button"
+            [disabled]="currentPage() <= 1"
+            (click)="goToPage(currentPage() - 1)"
+            aria-label="Previous page"
+            class="page-nav-btn"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <span class="page-current-indicator">
+            Page {{ currentPage() }} of {{ totalPages() }}
+          </span>
+
+          <button
+            type="button"
+            [disabled]="currentPage() >= totalPages()"
+            (click)="goToPage(currentPage() + 1)"
+            aria-label="Next page"
+            class="page-nav-btn"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+  }
+</div>
