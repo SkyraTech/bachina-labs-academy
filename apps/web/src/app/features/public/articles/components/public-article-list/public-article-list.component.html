@@ -1,0 +1,92 @@
+<div class="public-article-catalog max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+  <!-- Page Header -->
+  <header class="mb-10 sm:mb-14">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--color-brand-surface)] text-[var(--color-brand-deep)] text-xs font-bold uppercase tracking-wider">
+        <span class="w-2 h-2 rounded-full bg-[var(--color-brand)]"></span>
+        Knowledge Hub
+      </span>
+      <span class="text-xs text-[var(--color-text-muted)] font-medium">Public Edition</span>
+    </div>
+
+    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[var(--color-text)] leading-tight">
+      Engineering Articles &amp; Guides
+    </h1>
+
+    <p class="mt-4 text-base sm:text-lg text-[var(--color-text-secondary)] max-w-3xl leading-relaxed">
+      Practical architecture deep-dives, production retrospectives, and systems engineering insights published by Bachina Labs.
+    </p>
+  </header>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" aria-busy="true" aria-label="Loading articles">
+      @for (placeholder of [1, 2, 3, 4, 5, 6]; track placeholder) {
+        <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 space-y-4 animate-pulse">
+          <div class="aspect-video w-full rounded-xl bg-[var(--color-workspace-bg)]"></div>
+          <div class="h-6 w-3/4 rounded-md bg-[var(--color-workspace-bg)]"></div>
+          <div class="space-y-2">
+            <div class="h-4 w-full rounded bg-[var(--color-workspace-bg)]"></div>
+            <div class="h-4 w-5/6 rounded bg-[var(--color-workspace-bg)]"></div>
+          </div>
+          <div class="pt-4 border-t border-[var(--color-border)] flex justify-between">
+            <div class="h-3 w-20 rounded bg-[var(--color-workspace-bg)]"></div>
+            <div class="h-3 w-14 rounded bg-[var(--color-workspace-bg)]"></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error State -->
+  @else if (error()) {
+    <div class="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 sm:p-12 text-center my-8" role="alert">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-600 dark:text-red-400 mb-4">
+        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-[var(--color-text)]">Unable to Load Articles</h2>
+      <p class="mt-2 text-sm text-[var(--color-text-secondary)] max-w-md mx-auto">{{ error() }}</p>
+      <button
+        type="button"
+        (click)="loadArticles()"
+        class="mt-6 inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-bold text-sm bg-[var(--btn-primary-bg,#ea580c)] text-white shadow-sm hover:bg-[var(--btn-primary-hover,#c2410c)] transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
+      >
+        Try Again
+      </button>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @else if (articles().length === 0) {
+    <div class="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-12 sm:p-16 text-center my-8">
+      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-brand-surface)] text-[var(--color-brand)] mb-4">
+        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-[var(--color-text)]">No Articles Published Yet</h2>
+      <p class="mt-2 text-sm text-[var(--color-text-secondary)] max-w-md mx-auto">
+        Our engineering editorial team is crafting new technical guides. Check back soon for fresh publications.
+      </p>
+    </div>
+  }
+
+  <!-- Articles Grid -->
+  @else {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+      @for (item of articles(); track item.id) {
+        <app-public-article-card [article]="item"></app-public-article-card>
+      }
+    </div>
+
+    <!-- Pagination Controls -->
+    <app-public-article-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [total]="total()"
+      (pageChange)="onPageChange($event)"
+    ></app-public-article-pagination>
+  }
+</div>

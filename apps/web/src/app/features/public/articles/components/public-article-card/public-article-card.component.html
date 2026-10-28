@@ -1,0 +1,82 @@
+<article
+  class="public-article-card group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 transition-all duration-200 hover:border-[var(--color-brand)]/40 hover:shadow-md"
+  [attr.aria-labelledby]="'article-title-' + article().id"
+>
+  <div>
+    <!-- Cover Display or Graceful Placeholder -->
+    <div class="card-cover-container relative mb-5 overflow-hidden rounded-xl bg-[var(--color-workspace-bg)] border border-[var(--color-border)] aspect-video flex items-center justify-center">
+      @if (article().cover?.url) {
+        <img
+          [src]="article().cover!.url"
+          [alt]="article().cover!.altText || article().title"
+          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+      } @else {
+        <!-- Null URL Graceful Placeholder (No broken icons, no invented URLs) -->
+        <div class="flex flex-col items-center justify-center p-6 text-center text-[var(--color-text-muted)]">
+          <div class="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-brand-surface)] text-[var(--color-brand)]">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+            </svg>
+          </div>
+          <span class="text-xs font-medium tracking-wide uppercase text-[var(--color-text-muted)]">
+            Bachina Labs Academy
+          </span>
+          @if (article().cover?.altText) {
+            <span class="mt-1 text-[11px] text-[var(--color-text-secondary)] line-clamp-1 italic">
+              {{ article().cover!.altText }}
+            </span>
+          }
+        </div>
+      }
+
+      <!-- Preset Badge Overlay -->
+      <div class="absolute top-3 right-3">
+        <span class="inline-flex items-center rounded-full bg-[var(--color-surface)]/90 px-2.5 py-1 text-[11px] font-semibold text-[var(--color-brand-deep)] shadow-xs backdrop-blur-xs border border-[var(--color-border)]">
+          {{ getTypographyBadgeLabel(article().typographyPreset) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Article Header -->
+    <header>
+      <h2
+        [id]="'article-title-' + article().id"
+        class="text-xl font-bold tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-brand)] line-clamp-2 leading-snug"
+      >
+        <a [routerLink]="['/articles', article().slug]" class="focus:outline-hidden focus-visible:underline">
+          {{ article().title }}
+        </a>
+      </h2>
+
+      @if (article().summary) {
+        <p class="mt-2.5 text-sm leading-relaxed text-[var(--color-text-secondary)] line-clamp-3">
+          {{ article().summary }}
+        </p>
+      }
+    </header>
+  </div>
+
+  <!-- Card Footer -->
+  <footer class="mt-6 pt-4 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+    <div class="flex items-center gap-2">
+      <time [attr.datetime]="article().publishedAt">
+        {{ article().publishedAt | date: 'mediumDate' }}
+      </time>
+      <span aria-hidden="true">&bull;</span>
+      <span>Rev {{ article().revision }}</span>
+    </div>
+
+    <a
+      [routerLink]="['/articles', article().slug]"
+      class="inline-flex items-center gap-1 font-semibold text-[var(--color-brand)] hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] rounded-sm"
+      [attr.aria-label]="'Read article: ' + article().title"
+    >
+      <span>Read</span>
+      <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+  </footer>
+</article>

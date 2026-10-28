@@ -1,0 +1,29 @@
+/* Public Article Block Component Styles */
+:host {
+  display: block;
+}
+
+.public-article-block {
+  min-width: 0;
+}
+
+.tab-size-2 {
+  tab-size: 2;
+}
+
+/* Callout borders and states */
+.callout-warning {
+  border-left-width: 4px;
+}
+
+.callout-tip {
+  border-left-width: 4px;
+}
+
+.callout-note {
+  border-left-width: 4px;
+}
+
+.callout-info {
+  border-left-width: 4px;
+}

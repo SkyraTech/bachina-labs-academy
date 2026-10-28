@@ -1,0 +1,15 @@
+/* Public Article Pagination Component Styles */
+:host {
+  display: block;
+  width: 100%;
+}
+
+.pagination-btn,
+.pagination-number-btn {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pagination-btn:disabled {
+  cursor: not-allowed;
+}

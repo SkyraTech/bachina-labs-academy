@@ -1,0 +1,4 @@
+/* Component styles for ArticleEditorComponent */
+:host {
+  display: block;
+}

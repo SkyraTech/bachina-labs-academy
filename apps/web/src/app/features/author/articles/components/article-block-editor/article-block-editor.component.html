@@ -1,0 +1,632 @@
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+  @if (!state.selectedBlock()) {
+    <div class="py-12 text-center text-[var(--color-text-muted)]">
+      <svg class="w-12 h-12 mx-auto text-[var(--color-border-strong)] mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      </svg>
+      <p class="font-medium text-sm text-[var(--color-text)]">No block selected</p>
+      <p class="text-xs text-[var(--color-text-muted)] mt-1">Select a block from the outline or add a new one.</p>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-4 border-b border-[var(--color-border)] mb-6">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-[var(--color-workspace-bg)] text-[var(--color-brand)] border border-[var(--color-border)]">
+          {{ state.selectedBlock()?.type }}
+        </span>
+        <h2 class="text-base font-bold text-[var(--color-text)]">
+          Edit Block Content
+        </h2>
+      </div>
+
+      <div class="flex items-center gap-2">
+        @if (isDirty()) {
+          <span class="text-xs px-2.5 py-0.5 rounded font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+            Unsaved Edits
+          </span>
+        }
+
+        <button
+          type="button"
+          (click)="onCancel()"
+          [disabled]="!isDirty() || state.isSaving()"
+          class="px-3 py-1.5 text-xs font-medium rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Reset
+        </button>
+
+        <button
+          type="button"
+          (click)="onSave()"
+          [disabled]="!isDirty() || !isValid() || state.isSaving()"
+          class="px-4 py-1.5 text-xs font-medium rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+        >
+          @if (state.isSaving()) {
+            <span>Saving...</span>
+          } @else {
+            <span>Save Block</span>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Dynamic Form by Block Type -->
+    @switch (state.selectedBlock()?.type) {
+      @case ('HEADING') {
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="heading-text" class="block text-xs font-semibold text-[var(--color-text)]">
+                Heading Text <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ headingText.length }} / 500
+              </span>
+            </div>
+            <input
+              id="heading-text"
+              type="text"
+              [(ngModel)]="headingText"
+              (ngModelChange)="markDirty()"
+              maxlength="500"
+              class="w-full px-3.5 py-2 text-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              placeholder="Enter section heading..."
+            />
+            @if (headingText.trim().length === 0 && isDirty()) {
+              <p class="text-xs text-red-500 mt-1">Heading text is required (1 to 500 characters).</p>
+            }
+          </div>
+
+          <div>
+            <span class="block text-xs font-semibold text-[var(--color-text)] mb-1">
+              Heading Level
+            </span>
+            <div class="flex items-center gap-2">
+              @for (lvl of [1, 2, 3, 4]; track lvl) {
+                <button
+                  type="button"
+                  (click)="headingLevel = lvl; markDirty()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-colors"
+                  [class.bg-[var(--color-brand)]]="headingLevel === lvl"
+                  [class.text-white]="headingLevel === lvl"
+                  [class.border-[var(--color-brand)]]="headingLevel === lvl"
+                  [class.border-[var(--color-border)]]="headingLevel !== lvl"
+                  [class.text-[var(--color-text)]]="headingLevel !== lvl"
+                >
+                  H{{ lvl }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @case ('RICH_TEXT') {
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <label for="rich-html" class="block text-xs font-semibold text-[var(--color-text)]">
+              HTML Content <span class="text-red-500">*</span>
+            </label>
+            <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+              {{ richTextHtml.length }} / 60,000 chars
+            </span>
+          </div>
+
+          <!-- Quick Tag Inserter Toolbar -->
+          <div class="flex items-center gap-1.5 flex-wrap p-1.5 rounded-lg bg-[var(--color-workspace-bg)] border border-[var(--color-border)]">
+            <button type="button" (click)="wrapHtml('<strong>', '</strong>')" title="Bold (strong)" aria-label="Bold" class="px-2 py-1 text-xs font-bold rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">B</button>
+            <button type="button" (click)="wrapHtml('<em>', '</em>')" title="Italic (em)" aria-label="Italic" class="px-2 py-1 text-xs italic rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">I</button>
+            <button type="button" (click)="wrapHtml('<u>', '</u>')" title="Underline (u)" aria-label="Underline" class="px-2 py-1 text-xs underline rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">U</button>
+            <button type="button" (click)="wrapHtml('<s>', '</s>')" title="Strikethrough (s)" aria-label="Strikethrough" class="px-2 py-1 text-xs line-through rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">S</button>
+            <button type="button" (click)="wrapHtml('<code>', '</code>')" title="Inline code" aria-label="Inline code" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&lt;&gt;</button>
+            <button type="button" (click)="wrapHtml('<sub>', '</sub>')" title="Subscript" aria-label="Subscript" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">x<sub>2</sub></button>
+            <button type="button" (click)="wrapHtml('<sup>', '</sup>')" title="Superscript" aria-label="Superscript" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">x<sup>2</sup></button>
+            <button type="button" (click)="insertHtml('<pre><code>// code snippet</code></pre>')" title="Code block (pre code)" aria-label="Code block" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">pre</button>
+            <button type="button" (click)="insertHtml('<p></p>')" title="Paragraph (p)" aria-label="Paragraph" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&para; p</button>
+            <button type="button" (click)="insertHtml('<br>')" title="Line break (br)" aria-label="Line break" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">br</button>
+            <button type="button" (click)="insertHtml('<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>')" title="Bullet list (ul)" aria-label="Bullet list" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&bull; list</button>
+            <button type="button" (click)="insertHtml('<ol>\n  <li>First step</li>\n  <li>Second step</li>\n</ol>')" title="Numbered list (ol)" aria-label="Numbered list" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">1. list</button>
+            <button type="button" (click)="insertHtml('<blockquote>\n  <p>Quotation text</p>\n</blockquote>')" title="Blockquote" aria-label="Blockquote" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">quote</button>
+            <button type="button" (click)="insertHtml('<a href=&quot;https://example.com&quot;>Link text</a>')" title="Link (a)" aria-label="Link" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">link</button>
+          </div>
+
+          <textarea
+            id="rich-html"
+            [(ngModel)]="richTextHtml"
+            (ngModelChange)="markDirty()"
+            (paste)="onPaste($event)"
+            rows="8"
+            class="w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] leading-relaxed"
+            placeholder="<p>Enter educational formatted text using approved HTML elements: p, br, strong, em, u, s, a, ul, ol, li, blockquote, code, pre, sub, sup</p>"
+          ></textarea>
+          <p class="text-[11px] text-[var(--color-text-muted)]">
+            Only approved tags and absolute HTTP/HTTPS links are accepted. Backend validates full document compliance on save.
+          </p>
+        </div>
+      }
+
+      @case ('CODE') {
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div class="w-1/2">
+              <label for="code-lang" class="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                Programming Language
+              </label>
+              <input
+                id="code-lang"
+                type="text"
+                [(ngModel)]="codeLanguage"
+                (ngModelChange)="markDirty()"
+                maxlength="50"
+                placeholder="typescript, python, sql, bash"
+                class="w-full px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              />
+            </div>
+
+            <div class="pt-5">
+              <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--color-text)]">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="codeShowLineNumbers"
+                  (ngModelChange)="markDirty()"
+                  class="rounded text-[var(--color-brand)] focus:ring-[var(--color-brand)]"
+                />
+                <span>Show line numbers</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="code-body" class="block text-xs font-semibold text-[var(--color-text)]">
+                Code Snippet <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ codeSnippet.length }} / 60,000
+              </span>
+            </div>
+            <textarea
+              id="code-body"
+              [(ngModel)]="codeSnippet"
+              (ngModelChange)="markDirty()"
+              rows="10"
+              class="w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] whitespace-pre leading-relaxed"
+              placeholder="// Paste or write your source code here..."
+            ></textarea>
+          </div>
+        </div>
+      }
+
+      @case ('QUOTE') {
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="quote-text" class="block text-xs font-semibold text-[var(--color-text)]">
+                Quote Body <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ quoteText.length }} / 5,000
+              </span>
+            </div>
+            <textarea
+              id="quote-text"
+              [(ngModel)]="quoteText"
+              (ngModelChange)="markDirty()"
+              rows="4"
+              maxlength="5000"
+              class="w-full px-3.5 py-2 text-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] italic"
+              placeholder="The quotation content..."
+            ></textarea>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="quote-author" class="block text-xs font-semibold text-[var(--color-text)]">
+                Author / Citation <span class="text-xs text-[var(--color-text-muted)] font-normal">(Optional)</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ quoteAuthor.length }} / 255
+              </span>
+            </div>
+            <input
+              id="quote-author"
+              type="text"
+              [(ngModel)]="quoteAuthor"
+              (ngModelChange)="markDirty()"
+              maxlength="255"
+              placeholder="e.g. Martin Fowler, Patterns of Enterprise Application Architecture"
+              class="w-full px-3.5 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+        </div>
+      }
+
+      @case ('CALLOUT') {
+        <div class="space-y-4">
+          <div class="flex items-center gap-4">
+            <div class="w-1/3">
+              <label for="callout-variant" class="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                Callout Variant
+              </label>
+              <select
+                id="callout-variant"
+                [(ngModel)]="calloutVariant"
+                (ngModelChange)="markDirty()"
+                class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              >
+                <option value="INFO">INFO (Blue)</option>
+                <option value="WARNING">WARNING (Amber)</option>
+                <option value="TIP">TIP (Green)</option>
+                <option value="NOTE">NOTE (Neutral)</option>
+              </select>
+            </div>
+
+            <div class="w-2/3">
+              <div class="flex items-center justify-between mb-1">
+                <label for="callout-title" class="block text-xs font-semibold text-[var(--color-text)]">
+                  Callout Title <span class="text-xs text-[var(--color-text-muted)] font-normal">(Optional)</span>
+                </label>
+                <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                  {{ calloutTitle.length }} / 255
+                </span>
+              </div>
+              <input
+                id="callout-title"
+                type="text"
+                [(ngModel)]="calloutTitle"
+                (ngModelChange)="markDirty()"
+                maxlength="255"
+                placeholder="e.g. Architectural Warning"
+                class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="callout-body" class="block text-xs font-semibold text-[var(--color-text)]">
+                Callout Body <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ calloutBody.length }} / 5,000
+              </span>
+            </div>
+            <textarea
+              id="callout-body"
+              [(ngModel)]="calloutBody"
+              (ngModelChange)="markDirty()"
+              rows="4"
+              maxlength="5000"
+              class="w-full px-3.5 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              placeholder="Detailed callout explanation..."
+            ></textarea>
+          </div>
+        </div>
+      }
+
+      @case ('TABLE') {
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-[var(--color-text)]">
+              Columns ({{ tableHeaders.length }}/20), Rows ({{ tableRows.length }}/100)
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="addTableColumn()"
+                [disabled]="tableHeaders.length >= 20"
+                class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
+              >
+                + Add Column
+              </button>
+              <button
+                type="button"
+                (click)="addTableRow()"
+                [disabled]="tableRows.length >= 100"
+                class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
+              >
+                + Add Row
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive Matrix Editor -->
+          <div class="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+            <table class="w-full text-xs">
+              <thead class="bg-[var(--color-workspace-bg)] border-b border-[var(--color-border)]">
+                <tr>
+                  <th class="w-8 p-2 text-center text-[var(--color-text-muted)] font-mono">#</th>
+                  @for (header of tableHeaders; track $index; let colIdx = $index) {
+                    <th class="p-2 text-left">
+                      <div class="flex items-center gap-1">
+                        <input
+                          type="text"
+                          [value]="header"
+                          (input)="updateHeader(colIdx, $event)"
+                          maxlength="255"
+                          placeholder="Header {{ colIdx + 1 }}"
+                          class="w-full px-2 py-1 text-xs font-semibold rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                        />
+                        @if (tableHeaders.length > 1) {
+                          <button
+                            type="button"
+                            (click)="removeTableColumn(colIdx)"
+                            class="text-red-400 hover:text-red-600 p-0.5"
+                            title="Remove column"
+                          >
+                            &times;
+                          </button>
+                        }
+                      </div>
+                    </th>
+                  }
+                  <th class="w-8 p-2"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--color-border)]">
+                @for (row of tableRows; track $index; let rowIdx = $index) {
+                  <tr>
+                    <td class="p-2 text-center text-[var(--color-text-muted)] font-mono text-[10px]">
+                      {{ rowIdx + 1 }}
+                    </td>
+                    @for (cell of row; track $index; let colIdx = $index) {
+                      <td class="p-2">
+                        <input
+                          type="text"
+                          [value]="cell"
+                          (input)="updateCell(rowIdx, colIdx, $event)"
+                          maxlength="1000"
+                          class="w-full px-2 py-1 text-xs rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                        />
+                      </td>
+                    }
+                    <td class="p-2 text-center">
+                      @if (tableRows.length > 1) {
+                        <button
+                          type="button"
+                          (click)="removeTableRow(rowIdx)"
+                          class="text-red-400 hover:text-red-600 p-0.5"
+                          title="Remove row"
+                        >
+                          &times;
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      @case ('DIVIDER') {
+        <div class="py-8 text-center text-xs text-[var(--color-text-muted)] space-y-2">
+          <hr class="border-t-2 border-[var(--color-border)] my-4 w-3/4 mx-auto" />
+          <p>Dividers create a clean horizontal separator between sections.</p>
+          <p class="text-[11px]">No additional content configuration is required for this block.</p>
+        </div>
+      }
+
+      @case ('LINK_CARD') {
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="link-url" class="block text-xs font-semibold text-[var(--color-text)]">
+                Destination URL <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ linkUrl.length }} / 2,000
+              </span>
+            </div>
+            <input
+              id="link-url"
+              type="url"
+              [(ngModel)]="linkUrl"
+              (ngModelChange)="markDirty()"
+              maxlength="2000"
+              placeholder="https://example.com/guide"
+              class="w-full px-3.5 py-2 font-mono text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="link-title" class="block text-xs font-semibold text-[var(--color-text)]">
+                Card Title <span class="text-red-500">*</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ linkTitle.length }} / 255
+              </span>
+            </div>
+            <input
+              id="link-title"
+              type="text"
+              [(ngModel)]="linkTitle"
+              (ngModelChange)="markDirty()"
+              maxlength="255"
+              placeholder="Title of external resource"
+              class="w-full px-3.5 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="link-desc" class="block text-xs font-semibold text-[var(--color-text)]">
+                Description <span class="text-xs text-[var(--color-text-muted)] font-normal">(Optional)</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ linkDescription.length }} / 1,000
+              </span>
+            </div>
+            <textarea
+              id="link-desc"
+              [(ngModel)]="linkDescription"
+              (ngModelChange)="markDirty()"
+              rows="2"
+              maxlength="1000"
+              class="w-full px-3.5 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              placeholder="Brief synopsis of the external reference..."
+            ></textarea>
+          </div>
+        </div>
+      }
+
+      @case ('VIDEO') {
+        <div class="space-y-4">
+          <div class="flex items-center gap-4">
+            <div class="w-1/3">
+              <label for="video-provider" class="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                Provider
+              </label>
+              <select
+                id="video-provider"
+                [(ngModel)]="videoProvider"
+                (ngModelChange)="markDirty()"
+                class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              >
+                <option value="YOUTUBE">YouTube</option>
+                <option value="VIMEO">Vimeo</option>
+                <option value="CUSTOM">Custom HTTPS</option>
+              </select>
+            </div>
+
+            <div class="w-2/3">
+              <div class="flex items-center justify-between mb-1">
+                <label for="video-url" class="block text-xs font-semibold text-[var(--color-text)]">
+                  Video URL <span class="text-red-500">*</span>
+                </label>
+                <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                  {{ videoUrl.length }} / 2,000
+                </span>
+              </div>
+              <input
+                id="video-url"
+                type="url"
+                [(ngModel)]="videoUrl"
+                (ngModelChange)="markDirty()"
+                maxlength="2000"
+                placeholder="https://www.youtube.com/watch?v=..."
+                class="w-full px-3 py-2 text-xs font-mono rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="video-caption" class="block text-xs font-semibold text-[var(--color-text)]">
+                Caption <span class="text-xs text-[var(--color-text-muted)] font-normal">(Optional)</span>
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ videoCaption.length }} / 500
+              </span>
+            </div>
+            <input
+              id="video-caption"
+              type="text"
+              [(ngModel)]="videoCaption"
+              (ngModelChange)="markDirty()"
+              maxlength="500"
+              class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+        </div>
+      }
+
+      @case ('IMAGE') {
+        <div class="space-y-4">
+          <!-- Image Asset Selection -->
+          <div>
+            <span class="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
+              Image Asset
+            </span>
+            @if (imageMediaId()) {
+              <div class="relative rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-workspace-bg)] mb-2 aspect-video max-h-48">
+                <img
+                  [src]="getImagePreviewUrl()"
+                  alt="Block image preview"
+                  class="w-full h-full object-cover"
+                />
+                <div class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    (click)="openMediaPicker()"
+                    class="px-2.5 py-1 text-xs font-semibold rounded bg-white text-black hover:bg-neutral-100"
+                  >
+                    Change Image
+                  </button>
+                  <button
+                    type="button"
+                    (click)="removeImage()"
+                    class="px-2.5 py-1 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <button
+                type="button"
+                (click)="openMediaPicker()"
+                class="w-full py-4 px-4 border border-dashed border-[var(--color-border)] hover:border-[var(--color-brand)] rounded-xl text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-brand)] bg-[var(--color-workspace-bg)] transition-colors flex items-center justify-center gap-2"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Select Owned Image Asset</span>
+              </button>
+            }
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="img-caption" class="block text-xs font-semibold text-[var(--color-text)]">
+                Caption
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ imageCaption.length }} / 500
+              </span>
+            </div>
+            <input
+              id="img-caption"
+              type="text"
+              [(ngModel)]="imageCaption"
+              (ngModelChange)="markDirty()"
+              maxlength="500"
+              placeholder="e.g. Figure 1 — Relational Partition Architecture"
+              class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="img-alt" class="block text-xs font-semibold text-[var(--color-text)]">
+                Alternative Text (Accessibility)
+              </label>
+              <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
+                {{ imageAltText.length }} / 255
+              </span>
+            </div>
+            <input
+              id="img-alt"
+              type="text"
+              [(ngModel)]="imageAltText"
+              (ngModelChange)="markDirty()"
+              maxlength="255"
+              placeholder="e.g. Diagram showing 4 database partitions feeding a read replica"
+              class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+            />
+          </div>
+        </div>
+      }
+    }
+  }
+
+  @if (isPickerOpen()) {
+    <app-article-media-picker
+      [selectedMediaId]="imageMediaId()"
+      (mediaSelected)="onImageSelected($event)"
+      (closed)="closeMediaPicker()"
+    />
+  }
+</div>

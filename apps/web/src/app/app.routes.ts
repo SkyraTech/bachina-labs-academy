@@ -45,18 +45,18 @@ export const routes: Routes = [
       {
         path: 'articles',
         loadComponent: () =>
-          import('./features/public/articles/articles-placeholder.component').then(
-            (m) => m.ArticlesPlaceholderComponent,
-          ),
+          import(
+            './features/public/articles/components/public-article-list/public-article-list.component'
+          ).then((m) => m.PublicArticleListComponent),
         title: 'Articles · Bachina Labs Academy',
       },
       {
         path: 'articles/:slug',
         loadComponent: () =>
-          import('./features/public/articles/articles-placeholder.component').then(
-            (m) => m.ArticlesPlaceholderComponent,
-          ),
-        title: 'Article Detail · Bachina Labs Academy',
+          import(
+            './features/public/articles/components/public-article-reader/public-article-reader.component'
+          ).then((m) => m.PublicArticleReaderComponent),
+        title: 'Article · Bachina Labs Academy',
       },
     ],
   },
@@ -115,21 +115,30 @@ export const routes: Routes = [
       },
       {
         path: 'author/articles',
-        canActivate: [authGuard, roleGuard(['AUTHOR'])],
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
         loadComponent: () =>
-          import('./features/author/author-placeholder.component').then(
-            (m) => m.AuthorDashboardPlaceholderComponent,
+          import('./features/author/articles/components/article-list/article-list.component').then(
+            (m) => m.ArticleListComponent,
           ),
         title: 'My Articles · Bachina Labs Academy',
       },
       {
         path: 'author/articles/new',
-        canActivate: [authGuard, roleGuard(['AUTHOR'])],
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
         loadComponent: () =>
-          import('./features/author/author-placeholder.component').then(
-            (m) => m.AuthorDashboardPlaceholderComponent,
+          import('./features/author/articles/components/article-create/article-create.component').then(
+            (m) => m.ArticleCreateComponent,
           ),
         title: 'New Article Draft · Bachina Labs Academy',
+      },
+      {
+        path: 'author/articles/:articleId/edit',
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/author/articles/components/article-editor/article-editor.component').then(
+            (m) => m.ArticleEditorComponent,
+          ),
+        title: 'Article Editor · Bachina Labs Academy',
       },
       {
         path: 'admin',

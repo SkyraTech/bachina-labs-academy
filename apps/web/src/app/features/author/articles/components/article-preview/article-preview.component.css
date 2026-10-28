@@ -1,0 +1,8 @@
+/* Component styles for ArticlePreviewComponent */
+:host {
+  display: block;
+}
+
+.article-block-render {
+  position: relative;
+}

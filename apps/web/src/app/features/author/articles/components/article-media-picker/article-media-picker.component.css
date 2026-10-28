@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.media-picker-overlay {
+  box-sizing: border-box;
+}
+
+.media-picker-modal {
+  box-sizing: border-box;
+}

@@ -1,0 +1,13 @@
+/* Public Article Card Component Styles */
+:host {
+  display: block;
+  height: 100%;
+}
+
+.public-article-card {
+  min-height: 100%;
+}
+
+.card-cover-container {
+  min-height: 160px;
+}

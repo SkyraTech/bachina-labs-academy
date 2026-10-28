@@ -236,4 +236,25 @@ describe('PrismaService — Runtime Configuration & Security Verification', () =
       expect(result).toBe(false);
     });
   });
+
+  describe('onModuleDestroy() Graceful Lifecycle Cleanup', () => {
+    it('awaits and executes $disconnect when onModuleDestroy is called', async () => {
+      const service = new PrismaService();
+      const disconnectSpy = vi.spyOn(service, '$disconnect').mockResolvedValue();
+
+      await service.onModuleDestroy();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('tolerates repeated onModuleDestroy invocations without throwing', async () => {
+      const service = new PrismaService();
+      const disconnectSpy = vi.spyOn(service, '$disconnect').mockResolvedValue();
+
+      await service.onModuleDestroy();
+      await service.onModuleDestroy();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(2);
+    });
+  });
 });

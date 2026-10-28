@@ -50,6 +50,34 @@ enum UserStatus {
   DISABLED
 }
 
+/**
+ * ArticleStatus — publication lifecycle state of an article.
+ * DRAFT     — editable draft mode. Only visible to author and editors.
+ * PUBLISHED — active public article with immutable snapshot representation.
+ * ARCHIVED  — unlisted / withdrawn from public catalog with preserved history.
+ */
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/**
+ * ArticleBlockType — component types for the block-based article builder.
+ */
+enum ArticleBlockType {
+  HEADING
+  RICH_TEXT
+  IMAGE
+  VIDEO
+  CODE
+  QUOTE
+  CALLOUT
+  TABLE
+  DIVIDER
+  LINK_CARD
+}
+
 // ── Business models ────────────────────────────────────────────────────────────
 
 /**
@@ -108,6 +136,8 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   sessions                UserSession[]
   auditLogs               AuditLog[]
+  uploadedMedia           MediaAsset[]             @relation("UploadedMedia")
+  authoredArticles        Article[]                @relation("AuthoredArticles")
 
   @@map("users")
 }
@@ -289,6 +319,139 @@ model AuditLog {
   @@index([resourceType, resourceId, createdAt(sort: Desc)], map: "audit_logs_resource_type_resource_id_created_at_idx")
   @@index([requestId], map: "audit_logs_request_id_idx")
   @@map("audit_logs")
+}
+
+// ── Article Module: Stage 1 — Media Assets ────────────────────────────────────
+
+/**
+ * MediaAsset — metadata for uploaded images and media assets.
+ * Backs article cover images and embedded image content blocks.
+ */
+model MediaAsset {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uploaderId       String   @map("uploader_id") @db.Uuid
+  storageKey       String   @unique @map("storage_key") @db.VarChar(512)
+  mediaType        String   @map("media_type") @db.VarChar(50)
+  mimeType         String   @map("mime_type") @db.VarChar(100)
+  fileSize         Int      @map("file_size")
+  width            Int?
+  height           Int?
+  altText          String?  @map("alt_text") @db.VarChar(255)
+  originalFilename String   @map("original_filename") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  uploader User @relation("UploadedMedia", fields: [uploaderId], references: [id], onDelete: Restrict)
+  coverArticles Article[] @relation("ArticleCoverMedia")
+  imageBlocks   ArticleBlock[] @relation("ArticleBlockImage")
+  snapshotReferences ArticleSnapshotMedia[] @relation("MediaAssetSnapshotReferences")
+
+  @@index([uploaderId, createdAt(sort: Desc)], map: "media_assets_uploader_id_created_at_idx")
+  @@map("media_assets")
+}
+
+// ── Article Module: Stage 2 — Articles ────────────────────────────────────────
+
+/**
+ * Article — core authoring entity for articles, tutorials, and deep dives.
+ * Backs draft autosave, revision progression, and published reading view.
+ */
+model Article {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId          String        @map("author_id") @db.Uuid
+  title             String        @db.VarChar(255)
+  draftSlug         String        @map("draft_slug") @db.VarChar(280)
+  publishedSlug     String?       @unique @map("published_slug") @db.VarChar(280)
+  summary           String?       @db.VarChar(500)
+  status            ArticleStatus @default(DRAFT)
+  typographyPreset  String        @default("MODERN_SANS") @map("typography_preset") @db.VarChar(50)
+  coverMediaId      String?       @map("cover_media_id") @db.Uuid
+  draftRevision     Int           @default(1) @map("draft_revision")
+  publishedRevision Int           @default(0) @map("published_revision")
+  currentSnapshotId String?       @map("current_snapshot_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  publishedAt       DateTime?     @map("published_at") @db.Timestamptz(3)
+
+  author     User              @relation("AuthoredArticles", fields: [authorId], references: [id], onDelete: Restrict)
+  coverMedia MediaAsset?       @relation("ArticleCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  blocks     ArticleBlock[]    @relation("ArticleDraftBlocks")
+  snapshots  ArticleSnapshot[] @relation("ArticleHistoricalSnapshots")
+
+  @@index([authorId, createdAt(sort: Desc)], map: "articles_author_id_created_at_idx")
+  @@index([status, publishedAt(sort: Desc)], map: "articles_status_published_at_idx")
+  @@index([draftSlug], map: "articles_draft_slug_idx")
+  @@map("articles")
+}
+
+// ── Article Module: Stage 3 — Article Blocks ──────────────────────────────────
+
+/**
+ * ArticleBlock — modular, typed content component within an article draft.
+ * Backs drag-and-drop block ordering, autosave, and rich content payloads.
+ */
+model ArticleBlock {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId     String           @map("article_id") @db.Uuid
+  type          ArticleBlockType
+  position      Int
+  content       Json             @db.JsonB
+  mediaAssetId  String?          @map("media_asset_id") @db.Uuid
+  schemaVersion Int              @default(1) @map("schema_version")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  article    Article     @relation("ArticleDraftBlocks", fields: [articleId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset? @relation("ArticleBlockImage", fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@index([articleId], map: "article_blocks_article_id_idx")
+  @@index([mediaAssetId], map: "article_blocks_media_asset_id_idx")
+  @@map("article_blocks")
+}
+
+// ── Article Module: Stage 4 — Article Snapshots ───────────────────────────────
+
+/**
+ * ArticleSnapshot — immutable published version of an article.
+ * Backs historical revision provenance, public rendering, and independent draft evolution.
+ */
+model ArticleSnapshot {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId        String   @map("article_id") @db.Uuid
+  snapshotRevision Int      @map("snapshot_revision")
+  title            String   @db.VarChar(255)
+  publishedSlug    String   @map("published_slug") @db.VarChar(280)
+  summary          String?  @db.VarChar(500)
+  typographyPreset String   @map("typography_preset") @db.VarChar(50)
+  coverMediaId     String?  @map("cover_media_id") @db.Uuid
+  blocks           Json     @db.JsonB
+  publishedAt      DateTime @default(now()) @map("published_at") @db.Timestamptz(3)
+
+  article Article @relation("ArticleHistoricalSnapshots", fields: [articleId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  snapshotMedia ArticleSnapshotMedia[] @relation("SnapshotMediaReferences")
+
+  @@unique([articleId, snapshotRevision], map: "article_snapshots_article_id_snapshot_revision_key")
+  @@unique([id, articleId], map: "article_snapshots_id_article_id_key")
+  @@index([articleId, publishedAt(sort: Desc)], map: "article_snapshots_article_id_published_at_idx")
+  @@map("article_snapshots")
+}
+
+// ── Article Module: Stage 5 — Snapshot Media Retention ────────────────────────
+
+/**
+ * ArticleSnapshotMedia — junction table establishing durable relational retention
+ * between immutable published article snapshots and referenced media assets.
+ * Backs historical media retention (RESTRICT on delete) even when drafts evolve.
+ */
+model ArticleSnapshotMedia {
+  snapshotId   String @map("snapshot_id") @db.Uuid
+  mediaAssetId String @map("media_asset_id") @db.Uuid
+
+  snapshot   ArticleSnapshot @relation("SnapshotMediaReferences", fields: [snapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  mediaAsset MediaAsset      @relation("MediaAssetSnapshotReferences", fields: [mediaAssetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([snapshotId, mediaAssetId])
+  @@index([mediaAssetId], map: "article_snapshot_media_media_asset_id_idx")
+  @@map("article_snapshot_media")
 }
 
 // ── Future business models will be added here per approved phase ───────────────

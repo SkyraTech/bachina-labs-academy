@@ -1,0 +1,750 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ArticlesService } from './articles.service.js';
+import { ArticlesRepository } from '../repositories/articles.repository.js';
+import { UserRole, UserStatus, ArticleStatus } from '@prisma/client';
+import type { AuthenticatedUser } from '../../auth/types/jwt.types.js';
+
+describe('ArticlesService', () => {
+  let service: ArticlesService;
+  let repositoryMock: {
+    create: ReturnType<typeof vi.fn>;
+    findMyArticles: ReturnType<typeof vi.fn>;
+    findPrivateById: ReturnType<typeof vi.fn>;
+    findMediaAsset: ReturnType<typeof vi.fn>;
+  };
+
+  const VALID_USER: AuthenticatedUser = {
+    id: 'u1111111-0000-4000-8000-000000000001',
+    email: 'author@example.com',
+    role: UserRole.AUTHOR,
+    status: UserStatus.ACTIVE,
+    emailVerifiedAt: new Date('2026-10-15T00:00:00Z'),
+    sessionId: 's1111111-0000-4000-8000-000000000001',
+  };
+
+  const UNVERIFIED_USER: AuthenticatedUser = {
+    ...VALID_USER,
+    id: 'u2222222-0000-4000-8000-000000000002',
+    emailVerifiedAt: null,
+  };
+
+  const SUSPENDED_USER: AuthenticatedUser = {
+    ...VALID_USER,
+    id: 'u3333333-0000-4000-8000-000000000003',
+    status: UserStatus.SUSPENDED,
+  };
+
+  const MOCK_DATE = new Date('2026-10-25T10:00:00.000Z');
+
+  const MOCK_ARTICLE = {
+    id: 'a1b2c3d4-1111-4000-8000-000000000001',
+    authorId: VALID_USER.id,
+    title: 'Relational Database Design',
+    draftSlug: 'relational-database-design',
+    publishedSlug: null,
+    summary: 'A comprehensive guide.',
+    status: ArticleStatus.DRAFT,
+    typographyPreset: 'MODERN_SANS' as const,
+    coverMediaId: null,
+    draftRevision: 1,
+    publishedRevision: 0,
+    currentSnapshotId: null,
+    createdAt: MOCK_DATE,
+    updatedAt: MOCK_DATE,
+    publishedAt: null,
+  };
+
+  beforeEach(async () => {
+    repositoryMock = {
+      create: vi.fn(),
+      findMyArticles: vi.fn(),
+      findPrivateById: vi.fn(),
+      findMediaAsset: vi.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ArticlesService,
+        {
+          provide: ArticlesRepository,
+          useValue: repositoryMock,
+        },
+      ],
+    }).compile();
+
+    service = module.get<ArticlesService>(ArticlesService);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // ── Account Eligibility ───────────────────────────────────────────────────
+
+  describe('eligibility enforcement', () => {
+    it('rejects unverified email users with ForbiddenException', async () => {
+      await expect(
+        service.createDraft(UNVERIFIED_USER, {
+          title: 'Test Title',
+          draftSlug: 'test-slug',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.listMyArticles(UNVERIFIED_USER, {}),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.getPrivateArticle(UNVERIFIED_USER, MOCK_ARTICLE.id),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects suspended users with UnauthorizedException', async () => {
+      await expect(
+        service.createDraft(SUSPENDED_USER, {
+          title: 'Test Title',
+          draftSlug: 'test-slug',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  // ── Create Draft ──────────────────────────────────────────────────────────
+
+  describe('createDraft', () => {
+    it('creates a draft article and returns formatted response', async () => {
+      repositoryMock.create.mockResolvedValue(MOCK_ARTICLE);
+
+      const result = await service.createDraft(VALID_USER, {
+        title: 'Relational Database Design',
+        draftSlug: 'relational-database-design',
+        summary: 'A comprehensive guide.',
+      });
+
+      expect(repositoryMock.create).toHaveBeenCalledWith({
+        authorId: VALID_USER.id,
+        title: 'Relational Database Design',
+        draftSlug: 'relational-database-design',
+        summary: 'A comprehensive guide.',
+        typographyPreset: undefined,
+        coverMediaId: undefined,
+      });
+
+      expect(result).toEqual({
+        id: MOCK_ARTICLE.id,
+        authorId: VALID_USER.id,
+        title: MOCK_ARTICLE.title,
+        draftSlug: MOCK_ARTICLE.draftSlug,
+        publishedSlug: null,
+        summary: MOCK_ARTICLE.summary,
+        status: ArticleStatus.DRAFT,
+        typographyPreset: 'MODERN_SANS',
+        coverMediaId: null,
+        draftRevision: 1,
+        publishedRevision: 0,
+        currentSnapshotId: null,
+        createdAt: MOCK_DATE.toISOString(),
+        updatedAt: MOCK_DATE.toISOString(),
+        publishedAt: null,
+      });
+    });
+
+    it('validates owned image cover media when provided', async () => {
+      const coverMediaId = 'm1m2m3m4-1111-4000-8000-000000000001';
+      repositoryMock.findMediaAsset.mockResolvedValue({
+        id: coverMediaId,
+        uploaderId: VALID_USER.id,
+        mediaType: 'IMAGE',
+      });
+      repositoryMock.create.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        coverMediaId,
+      });
+
+      const result = await service.createDraft(VALID_USER, {
+        title: 'Title with Cover',
+        draftSlug: 'title-with-cover',
+        coverMediaId,
+      });
+
+      expect(repositoryMock.findMediaAsset).toHaveBeenCalledWith(coverMediaId);
+      expect(result.coverMediaId).toBe(coverMediaId);
+    });
+
+    it('rejects missing cover media with BadRequestException', async () => {
+      const coverMediaId = 'm1m2m3m4-0000-0000-0000-000000000000';
+      repositoryMock.findMediaAsset.mockResolvedValue(null);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Title with Bad Media',
+          draftSlug: 'title-bad-media',
+          coverMediaId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects non-image cover media with BadRequestException', async () => {
+      const coverMediaId = 'm1m2m3m4-1111-4000-8000-000000000001';
+      repositoryMock.findMediaAsset.mockResolvedValue({
+        id: coverMediaId,
+        uploaderId: VALID_USER.id,
+        mediaType: 'VIDEO',
+      });
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Title with Video Cover',
+          draftSlug: 'title-video-cover',
+          coverMediaId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects cross-author cover media with ForbiddenException', async () => {
+      const coverMediaId = 'm1m2m3m4-1111-4000-8000-000000000001';
+      repositoryMock.findMediaAsset.mockResolvedValue({
+        id: coverMediaId,
+        uploaderId: 'other-author-uuid',
+        mediaType: 'IMAGE',
+      });
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Title with Stolen Cover',
+          draftSlug: 'title-stolen-cover',
+          coverMediaId,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('propagates database persistence errors safely', async () => {
+      repositoryMock.create.mockRejectedValue(new Error('DB failure'));
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Title DB Fail',
+          draftSlug: 'title-db-fail',
+        }),
+      ).rejects.toThrow('DB failure');
+    });
+  });
+
+  // ── List My Articles ──────────────────────────────────────────────────────
+
+  describe('listMyArticles', () => {
+    it('returns paginated envelope scoped to author', async () => {
+      repositoryMock.findMyArticles.mockResolvedValue({
+        items: [MOCK_ARTICLE],
+        total: 1,
+      });
+
+      const result = await service.listMyArticles(VALID_USER, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(repositoryMock.findMyArticles).toHaveBeenCalledWith({
+        authorId: VALID_USER.id,
+        page: 1,
+        limit: 20,
+        status: undefined,
+      });
+
+      expect(result).toEqual({
+        items: [
+          {
+            ...MOCK_ARTICLE,
+            createdAt: MOCK_DATE.toISOString(),
+            updatedAt: MOCK_DATE.toISOString(),
+          },
+        ],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      });
+    });
+
+    it('handles empty results with stable pagination envelope', async () => {
+      repositoryMock.findMyArticles.mockResolvedValue({
+        items: [],
+        total: 0,
+      });
+
+      const result = await service.listMyArticles(VALID_USER, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result).toEqual({
+        items: [],
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+      });
+    });
+  });
+
+  // ── Get Private Article ───────────────────────────────────────────────────
+
+  describe('getPrivateArticle', () => {
+    it('returns own editable draft with ordered blocks', async () => {
+      const mockWithBlocks = {
+        ...MOCK_ARTICLE,
+        blocks: [
+          {
+            id: 'b1111111-0000-4000-8000-000000000001',
+            articleId: MOCK_ARTICLE.id,
+            type: 'HEADING',
+            position: 0,
+            content: { text: 'Introduction' },
+            mediaAssetId: null,
+            schemaVersion: 1,
+            createdAt: MOCK_DATE,
+            updatedAt: MOCK_DATE,
+          },
+        ],
+      };
+      repositoryMock.findPrivateById.mockResolvedValue(mockWithBlocks);
+
+      const result = await service.getPrivateArticle(VALID_USER, MOCK_ARTICLE.id);
+
+      expect(repositoryMock.findPrivateById).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        VALID_USER.id,
+      );
+
+      expect(result.id).toBe(MOCK_ARTICLE.id);
+      expect(result.blocks.length).toBe(1);
+      expect(result.blocks[0].position).toBe(0);
+      expect(result.blocks[0].createdAt).toBe(MOCK_DATE.toISOString());
+    });
+
+    it('throws 404 NotFoundException if article does not exist or belongs to another author', async () => {
+      repositoryMock.findPrivateById.mockResolvedValue(null);
+
+      await expect(
+        service.getPrivateArticle(VALID_USER, 'foreign-article-id'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── updateDraftMetadata ───────────────────────────────────────────────────
+
+  describe('updateDraftMetadata', () => {
+    let mockTx: {
+      findArticleForUpdate: ReturnType<typeof vi.fn>;
+      updateArticle: ReturnType<typeof vi.fn>;
+      findMediaAsset: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockTx = {
+        findArticleForUpdate: vi.fn(),
+        updateArticle: vi.fn(),
+        findMediaAsset: vi.fn(),
+      };
+      (repositoryMock as any).transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+      (repositoryMock as any).findArticleForUpdate = mockTx.findArticleForUpdate;
+      (repositoryMock as any).updateArticle = mockTx.updateArticle;
+      (repositoryMock as any).findMediaAsset = mockTx.findMediaAsset;
+    });
+
+    it('rejects ineligible accounts (unverified / suspended)', async () => {
+      await expect(
+        service.updateDraftMetadata(UNVERIFIED_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          title: 'New Title',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.updateDraftMetadata(SUSPENDED_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          title: 'New Title',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws 404 NotFoundException if article does not exist or belongs to another author', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(null);
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, 'missing-id', {
+          expectedRevision: 1,
+          title: 'Updated Title',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws 409 ConflictException if article is ARCHIVED', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+      });
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          title: 'Updated Title',
+        }),
+      ).rejects.toThrow('Archived articles cannot be edited');
+    });
+
+    it('throws 409 ConflictException when expectedRevision does not match current draftRevision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+      });
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 2, // Stale!
+          title: 'Updated Title',
+        }),
+      ).rejects.toThrow('Draft revision conflict');
+    });
+
+    it('rejects stale revision even if the payload is an exact no-op', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 5,
+        title: 'Exact Same Title',
+      });
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 4, // Stale!
+          title: 'Exact Same Title',
+        }),
+      ).rejects.toThrow('Draft revision conflict');
+    });
+
+    it('detects an exact no-op and returns article without calling updateArticle', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        title: MOCK_ARTICLE.title,
+        draftSlug: MOCK_ARTICLE.draftSlug,
+        summary: MOCK_ARTICLE.summary,
+        typographyPreset: MOCK_ARTICLE.typographyPreset,
+        coverMediaId: null,
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(result.id).toBe(MOCK_ARTICLE.id);
+      expect(result.draftRevision).toBe(1);
+    });
+
+    it('detects empty update payload (only expectedRevision) as no-op', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(result.id).toBe(MOCK_ARTICLE.id);
+      expect(result.draftRevision).toBe(1);
+    });
+
+    it('atomically increments draftRevision on meaningful update', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
+      const updatedArticle = {
+        ...MOCK_ARTICLE,
+        title: 'A Brand New Title',
+        draftRevision: 2,
+        updatedAt: new Date('2026-10-25T11:00:00Z'),
+      };
+      mockTx.updateArticle.mockResolvedValue(updatedArticle);
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        title: '  A Brand New Title  ',
+      });
+
+      expect(mockTx.updateArticle).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        {
+          title: 'A Brand New Title',
+          draftRevision: { increment: 1 },
+        },
+        mockTx,
+      );
+      expect(result.title).toBe('A Brand New Title');
+      expect(result.draftRevision).toBe(2);
+    });
+
+    it('allows draft metadata editing on PUBLISHED articles while leaving published metadata untouched', async () => {
+      const publishedArticle = {
+        ...MOCK_ARTICLE,
+        status: ArticleStatus.PUBLISHED,
+        draftRevision: 4,
+        publishedRevision: 4,
+        publishedSlug: 'relational-database-design-live',
+        currentSnapshotId: 's1111111-2222-4000-8000-000000000001',
+        publishedAt: new Date('2026-10-20T00:00:00Z'),
+      };
+      mockTx.findArticleForUpdate.mockResolvedValue(publishedArticle);
+
+      const updatedPublishedArticle = {
+        ...publishedArticle,
+        title: 'Relational Database Design - Draft Improvements',
+        draftRevision: 5,
+        updatedAt: new Date('2026-10-25T12:00:00Z'),
+      };
+      mockTx.updateArticle.mockResolvedValue(updatedPublishedArticle);
+
+      const result = await service.updateDraftMetadata(VALID_USER, publishedArticle.id, {
+        expectedRevision: 4,
+        title: 'Relational Database Design - Draft Improvements',
+      });
+
+      expect(result.status).toBe(ArticleStatus.PUBLISHED);
+      expect(result.draftRevision).toBe(5);
+      expect(result.publishedRevision).toBe(4);
+      expect(result.publishedSlug).toBe('relational-database-design-live');
+      expect(result.currentSnapshotId).toBe('s1111111-2222-4000-8000-000000000001');
+      expect(result.publishedAt).toBe('2026-10-20T00:00:00.000Z');
+    });
+
+    it('validates cover media asset ownership, type, and existence when provided', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
+      const mediaId = 'm1111111-0000-4000-8000-000000000001';
+
+      // 1. Missing media asset -> BadRequestException
+      mockTx.findMediaAsset.mockResolvedValue(null);
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          coverMediaId: mediaId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // 2. Non-IMAGE media asset -> BadRequestException
+      mockTx.findMediaAsset.mockResolvedValue({
+        id: mediaId,
+        mediaType: 'VIDEO',
+        uploaderId: VALID_USER.id,
+      });
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          coverMediaId: mediaId,
+        }),
+      ).rejects.toThrow('Cover media must be an image asset');
+
+      // 3. Foreign-owned media asset -> ForbiddenException
+      mockTx.findMediaAsset.mockResolvedValue({
+        id: mediaId,
+        mediaType: 'IMAGE',
+        uploaderId: 'foreign-user-id',
+      });
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          coverMediaId: mediaId,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      // 4. Valid owned image media asset -> succeeds and connects
+      mockTx.findMediaAsset.mockResolvedValue({
+        id: mediaId,
+        mediaType: 'IMAGE',
+        uploaderId: VALID_USER.id,
+      });
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        coverMediaId: mediaId,
+        draftRevision: 2,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        coverMediaId: mediaId,
+      });
+
+      expect(mockTx.updateArticle).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        {
+          coverMedia: { connect: { id: mediaId } },
+          draftRevision: { increment: 1 },
+        },
+        mockTx,
+      );
+      expect(result.coverMediaId).toBe(mediaId);
+    });
+
+    it('disconnects cover media when coverMediaId is explicitly null', async () => {
+      const articleWithCover = {
+        ...MOCK_ARTICLE,
+        coverMediaId: 'm1111111-0000-4000-8000-000000000001',
+      };
+      mockTx.findArticleForUpdate.mockResolvedValue(articleWithCover);
+      mockTx.updateArticle.mockResolvedValue({
+        ...articleWithCover,
+        coverMediaId: null,
+        draftRevision: 2,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, articleWithCover.id, {
+        expectedRevision: 1,
+        coverMediaId: null,
+      });
+
+      expect(mockTx.updateArticle).toHaveBeenCalledWith(
+        articleWithCover.id,
+        {
+          coverMedia: { disconnect: true },
+          draftRevision: { increment: 1 },
+        },
+        mockTx,
+      );
+      expect(result.coverMediaId).toBeNull();
+    });
+  });
+
+  // ── deleteEligibleDraft ───────────────────────────────────────────────────
+
+  describe('deleteEligibleDraft', () => {
+    let mockTx: {
+      findArticleForUpdate: ReturnType<typeof vi.fn>;
+      countSnapshots: ReturnType<typeof vi.fn>;
+      deleteArticle: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockTx = {
+        findArticleForUpdate: vi.fn(),
+        countSnapshots: vi.fn(),
+        deleteArticle: vi.fn(),
+      };
+      (repositoryMock as any).transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+      (repositoryMock as any).findArticleForUpdate = mockTx.findArticleForUpdate;
+      (repositoryMock as any).countSnapshots = mockTx.countSnapshots;
+      (repositoryMock as any).deleteArticle = mockTx.deleteArticle;
+    });
+
+    it('rejects ineligible accounts with Forbidden/Unauthorized', async () => {
+      await expect(
+        service.deleteEligibleDraft(UNVERIFIED_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.deleteEligibleDraft(SUSPENDED_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws BadRequestException when expectedRevision is missing or invalid', async () => {
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, undefined as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, {} as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 0 }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: -1 }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 1.5 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws 404 NotFoundException if article does not exist or belongs to another author', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(null);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, 'missing-id', { expectedRevision: 1 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws 409 ConflictException when expectedRevision does not match current revision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+      });
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 2, // Stale!
+        }),
+      ).rejects.toThrow('Draft revision conflict');
+    });
+
+    it('throws 409 ConflictException if article status is PUBLISHED or ARCHIVED', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        status: ArticleStatus.PUBLISHED,
+      });
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow('Only unpublished drafts with no publication history may be deleted');
+
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+      });
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow('Only unpublished drafts with no publication history may be deleted');
+    });
+
+    it('throws 409 ConflictException if article has an active currentSnapshotId', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        currentSnapshotId: 's1111111-0000-4000-8000-000000000001',
+      });
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow('Cannot delete an article with historical snapshots or an active snapshot reference');
+    });
+
+    it('throws 409 ConflictException if article has historical snapshots', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
+      mockTx.countSnapshots.mockResolvedValue(2);
+
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, { expectedRevision: 1 }),
+      ).rejects.toThrow('Cannot delete an article that has published history');
+    });
+
+    it('successfully deletes an eligible draft with matching expectedRevision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+      });
+      mockTx.countSnapshots.mockResolvedValue(0);
+      mockTx.deleteArticle.mockResolvedValue(undefined);
+
+      await service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 3,
+      });
+
+      expect(mockTx.findArticleForUpdate).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        VALID_USER.id,
+        mockTx,
+      );
+      expect(mockTx.countSnapshots).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
+      expect(mockTx.deleteArticle).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
+    });
+  });
+});
+

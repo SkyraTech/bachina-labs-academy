@@ -1,0 +1,59 @@
+@if (totalPages() > 1) {
+  <nav class="public-pagination flex flex-col sm:flex-row items-center justify-between gap-4 py-8" aria-label="Article Pagination">
+    <!-- Status text -->
+    <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
+      Showing page <span class="font-bold text-[var(--color-text)]">{{ page() }}</span> of
+      <span class="font-bold text-[var(--color-text)]">{{ totalPages() }}</span>
+      <span class="text-[var(--color-text-muted)]">({{ total() }} articles total)</span>
+    </p>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-1.5">
+      <!-- Previous Button -->
+      <button
+        type="button"
+        (click)="previous()"
+        [disabled]="!hasPrevious()"
+        class="pagination-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] shadow-2xs hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
+        aria-label="Previous page"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <span class="hidden sm:inline">Previous</span>
+      </button>
+
+      <!-- Page Numbers -->
+      <div class="flex items-center gap-1">
+        @for (p of visiblePages(); track p) {
+          <button
+            type="button"
+            (click)="goToPage(p)"
+            [class.active-page]="p === page()"
+            [attr.aria-current]="p === page() ? 'page' : null"
+            class="pagination-number-btn h-8 min-w-[32px] px-2 rounded-lg text-xs font-semibold border transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
+            [ngClass]="p === page()
+              ? 'bg-[var(--color-brand)] text-white border-[var(--color-brand)] shadow-xs'
+              : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]'"
+          >
+            {{ p }}
+          </button>
+        }
+      </div>
+
+      <!-- Next Button -->
+      <button
+        type="button"
+        (click)="next()"
+        [disabled]="!hasNext()"
+        class="pagination-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)] shadow-2xs hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
+        aria-label="Next page"
+      >
+        <span class="hidden sm:inline">Next</span>
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  </nav>
+}

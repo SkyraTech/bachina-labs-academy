@@ -1,0 +1,4 @@
+/* Component styles for ArticlePublicationControlsComponent */
+:host {
+  display: block;
+}

@@ -1,0 +1,9 @@
+/* Public Article List Component Styles */
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.public-article-catalog {
+  min-height: calc(100vh - 250px);
+}

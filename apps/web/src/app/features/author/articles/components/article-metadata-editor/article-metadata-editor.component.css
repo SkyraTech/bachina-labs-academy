@@ -1,0 +1,4 @@
+/* Component styles for ArticleMetadataEditorComponent */
+:host {
+  display: block;
+}

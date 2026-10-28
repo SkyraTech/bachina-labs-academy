@@ -1,0 +1,9 @@
+/* Component styles for ArticleBlockEditorComponent */
+:host {
+  display: block;
+}
+
+.article-block-editor__code-textarea {
+  tab-size: 2;
+  font-family: var(--font-mono, monospace);
+}

@@ -1,0 +1,13 @@
+/* Public Article Reader Component Styles */
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.public-article-reader-container {
+  min-height: calc(100vh - 250px);
+}
+
+.article-blocks-container {
+  min-width: 0;
+}

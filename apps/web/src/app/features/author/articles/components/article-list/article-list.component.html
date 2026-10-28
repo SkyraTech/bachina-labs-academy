@@ -1,0 +1,111 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <app-page-header
+      title="Author Articles"
+      eyebrow="Content Management"
+      description="Create, edit, and publish your engineering articles and architectural guides."
+    ></app-page-header>
+
+    <div>
+      <a
+        routerLink="/author/articles/new"
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--btn-radius)] font-medium text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] focus:ring-offset-2"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>New Article Draft</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="space-y-3">
+      <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+      <app-loading-skeleton height="4rem"></app-loading-skeleton>
+      <app-loading-skeleton height="4rem"></app-loading-skeleton>
+    </div>
+  } @else if (errorMessage()) {
+    <!-- Error State -->
+    <div class="p-6 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/50 text-red-700 dark:text-red-400">
+      <p class="font-medium">{{ errorMessage() }}</p>
+      <button
+        type="button"
+        (click)="loadArticles()"
+        class="mt-3 px-4 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+      >
+        Try Again
+      </button>
+    </div>
+  } @else if (articles().length === 0) {
+    <!-- Empty State -->
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-10 text-center">
+      <app-empty-state
+        title="No articles drafted yet"
+        description="Start authoring your first technical article or guide with our structured block editor."
+      >
+        <a
+          routerLink="/author/articles/new"
+          class="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-[var(--btn-radius)] font-medium text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors shadow-sm"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Create Your First Draft</span>
+        </a>
+      </app-empty-state>
+    </div>
+  } @else {
+    <!-- Article Table / List -->
+    <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-sm">
+      <div class="divide-y divide-[var(--color-border)]">
+        @for (article of articles(); track article.id) {
+          <div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[var(--color-surface-hover)] transition-colors">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 flex-wrap">
+                <h3 class="text-lg font-semibold text-[var(--color-text)] truncate">
+                  {{ article.title }}
+                </h3>
+                <app-status-badge
+                  [variant]="getStatusVariant(article.status)"
+                >{{ article.status }}</app-status-badge>
+                @if (article.status === 'PUBLISHED' && article.draftRevision > article.publishedRevision) {
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    Unpublished Edits
+                  </span>
+                }
+              </div>
+
+              <p class="text-sm text-[var(--color-text-secondary)] mt-1 line-clamp-2">
+                {{ article.summary || 'No summary provided.' }}
+              </p>
+
+              <div class="flex items-center gap-4 text-xs text-[var(--color-text-muted)] mt-2 flex-wrap">
+                <span>Draft Slug: <code class="font-mono bg-[var(--color-workspace-bg)] px-1.5 py-0.5 rounded text-[var(--color-text)]">{{ article.draftSlug }}</code></span>
+                <span>Revision: <strong>{{ article.draftRevision }}</strong></span>
+                @if (article.publishedSlug) {
+                  <span>Published Slug: <code class="font-mono bg-[var(--color-workspace-bg)] px-1.5 py-0.5 rounded text-[var(--color-text)]">{{ article.publishedSlug }}</code></span>
+                  <span>Published Rev: <strong>{{ article.publishedRevision }}</strong></span>
+                }
+                <span>Updated: {{ article.updatedAt | date:'mediumDate' }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+              <a
+                [routerLink]="['/author/articles', article.id, 'edit']"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm text-[var(--color-text)] bg-[var(--color-workspace-bg)] hover:bg-[var(--color-surface-active)] border border-[var(--color-border)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+              >
+                <svg class="w-4 h-4 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <span>Edit Article</span>
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

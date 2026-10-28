@@ -85,6 +85,9 @@ async function bootstrap(): Promise<void> {
     logger.log(`Swagger UI available at: http://localhost:${port}/api/docs`);
   }
 
+  // ── Graceful Shutdown ─────────────────────────────────────────────────
+  app.enableShutdownHooks();
+
   // ── Start ─────────────────────────────────────────────────────────────
   await app.listen(port);
   logger.log(`API running on: http://localhost:${port}/api/v1`);

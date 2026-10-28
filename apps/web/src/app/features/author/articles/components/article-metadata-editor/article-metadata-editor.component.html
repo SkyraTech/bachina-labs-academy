@@ -1,0 +1,170 @@
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-sm">
+  <div class="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-4">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--color-text)]">
+      Article Settings
+    </h3>
+    @if (isDirty()) {
+      <span class="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+        Unsaved Changes
+      </span>
+    }
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSave()" class="space-y-4">
+    <!-- Title -->
+    <div>
+      <label for="meta-title" class="block text-xs font-semibold text-[var(--color-text)] mb-1">
+        Title
+      </label>
+      <input
+        id="meta-title"
+        type="text"
+        formControlName="title"
+        class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+      />
+      @if (isFieldInvalid('title')) {
+        <p class="text-xs text-red-500 mt-1">Title must be between 3 and 255 characters.</p>
+      }
+    </div>
+
+    <!-- Draft Slug -->
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <label for="meta-slug" class="block text-xs font-semibold text-[var(--color-text)]">
+          Draft Slug
+        </label>
+        <button
+          type="button"
+          (click)="regenerateSlug()"
+          class="text-xs text-[var(--color-brand)] hover:underline"
+        >
+          From Title
+        </button>
+      </div>
+      <input
+        id="meta-slug"
+        type="text"
+        formControlName="draftSlug"
+        class="w-full px-3 py-2 font-mono text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+      />
+      @if (isFieldInvalid('draftSlug')) {
+        <p class="text-xs text-red-500 mt-1">Slug must be lowercase alphanumeric with hyphens (3–280 chars).</p>
+      }
+    </div>
+
+    <!-- Summary -->
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <label for="meta-summary" class="block text-xs font-semibold text-[var(--color-text)]">
+          Summary
+        </label>
+        <span class="text-[10px] text-[var(--color-text-muted)]">
+          {{ (form.get('summary')?.value || '').length }}/500
+        </span>
+      </div>
+      <textarea
+        id="meta-summary"
+        formControlName="summary"
+        rows="3"
+        class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+      ></textarea>
+      @if (isFieldInvalid('summary')) {
+        <p class="text-xs text-red-500 mt-1">Summary cannot exceed 500 characters.</p>
+      }
+    </div>
+
+    <!-- Cover Image -->
+    <div>
+      <span class="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
+        Cover Image
+      </span>
+      @if (coverMediaId()) {
+        <div class="relative rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-workspace-bg)] mb-2 aspect-video max-h-36">
+          <img
+            [src]="getCoverPreviewUrl()"
+            alt="Cover image preview"
+            class="w-full h-full object-cover"
+          />
+          <div class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <button
+              type="button"
+              (click)="openMediaPicker()"
+              class="px-2.5 py-1 text-xs font-semibold rounded bg-white text-black hover:bg-neutral-100"
+            >
+              Change
+            </button>
+            <button
+              type="button"
+              (click)="removeCover()"
+              class="px-2.5 py-1 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      } @else {
+        <button
+          type="button"
+          (click)="openMediaPicker()"
+          class="w-full py-3 px-4 border border-dashed border-[var(--color-border)] hover:border-[var(--color-brand)] rounded-xl text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-brand)] bg-[var(--color-workspace-bg)] transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Select Cover Image</span>
+        </button>
+      }
+    </div>
+
+    <!-- Typography Preset -->
+    <div>
+      <span class="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
+        Typography Preset
+      </span>
+      <div class="space-y-1.5">
+        @for (preset of presets; track preset.value) {
+          <label
+            class="flex items-center justify-between px-3 py-2 text-xs rounded-lg border cursor-pointer transition-colors"
+            [class.border-[var(--color-brand)]]="form.get('typographyPreset')?.value === preset.value"
+            [class.bg-[var(--color-brand-surface)]]="form.get('typographyPreset')?.value === preset.value"
+            [class.border-[var(--color-border)]]="form.get('typographyPreset')?.value !== preset.value"
+          >
+            <div class="flex items-center gap-2">
+              <input
+                type="radio"
+                formControlName="typographyPreset"
+                [value]="preset.value"
+                class="text-[var(--color-brand)] focus:ring-[var(--color-brand)]"
+              />
+              <span class="font-medium text-[var(--color-text)]">{{ preset.label }}</span>
+            </div>
+            <span class="text-[10px] text-[var(--color-text-muted)]">{{ preset.hint }}</span>
+          </label>
+        }
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="pt-2">
+      <button
+        type="submit"
+        [disabled]="!isDirty() || form.invalid || state.isSaving()"
+        class="w-full py-2 px-4 rounded-lg font-medium text-xs text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] shadow-sm"
+      >
+        @if (state.isSaving()) {
+          <span>Saving Metadata...</span>
+        } @else {
+          <span>Save Metadata</span>
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (isPickerOpen()) {
+    <app-article-media-picker
+      [selectedMediaId]="coverMediaId()"
+      (mediaSelected)="onCoverSelected($event)"
+      (closed)="closeMediaPicker()"
+    />
+  }
+</div>

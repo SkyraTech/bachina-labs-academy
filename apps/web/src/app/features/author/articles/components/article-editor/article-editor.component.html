@@ -1,0 +1,218 @@
+<div class="min-h-screen bg-[var(--color-bg)] pb-16">
+  <!-- Loading State -->
+  @if (state.loading()) {
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-4">
+      <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+      <app-loading-skeleton height="8rem"></app-loading-skeleton>
+      <app-loading-skeleton height="16rem"></app-loading-skeleton>
+    </div>
+  } @else if (state.errorMessage() && !state.article()) {
+    <!-- 404 / Error State -->
+    <div class="max-w-2xl mx-auto px-4 py-16 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 flex items-center justify-center">
+        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-[var(--color-text)]">Article Unavailable</h2>
+      <p class="text-sm text-[var(--color-text-secondary)] mt-2 mb-6">
+        {{ state.errorMessage() }}
+      </p>
+      <a
+        routerLink="/author/articles"
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--btn-radius)] text-sm font-medium text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors shadow-sm"
+      >
+        &larr; Return to My Articles
+      </a>
+    </div>
+  } @else if (state.article()) {
+    <!-- Top Workspace Bar -->
+    <header class="sticky top-0 z-20 bg-[var(--color-surface)]/95 backdrop-blur-md border-b border-[var(--color-border)] px-4 sm:px-6 lg:px-8 py-3">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <!-- Left: Back & Title -->
+        <div class="flex items-center gap-3 min-w-0">
+          <a
+            routerLink="/author/articles"
+            class="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-workspace-bg)] transition-colors shrink-0"
+            title="Back to Articles"
+            aria-label="Back to Articles"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </a>
+
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h1 class="text-sm sm:text-base font-bold text-[var(--color-text)] truncate">
+                {{ state.article()?.title }}
+              </h1>
+              <app-status-badge
+                [variant]="getStatusVariant(state.article()?.status || 'DRAFT')"
+              >{{ state.article()?.status || 'DRAFT' }}</app-status-badge>
+            </div>
+            <p class="text-xs text-[var(--color-text-muted)] font-mono">
+              Revision {{ state.currentRevision() }} · {{ state.article()?.draftSlug }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: Save State & Mode Toggles -->
+        <div class="flex items-center gap-3 shrink-0 self-end md:self-auto">
+          <!-- Save Status Pill -->
+          <div class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+            @switch (state.saveState()) {
+              @case ('SAVED') {
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-emerald-700 dark:text-emerald-400 font-medium">Saved</span>
+              }
+              @case ('DIRTY') {
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="text-amber-700 dark:text-amber-400 font-medium">Unsaved changes</span>
+              }
+              @case ('SAVING') {
+                <svg class="animate-spin w-3 h-3 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-[var(--color-brand)] font-medium">Saving...</span>
+              }
+              @case ('CONFLICT') {
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                <span class="text-red-600 dark:text-red-400 font-bold">Revision Conflict</span>
+              }
+              @case ('ERROR') {
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <span class="text-red-600 dark:text-red-400 font-medium">Save Failed</span>
+              }
+            }
+          </div>
+
+          <!-- Editor / Preview Toggle -->
+          <div class="flex items-center p-0.5 rounded-xl bg-[var(--color-workspace-bg)] border border-[var(--color-border)]">
+            <button
+              type="button"
+              (click)="state.setTab('editor')"
+              class="px-3 py-1 text-xs font-semibold rounded-lg transition-colors"
+              [class.bg-[var(--color-surface)]]="state.activeTab() === 'editor'"
+              [class.text-[var(--color-text)]]="state.activeTab() === 'editor'"
+              [class.shadow-xs]="state.activeTab() === 'editor'"
+              [class.text-[var(--color-text-muted)]]="state.activeTab() !== 'editor'"
+            >
+              Editor
+            </button>
+            <button
+              type="button"
+              (click)="state.setTab('preview')"
+              class="px-3 py-1 text-xs font-semibold rounded-lg transition-colors"
+              [class.bg-[var(--color-surface)]]="state.activeTab() === 'preview'"
+              [class.text-[var(--color-text)]]="state.activeTab() === 'preview'"
+              [class.shadow-xs]="state.activeTab() === 'preview'"
+              [class.text-[var(--color-text-muted)]]="state.activeTab() !== 'preview'"
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Concurrency Conflict Alert Banner -->
+    @if (state.conflictMessage()) {
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="p-4 rounded-xl bg-red-50 border border-red-200 dark:bg-red-950/40 dark:border-red-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p class="text-xs sm:text-sm text-red-700 dark:text-red-300 font-medium">
+              {{ state.conflictMessage() }}
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="state.reloadAuthoritativeState()"
+            class="px-4 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shrink-0 shadow-sm"
+          >
+            Reload Authoritative Draft
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Mobile Navigation Tabs (visible only on small screens) -->
+    <div class="md:hidden px-4 mt-4">
+      <div class="grid grid-cols-3 gap-1 p-1 bg-[var(--color-workspace-bg)] border border-[var(--color-border)] rounded-xl text-center text-xs font-semibold">
+        <button
+          type="button"
+          (click)="mobileTab.set('outline')"
+          class="py-1.5 rounded-lg transition-colors"
+          [class.bg-[var(--color-surface)]]="mobileTab() === 'outline'"
+          [class.text-[var(--color-brand)]]="mobileTab() === 'outline'"
+          [class.text-[var(--color-text-muted)]]="mobileTab() !== 'outline'"
+        >
+          Outline
+        </button>
+        <button
+          type="button"
+          (click)="mobileTab.set('content')"
+          class="py-1.5 rounded-lg transition-colors"
+          [class.bg-[var(--color-surface)]]="mobileTab() === 'content'"
+          [class.text-[var(--color-brand)]]="mobileTab() === 'content'"
+          [class.text-[var(--color-text-muted)]]="mobileTab() !== 'content'"
+        >
+          Editor
+        </button>
+        <button
+          type="button"
+          (click)="mobileTab.set('settings')"
+          class="py-1.5 rounded-lg transition-colors"
+          [class.bg-[var(--color-surface)]]="mobileTab() === 'settings'"
+          [class.text-[var(--color-brand)]]="mobileTab() === 'settings'"
+          [class.text-[var(--color-text-muted)]]="mobileTab() !== 'settings'"
+        >
+          Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Workspace Body -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      @if (state.activeTab() === 'preview') {
+        <!-- Draft Preview Layout -->
+        <app-article-preview></app-article-preview>
+      } @else {
+        <!-- Desktop 3-Column Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          <!-- Left Column: Block Navigator (Col span: 4 on tablet, 3 on desktop) -->
+          <div
+            class="md:col-span-4 lg:col-span-3 space-y-4"
+            [class.hidden]="mobileTab() !== 'outline'"
+            [class.md:block]="true"
+          >
+            <app-article-block-list></app-article-block-list>
+          </div>
+
+          <!-- Center Column: Block Content Editor (Col span: 8 on tablet, 6 on desktop) -->
+          <div
+            class="md:col-span-8 lg:col-span-6 space-y-6"
+            [class.hidden]="mobileTab() !== 'content'"
+            [class.md:block]="true"
+          >
+            <app-article-block-editor></app-article-block-editor>
+          </div>
+
+          <!-- Right Column: Settings and Publication Controls (Col span: 12 on tablet, 3 on desktop) -->
+          <div
+            class="md:col-span-12 lg:col-span-3 space-y-6"
+            [class.hidden]="mobileTab() !== 'settings'"
+            [class.lg:block]="true"
+          >
+            <app-article-publication-controls></app-article-publication-controls>
+            <app-article-metadata-editor></app-article-metadata-editor>
+          </div>
+        </div>
+      }
+    </main>
+  }
+</div>

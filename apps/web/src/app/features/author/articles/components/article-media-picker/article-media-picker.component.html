@@ -1,0 +1,211 @@
+<div
+  class="media-picker-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="media-picker-title"
+  tabindex="-1"
+  (click)="closeModal()"
+  (keydown.escape)="closeModal()"
+>
+  <div
+    class="media-picker-modal bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+    tabindex="0"
+    (click)="$event.stopPropagation()"
+    (keydown)="$event.stopPropagation()"
+  >
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+      <div>
+        <h2 id="media-picker-title" class="text-base font-bold text-[var(--color-text)]">
+          Author Media Library
+        </h2>
+        <p class="text-xs text-[var(--color-text-muted)] mt-0.5">
+          Select an owned image or upload a new asset for your article.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="closeModal()"
+        class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1.5 rounded-lg hover:bg-[var(--color-workspace-bg)] transition-colors"
+        aria-label="Close media picker"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="flex items-center px-6 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+      <button
+        type="button"
+        (click)="activeTab.set('library')"
+        class="py-3 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer"
+        [class.border-[var(--color-brand)]]="activeTab() === 'library'"
+        [class.text-[var(--color-brand)]]="activeTab() === 'library'"
+        [class.border-transparent]="activeTab() !== 'library'"
+        [class.text-[var(--color-text-muted)]]="activeTab() !== 'library'"
+      >
+        My Images ({{ totalItems() }})
+      </button>
+
+      <button
+        type="button"
+        (click)="activeTab.set('upload')"
+        class="py-3 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5"
+        [class.border-[var(--color-brand)]]="activeTab() === 'upload'"
+        [class.text-[var(--color-brand)]]="activeTab() === 'upload'"
+        [class.border-transparent]="activeTab() !== 'upload'"
+        [class.text-[var(--color-text-muted)]]="activeTab() !== 'upload'"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Upload New</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="flex-1 overflow-y-auto p-6 min-h-[300px]">
+      @if (activeTab() === 'upload') {
+        <app-article-media-upload
+          (uploaded)="onUploadCompleted($event)"
+          (cancelled)="activeTab.set('library')"
+        />
+      } @else {
+        @if (isLoading()) {
+          <div class="flex flex-col items-center justify-center py-16 text-[var(--color-text-muted)]">
+            <span class="inline-block w-8 h-8 border-3 border-[var(--color-brand)] border-t-transparent rounded-full animate-spin mb-3"></span>
+            <span class="text-xs">Loading media assets...</span>
+          </div>
+        } @else if (errorMessage()) {
+          <div class="text-center py-12">
+            <p class="text-xs text-red-500 mb-3">{{ errorMessage() }}</p>
+            <button
+              type="button"
+              (click)="loadMedia(currentPage())"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+            >
+              Retry
+            </button>
+          </div>
+        } @else if (mediaItems().length === 0) {
+          <div class="text-center py-16">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-workspace-bg)] text-[var(--color-text-muted)] mb-3">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p class="text-sm font-semibold text-[var(--color-text)]">No media uploaded yet</p>
+            <p class="text-xs text-[var(--color-text-muted)] mt-1 mb-4">
+              Upload your first image to use it as an article cover or inside content blocks.
+            </p>
+            <button
+              type="button"
+              (click)="activeTab.set('upload')"
+              class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] shadow-sm"
+            >
+              Upload Image
+            </button>
+          </div>
+        } @else {
+          <!-- Media Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" role="listbox" aria-label="Media library assets">
+            @for (asset of mediaItems(); track asset.id) {
+              <div
+                role="option"
+                [attr.aria-selected]="selectedAsset()?.id === asset.id"
+                tabindex="0"
+                (click)="selectAsset(asset)"
+                (keydown.enter)="selectAsset(asset)"
+                (keydown.space)="selectAsset(asset)"
+                class="group relative rounded-xl border overflow-hidden cursor-pointer transition-all aspect-square bg-[var(--color-workspace-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+                [class.border-[var(--color-brand)]]="selectedAsset()?.id === asset.id"
+                [class.ring-2]="selectedAsset()?.id === asset.id"
+                [class.ring-[var(--color-brand)]]="selectedAsset()?.id === asset.id"
+                [class.border-[var(--color-border)]]="selectedAsset()?.id !== asset.id"
+              >
+                <img
+                  [src]="getPreviewUrl(asset.id)"
+                  [alt]="asset.originalFilename"
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+
+                <div class="absolute inset-x-0 bottom-0 p-1.5 bg-black/70 backdrop-blur-xs text-[10px] text-white truncate">
+                  {{ asset.originalFilename }}
+                </div>
+
+                @if (selectedAsset()?.id === asset.id) {
+                  <div class="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--color-brand)] text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Pagination Controls -->
+          @if (totalPages() > 1) {
+            <div class="flex items-center justify-between pt-6 border-t border-[var(--color-border)] mt-6">
+              <span class="text-xs text-[var(--color-text-muted)]">
+                Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
+              </span>
+
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  [disabled]="currentPage() <= 1 || isLoading()"
+                  (click)="goToPage(currentPage() - 1)"
+                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)]"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  [disabled]="currentPage() >= totalPages() || isLoading()"
+                  (click)="goToPage(currentPage() + 1)"
+                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          }
+        }
+      }
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+      <div class="text-xs text-[var(--color-text-muted)] truncate max-w-xs">
+        @if (selectedAsset()) {
+          <span>Selected: <strong class="text-[var(--color-text)]">{{ selectedAsset()?.originalFilename }}</strong></span>
+        } @else {
+          <span>No image selected</span>
+        }
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="closeModal()"
+          class="px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          [disabled]="!selectedAsset() || activeTab() === 'upload'"
+          (click)="confirmSelection()"
+          class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+        >
+          Use Image
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

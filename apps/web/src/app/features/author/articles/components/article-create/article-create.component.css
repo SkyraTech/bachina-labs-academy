@@ -1,0 +1,4 @@
+/* Component styles for ArticleCreateComponent */
+:host {
+  display: block;
+}

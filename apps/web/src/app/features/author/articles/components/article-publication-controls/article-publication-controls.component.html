@@ -1,0 +1,105 @@
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-sm space-y-4">
+  <div class="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--color-text)]">
+      Publication
+    </h3>
+    <app-status-badge
+      [variant]="getStatusVariant(state.article()?.status || 'DRAFT')"
+    >{{ state.article()?.status || 'DRAFT' }}</app-status-badge>
+  </div>
+
+  <!-- Revision and Timestamp Details -->
+  <div class="space-y-2 text-xs">
+    <div class="flex items-center justify-between py-1 border-b border-[var(--color-border)]/50">
+      <span class="text-[var(--color-text-secondary)]">Draft Revision:</span>
+      <span class="font-mono font-bold text-[var(--color-text)]">{{ state.article()?.draftRevision || 1 }}</span>
+    </div>
+
+    @if (state.isPublished()) {
+      <div class="flex items-center justify-between py-1 border-b border-[var(--color-border)]/50">
+        <span class="text-[var(--color-text-secondary)]">Published Revision:</span>
+        <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ state.article()?.publishedRevision }}</span>
+      </div>
+
+      <div class="flex items-center justify-between py-1 border-b border-[var(--color-border)]/50">
+        <span class="text-[var(--color-text-secondary)]">Live Public Slug:</span>
+        <code class="font-mono text-[11px] text-[var(--color-brand)] bg-[var(--color-workspace-bg)] px-1.5 py-0.5 rounded truncate max-w-[150px]">
+          {{ state.article()?.publishedSlug }}
+        </code>
+      </div>
+
+      <div class="flex items-center justify-between py-1 border-b border-[var(--color-border)]/50">
+        <span class="text-[var(--color-text-secondary)]">First Published:</span>
+        <span class="text-[var(--color-text-muted)]">{{ state.article()?.publishedAt | date:'mediumDate' }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Status Notice -->
+  @if (state.hasUnpublishedChanges()) {
+    <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
+      <p class="font-semibold">Unpublished Changes Pending</p>
+      <p class="mt-0.5 opacity-90">
+        Draft revision {{ state.currentRevision() }} contains changes not yet deployed to readers.
+      </p>
+    </div>
+  } @else if (state.isPublished()) {
+    <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+      <p class="font-semibold">All Changes Published</p>
+      <p class="mt-0.5 opacity-90">Public reader snapshot is fully synchronized with this draft.</p>
+    </div>
+  }
+
+  <!-- Action Button -->
+  <div>
+    @if (state.isArchived()) {
+      <button
+        type="button"
+        disabled
+        class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-[var(--color-workspace-bg)] text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed"
+      >
+        Article Archived
+      </button>
+    } @else if (!state.isPublished()) {
+      <button
+        type="button"
+        (click)="onPublish()"
+        [disabled]="state.isSaving() || state.hasUnsavedChanges()"
+        class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+      >
+        @if (state.isSaving()) {
+          <span>Publishing...</span>
+        } @else {
+          <span>Publish Article</span>
+        }
+      </button>
+    } @else if (state.hasUnpublishedChanges()) {
+      <button
+        type="button"
+        (click)="onPublish()"
+        [disabled]="state.isSaving() || state.hasUnsavedChanges()"
+        class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+      >
+        @if (state.isSaving()) {
+          <span>Republishing...</span>
+        } @else {
+          <span>Republish Changes</span>
+        }
+      </button>
+    } @else {
+      <button
+        type="button"
+        disabled
+        class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-[var(--color-workspace-bg)] text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed"
+      >
+        All Changes Published
+      </button>
+    }
+
+    @if (state.hasUnsavedChanges()) {
+      <p class="text-[11px] text-amber-600 dark:text-amber-400 text-center mt-2">
+        Save pending edits before publishing.
+      </p>
+    }
+  </div>
+</div>
