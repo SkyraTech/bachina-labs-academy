@@ -260,4 +260,128 @@ describe('CreateArticleDto', () => {
     });
     expect(invalidErrors.some((e) => e.property === 'coverMediaId')).toBe(true);
   });
+
+  describe('taxonomy fields (categoryId & tagIds)', () => {
+    it('accepts valid categoryId (UUIDv4) and null', async () => {
+      const valid = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+      });
+      expect(valid.length).toBe(0);
+
+      const nullCat = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: null,
+      });
+      expect(nullCat.length).toBe(0);
+    });
+
+    it('rejects invalid UUID categoryId', async () => {
+      const invalid = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: 'not-a-uuid',
+      });
+      expect(invalid.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const emptyStr = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: '',
+      });
+      expect(emptyStr.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const numeric = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: 12345,
+      });
+      expect(numeric.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const objVal = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: { id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d' },
+      });
+      expect(objVal.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const arrayVal = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        categoryId: ['a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'],
+      });
+      expect(arrayVal.some((e) => e.property === 'categoryId')).toBe(true);
+    });
+
+    it('accepts valid array of unique UUID tagIds up to 20 (counts 0, 1, 5, 6, 19, 20)', async () => {
+      const makeUuids = (count: number) =>
+        Array.from({ length: count }, (_, i) =>
+          `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`,
+        );
+
+      // count 0
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: [] })).length).toBe(0);
+      // count 1
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: makeUuids(1) })).length).toBe(0);
+      // count 5
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: makeUuids(5) })).length).toBe(0);
+      // count 6
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: makeUuids(6) })).length).toBe(0);
+      // count 19
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: makeUuids(19) })).length).toBe(0);
+      // count 20
+      expect((await transformAndValidate({ title: 'Valid Title', draftSlug: 'valid-slug', tagIds: makeUuids(20) })).length).toBe(0);
+    });
+
+    it('rejects non-array tagIds', async () => {
+      const strVal = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        tagIds: 'not-an-array',
+      });
+      expect(strVal.some((e) => e.property === 'tagIds')).toBe(true);
+
+      const numVal = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        tagIds: 12345,
+      });
+      expect(numVal.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects duplicate tagIds', async () => {
+      const duplicate = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        tagIds: [
+          'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+          'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+        ],
+      });
+      expect(duplicate.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects more than 20 tagIds', async () => {
+      const over20 = Array.from({ length: 21 }, (_, i) =>
+        `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`,
+      );
+      const invalid = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        tagIds: over20,
+      });
+      expect(invalid.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects non-UUID items in tagIds array', async () => {
+      const invalid = await transformAndValidate({
+        title: 'Valid Title',
+        draftSlug: 'valid-slug',
+        tagIds: ['not-a-uuid'],
+      });
+      expect(invalid.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+  });
 });

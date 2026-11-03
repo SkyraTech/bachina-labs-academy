@@ -368,18 +368,23 @@ model Article {
   draftRevision     Int           @default(1) @map("draft_revision")
   publishedRevision Int           @default(0) @map("published_revision")
   currentSnapshotId String?       @map("current_snapshot_id") @db.Uuid
+  categoryId        String?       @map("category_id") @db.Uuid
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
   publishedAt       DateTime?     @map("published_at") @db.Timestamptz(3)
 
   author     User              @relation("AuthoredArticles", fields: [authorId], references: [id], onDelete: Restrict)
   coverMedia MediaAsset?       @relation("ArticleCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  category   Category?         @relation("ArticleCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   blocks     ArticleBlock[]    @relation("ArticleDraftBlocks")
   snapshots  ArticleSnapshot[] @relation("ArticleHistoricalSnapshots")
+  tags       ArticleTag[]      @relation("ArticleTags")
 
   @@index([authorId, createdAt(sort: Desc)], map: "articles_author_id_created_at_idx")
   @@index([status, publishedAt(sort: Desc)], map: "articles_status_published_at_idx")
   @@index([draftSlug], map: "articles_draft_slug_idx")
+  @@index([categoryId], map: "articles_category_id_idx")
+  @@index([status, categoryId, publishedAt(sort: Desc)], map: "articles_status_category_id_published_at_idx")
   @@map("articles")
 }
 
@@ -424,6 +429,7 @@ model ArticleSnapshot {
   typographyPreset String   @map("typography_preset") @db.VarChar(50)
   coverMediaId     String?  @map("cover_media_id") @db.Uuid
   blocks           Json     @db.JsonB
+  taxonomy         Json?    @db.JsonB
   publishedAt      DateTime @default(now()) @map("published_at") @db.Timestamptz(3)
 
   article Article @relation("ArticleHistoricalSnapshots", fields: [articleId], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -452,6 +458,61 @@ model ArticleSnapshotMedia {
   @@id([snapshotId, mediaAssetId])
   @@index([mediaAssetId], map: "article_snapshot_media_media_asset_id_idx")
   @@map("article_snapshot_media")
+}
+
+// ── Taxonomy Module: Checkpoint C-1A ──────────────────────────────────────────
+
+/**
+ * Category — primary topical classification for an article.
+ * Backs public taxonomy browsing, category filtering, and author article organization.
+ */
+model Category {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(120)
+  slug        String   @unique @db.VarChar(160)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  articles Article[] @relation("ArticleCategory")
+
+  @@index([createdAt(sort: Desc)], map: "categories_created_at_idx")
+  @@map("categories")
+}
+
+/**
+ * Tag — granular, searchable topic label attached to articles.
+ * Backs keyword/topic discovery and tag-based catalog filtering.
+ */
+model Tag {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(80)
+  slug      String   @unique @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  articleTags ArticleTag[] @relation("TagArticleTags")
+
+  @@index([createdAt(sort: Desc)], map: "tags_created_at_idx")
+  @@map("tags")
+}
+
+/**
+ * ArticleTag — many-to-many junction entity associating Articles with Tags.
+ * Composite primary key on (articleId, tagId) prevents duplicate tag assignments.
+ * Cascade deletion removes junction rows when either an Article or a Tag is deleted.
+ */
+model ArticleTag {
+  articleId String   @map("article_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  article Article @relation("ArticleTags", fields: [articleId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation("TagArticleTags", fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId, articleId], map: "article_tags_tag_id_article_id_idx")
+  @@map("article_tags")
 }
 
 // ── Future business models will be added here per approved phase ───────────────

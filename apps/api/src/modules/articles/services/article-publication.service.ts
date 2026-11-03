@@ -7,7 +7,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Prisma, ArticleBlockType } from '@prisma/client';
-import { ArticlePublicationRepository } from '../repositories/article-publication.repository.js';
+import {
+  ArticlePublicationRepository,
+  type RawDraftTaxonomyRow,
+  type PublishedCategorySnapshot,
+  type PublishedTagSnapshot,
+  type PublishedTaxonomySnapshot,
+} from '../repositories/article-publication.repository.js';
 import type { PublishArticleDto } from '../dto/publish-article.dto.js';
 import type { ArticlePublicationResponseDto } from '../dto/article-publication-response.dto.js';
 import type { AuthenticatedUser } from '../../auth/types/jwt.types.js';
@@ -233,7 +239,15 @@ export class ArticlePublicationService {
           );
         }
 
-        // 11. Create immutable ArticleSnapshot record
+        // 11. Capture draft taxonomy via single-statement SQL query on tx
+        const rawTaxonomy = await this.repository.captureDraftTaxonomy(
+          article.id,
+          tx,
+        );
+        const taxonomyPayload =
+          this.validateAndCanonicalizeTaxonomy(rawTaxonomy);
+
+        // 12. Create immutable ArticleSnapshot record
         const now = new Date();
         const snapshot = await this.repository.createSnapshot(
           {
@@ -245,12 +259,13 @@ export class ArticlePublicationService {
             typographyPreset: article.typographyPreset,
             coverMediaId: article.coverMediaId,
             blocks: snapshotBlocksPayload,
+            taxonomy: taxonomyPayload as unknown as Prisma.InputJsonValue,
             publishedAt: now,
           },
           tx,
         );
 
-        // 12. Persist media retention records in article_snapshot_media
+        // 13. Persist media retention records in article_snapshot_media
         if (distinctMediaIds.size > 0) {
           const retentionRecords = Array.from(distinctMediaIds).map(
             (mediaAssetId) => ({
@@ -264,7 +279,7 @@ export class ArticlePublicationService {
           );
         }
 
-        // 13. Update Article publication state
+        // 14. Update Article publication state
         // publishedAt preserves first publication timestamp; republishing keeps the original publishedAt.
         const firstPublishedAt = article.publishedAt ?? now;
 
@@ -333,5 +348,119 @@ export class ArticlePublicationService {
         );
       }
     }
+  }
+
+  /**
+   * Validates and canonicalizes the raw draft taxonomy row into an immutable PublishedTaxonomySnapshot.
+   */
+  private validateAndCanonicalizeTaxonomy(
+    rawTaxonomy: RawDraftTaxonomyRow | null,
+  ): PublishedTaxonomySnapshot {
+    if (!rawTaxonomy) {
+      throw new NotFoundException('Article not found during taxonomy capture.');
+    }
+
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+    // Category resolution & validation
+    let category: PublishedCategorySnapshot | null = null;
+    if (
+      rawTaxonomy.draftCategoryId !== null &&
+      rawTaxonomy.draftCategoryId !== undefined
+    ) {
+      if (!rawTaxonomy.categoryId) {
+        throw new ConflictException(
+          'Referenced category is missing or has been deleted.',
+        );
+      }
+
+      if (!uuidRegex.test(rawTaxonomy.categoryId)) {
+        throw new BadRequestException('Invalid category ID format.');
+      }
+
+      const categoryName = (rawTaxonomy.categoryName ?? '').trim();
+      if (categoryName.length < 2 || categoryName.length > 120) {
+        throw new BadRequestException('Invalid category name length.');
+      }
+
+      const categorySlug = (rawTaxonomy.categorySlug ?? '').trim();
+      if (
+        categorySlug.length < 2 ||
+        categorySlug.length > 160 ||
+        !slugRegex.test(categorySlug)
+      ) {
+        throw new BadRequestException('Invalid category slug format.');
+      }
+
+      category = {
+        id: rawTaxonomy.categoryId,
+        name: categoryName,
+        slug: categorySlug,
+      };
+    }
+
+    // Tags resolution & validation
+    let rawTags = rawTaxonomy.tagsJson;
+    if (typeof rawTags === 'string') {
+      try {
+        rawTags = JSON.parse(rawTags);
+      } catch {
+        throw new BadRequestException('Invalid tags JSON format.');
+      }
+    }
+
+    if (!Array.isArray(rawTags)) {
+      throw new BadRequestException('Tags must be an array.');
+    }
+
+    if (rawTags.length > 20) {
+      throw new BadRequestException(
+        'Article exceeds maximum allowed tag count of 20.',
+      );
+    }
+
+    const seenTagIds = new Set<string>();
+    const validatedTags: PublishedTagSnapshot[] = [];
+
+    for (const tag of rawTags) {
+      if (!tag || typeof tag !== 'object') {
+        throw new BadRequestException('Invalid tag structure.');
+      }
+
+      const id = String((tag as any).id ?? '');
+      if (!uuidRegex.test(id)) {
+        throw new BadRequestException('Invalid tag ID format.');
+      }
+
+      if (seenTagIds.has(id)) {
+        throw new BadRequestException('Duplicate tags detected.');
+      }
+      seenTagIds.add(id);
+
+      const name = String((tag as any).name ?? '').trim();
+      if (name.length < 2 || name.length > 80) {
+        throw new BadRequestException('Invalid tag name length.');
+      }
+
+      const slug = String((tag as any).slug ?? '').trim();
+      if (slug.length < 2 || slug.length > 120 || !slugRegex.test(slug)) {
+        throw new BadRequestException('Invalid tag slug format.');
+      }
+
+      validatedTags.push({ id, name, slug });
+    }
+
+    // Sort tags deterministically by slug ASC, then id ASC
+    validatedTags.sort(
+      (a, b) => a.slug.localeCompare(b.slug) || a.id.localeCompare(b.id),
+    );
+
+    return {
+      schemaVersion: 1,
+      category,
+      tags: validatedTags,
+    };
   }
 }

@@ -21,6 +21,33 @@ export interface PublicMedia {
   readonly url: string | null;
 }
 
+export interface PublicTaxonomyCategory {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+}
+
+export interface PublicTaxonomyTag {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+}
+
+export interface PublicDiscoveredTaxonomyItem {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly articleCount: number;
+}
+
+export interface PublicArticlesQueryOptions {
+  readonly page?: number;
+  readonly limit?: number;
+  readonly category?: string;
+  readonly tag?: string;
+  readonly q?: string;
+}
+
 export interface PublicArticleItem {
   readonly id: string;
   readonly slug: string;
@@ -30,6 +57,9 @@ export interface PublicArticleItem {
   readonly cover: PublicMedia | null;
   readonly revision: number;
   readonly publishedAt: string;
+  readonly taxonomyCaptured: boolean;
+  readonly category: PublicTaxonomyCategory | null;
+  readonly tags: readonly PublicTaxonomyTag[];
 }
 
 export interface PublicArticleListResponse {
@@ -114,4 +144,7 @@ export interface PublicArticleDetailResponse {
   readonly revision: number;
   readonly publishedAt: string;
   readonly blocks: readonly PublicArticleBlock[];
+  readonly taxonomyCaptured: boolean;
+  readonly category: PublicTaxonomyCategory | null;
+  readonly tags: readonly PublicTaxonomyTag[];
 }

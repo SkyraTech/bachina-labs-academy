@@ -303,11 +303,22 @@ describe('Stage 6F Public Article Reader APIs & Immutable Snapshot Retrieval (e2
       expect(res[0].current_user).toBe('academy_app');
     });
 
-    it('verifies that 11 Prisma migrations are active in disposable DB', async () => {
-      const count = await prismaAdmin.$queryRaw<{ count: number }[]>`
-        SELECT count(*)::int AS count FROM _prisma_migrations WHERE rolled_back_at IS NULL;
+    it('verifies that all authentic Prisma migrations are active in disposable DB', async () => {
+      const migrationsPath = fs.existsSync(path.resolve('prisma/migrations'))
+        ? path.resolve('prisma/migrations')
+        : path.resolve('apps/api/prisma/migrations');
+      const expectedMigrationNames = fs
+        .readdirSync(migrationsPath)
+        .filter((d) => fs.existsSync(path.join(migrationsPath, d, 'migration.sql')))
+        .sort();
+
+      const applied = await prismaAdmin.$queryRaw<{ migration_name: string }[]>`
+        SELECT migration_name FROM _prisma_migrations WHERE rolled_back_at IS NULL ORDER BY finished_at ASC;
       `;
-      expect(count[0].count).toBe(11);
+      const appliedNames = applied.map((m) => m.migration_name).sort();
+      expect(appliedNames).toEqual(expectedMigrationNames);
+      expect(appliedNames.length).toBe(13);
+      expect(appliedNames).toContain('20261101000000_add_article_snapshot_taxonomy');
     });
   });
 

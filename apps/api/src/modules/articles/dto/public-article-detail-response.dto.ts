@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ArticleBlockType } from '@prisma/client';
 import { PublicMediaResponseDto } from './public-media-response.dto.js';
+import {
+  PublicTaxonomyCategoryDto,
+  PublicTaxonomyTagDto,
+} from './public-article-list-response.dto.js';
 
 export class PublicArticleBlockDto {
   @ApiProperty({
@@ -92,6 +96,25 @@ export class PublicArticleDetailResponseDto {
     example: '2026-10-25T12:00:00.000Z',
   })
   publishedAt!: string;
+
+  @ApiProperty({
+    description: 'Indicates whether immutable taxonomy was captured at publication',
+    example: true,
+  })
+  taxonomyCaptured!: boolean;
+
+  @ApiProperty({
+    description: 'Frozen category from immutable snapshot, or null if uncategorized or legacy',
+    type: PublicTaxonomyCategoryDto,
+    nullable: true,
+  })
+  category!: PublicTaxonomyCategoryDto | null;
+
+  @ApiProperty({
+    description: 'Frozen tags array from immutable snapshot in deterministic order',
+    type: [PublicTaxonomyTagDto],
+  })
+  tags!: PublicTaxonomyTagDto[];
 
   @ApiProperty({
     description: 'Ordered array of immutable content blocks',

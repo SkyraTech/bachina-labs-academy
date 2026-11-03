@@ -1,6 +1,46 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PublicMediaResponseDto } from './public-media-response.dto.js';
 
+export class PublicTaxonomyCategoryDto {
+  @ApiProperty({
+    description: 'Unique identifier of the frozen category',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: 'Frozen category name from immutable snapshot',
+    example: 'Backend Engineering',
+  })
+  name!: string;
+
+  @ApiProperty({
+    description: 'Frozen category slug from immutable snapshot',
+    example: 'backend-engineering',
+  })
+  slug!: string;
+}
+
+export class PublicTaxonomyTagDto {
+  @ApiProperty({
+    description: 'Unique identifier of the frozen tag',
+    example: '123e4567-e89b-12d3-a456-426614174001',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: 'Frozen tag name from immutable snapshot',
+    example: 'PostgreSQL',
+  })
+  name!: string;
+
+  @ApiProperty({
+    description: 'Frozen tag slug from immutable snapshot',
+    example: 'postgresql',
+  })
+  slug!: string;
+}
+
 export class PublicArticleItemDto {
   @ApiProperty({
     description: 'Unique identifier of the article',
@@ -51,6 +91,25 @@ export class PublicArticleItemDto {
     example: '2026-10-25T12:00:00.000Z',
   })
   publishedAt!: string;
+
+  @ApiProperty({
+    description: 'Indicates whether immutable taxonomy was captured at publication',
+    example: true,
+  })
+  taxonomyCaptured!: boolean;
+
+  @ApiProperty({
+    description: 'Frozen category from immutable snapshot, or null if uncategorized or legacy',
+    type: PublicTaxonomyCategoryDto,
+    nullable: true,
+  })
+  category!: PublicTaxonomyCategoryDto | null;
+
+  @ApiProperty({
+    description: 'Frozen tags array from immutable snapshot in deterministic order',
+    type: [PublicTaxonomyTagDto],
+  })
+  tags!: PublicTaxonomyTagDto[];
 }
 
 export class PublicArticleListResponseDto {

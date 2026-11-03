@@ -4,6 +4,9 @@ import type {
   ArticleBlock,
   ArticleStatus,
   MediaAsset,
+  Category,
+  Tag,
+  ArticleTag,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service.js';
@@ -15,6 +18,8 @@ export interface CreateArticleData {
   summary?: string | null;
   typographyPreset?: string;
   coverMediaId?: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
 }
 
 export interface FindMyArticlesParams {
@@ -24,7 +29,16 @@ export interface FindMyArticlesParams {
   status?: ArticleStatus;
 }
 
-export type ArticleWithBlocks = Article & { blocks: ArticleBlock[] };
+export type ArticleWithTags = Article & {
+  category?: Category | null;
+  tags?: (ArticleTag & { tag?: Tag })[];
+};
+
+export type ArticleWithBlocks = Article & {
+  blocks: ArticleBlock[];
+  category?: Category | null;
+  tags?: (ArticleTag & { tag?: Tag })[];
+};
 
 /**
  * ArticlesRepository — data access layer for the articles domain.
@@ -50,9 +64,9 @@ export class ArticlesRepository {
   }
 
   /**
-   * Creates a new draft article row in the database.
+   * Creates a new draft article row in the database with optional taxonomy assignments.
    */
-  async create(data: CreateArticleData): Promise<Article> {
+  async create(data: CreateArticleData): Promise<ArticleWithTags> {
     this.logger.debug(
       `Creating draft article for author: ${data.authorId}, slug: ${data.draftSlug}`,
     );
@@ -65,9 +79,23 @@ export class ArticlesRepository {
         summary: data.summary ?? null,
         typographyPreset: data.typographyPreset ?? 'MODERN_SANS',
         coverMediaId: data.coverMediaId ?? null,
+        categoryId: data.categoryId ?? null,
         status: 'DRAFT',
         draftRevision: 1,
         publishedRevision: 0,
+        tags:
+          data.tagIds && data.tagIds.length > 0
+            ? {
+                create: data.tagIds.map((tagId) => ({ tagId })),
+              }
+            : undefined,
+      },
+      include: {
+        category: true,
+        tags: {
+          include: { tag: true },
+          orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
+        },
       },
     });
   }
@@ -78,7 +106,7 @@ export class ArticlesRepository {
    */
   async findMyArticles(
     params: FindMyArticlesParams,
-  ): Promise<{ items: Article[]; total: number }> {
+  ): Promise<{ items: ArticleWithTags[]; total: number }> {
     const where: Prisma.ArticleWhereInput = {
       authorId: params.authorId,
       ...(params.status ? { status: params.status } : {}),
@@ -87,6 +115,13 @@ export class ArticlesRepository {
     const [items, total] = await Promise.all([
       this.prisma.article.findMany({
         where,
+        include: {
+          category: true,
+          tags: {
+            include: { tag: true },
+            orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
+          },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (params.page - 1) * params.limit,
         take: params.limit,
@@ -98,21 +133,28 @@ export class ArticlesRepository {
   }
 
   /**
-   * Retrieves an article strictly scoped to the owner, including its draft blocks ordered by position ASC, id ASC.
+   * Retrieves an article strictly scoped to the owner, including its draft blocks and tags ordered deterministically.
    * Returns null if the article does not exist or belongs to another author.
    */
   async findPrivateById(
     articleId: string,
     authorId: string,
-  ): Promise<ArticleWithBlocks | null> {
-    return this.prisma.article.findFirst({
+    tx?: Prisma.TransactionClient,
+  ): Promise<(ArticleWithBlocks & ArticleWithTags) | null> {
+    const client = tx ?? this.prisma;
+    return client.article.findFirst({
       where: {
         id: articleId,
         authorId,
       },
       include: {
+        category: true,
         blocks: {
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        },
+        tags: {
+          include: { tag: true },
+          orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
         },
       },
     });
@@ -141,6 +183,7 @@ export class ArticlesRepository {
         draft_revision AS "draftRevision",
         published_revision AS "publishedRevision",
         current_snapshot_id AS "currentSnapshotId",
+        category_id AS "categoryId",
         created_at AS "createdAt",
         updated_at AS "updatedAt",
         published_at AS "publishedAt"
@@ -200,5 +243,64 @@ export class ArticlesRepository {
     return client.mediaAsset.findUnique({
       where: { id: mediaAssetId },
     });
+  }
+
+  /**
+   * Looks up a Category by ID.
+   */
+  async findCategoryById(
+    categoryId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Category | null> {
+    const client = tx ?? this.prisma;
+    return client.category.findUnique({
+      where: { id: categoryId },
+    });
+  }
+
+  /**
+   * Looks up multiple Tags by their IDs.
+   */
+  async findTagsByIds(
+    tagIds: string[],
+    tx?: Prisma.TransactionClient,
+  ): Promise<Tag[]> {
+    const client = tx ?? this.prisma;
+    return client.tag.findMany({
+      where: { id: { in: tagIds } },
+    });
+  }
+
+  /**
+   * Finds the list of Tag IDs associated with an article.
+   */
+  async findArticleTagIds(
+    articleId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<string[]> {
+    const client = tx ?? this.prisma;
+    const rows = await client.articleTag.findMany({
+      where: { articleId },
+      select: { tagId: true },
+    });
+    return rows.map((r) => r.tagId);
+  }
+
+  /**
+   * Replaces all Tag associations for an article inside a transaction.
+   */
+  async replaceArticleTags(
+    articleId: string,
+    tagIds: string[],
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.articleTag.deleteMany({
+      where: { articleId },
+    });
+    if (tagIds.length > 0) {
+      await tx.articleTag.createMany({
+        data: tagIds.map((tagId) => ({ articleId, tagId })),
+      });
+    }
   }
 }

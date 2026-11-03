@@ -22,6 +22,10 @@ import { ArticleMediaService } from '../services/article-media.service.js';
 import { PublicArticlesQueryDto } from '../dto/public-articles-query.dto.js';
 import { PublicArticleListResponseDto } from '../dto/public-article-list-response.dto.js';
 import { PublicArticleDetailResponseDto } from '../dto/public-article-detail-response.dto.js';
+import {
+  PublicDiscoveredCategoryDto,
+  PublicDiscoveredTagDto,
+} from '../dto/public-taxonomy-discovery-response.dto.js';
 
 @ApiTags('articles-public')
 @Controller('articles/public')
@@ -90,6 +94,48 @@ export class ArticlePublicReaderController {
     @Query() query: PublicArticlesQueryDto,
   ): Promise<PublicArticleListResponseDto> {
     return this.readerService.listPublishedArticles(query);
+  }
+
+  /**
+   * GET /api/v1/articles/public/taxonomy/categories
+   *
+   * Discovers categories represented in active published article snapshots.
+   */
+  @Public()
+  @Get('taxonomy/categories')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Discover categories represented in published articles',
+    description:
+      'Returns categories represented in active published snapshots along with publicly visible article counts.',
+  })
+  @ApiOkResponse({
+    description: 'Discovered categories with article counts.',
+    type: [PublicDiscoveredCategoryDto],
+  })
+  async discoverCategories(): Promise<PublicDiscoveredCategoryDto[]> {
+    return this.readerService.discoverCategories();
+  }
+
+  /**
+   * GET /api/v1/articles/public/taxonomy/tags
+   *
+   * Discovers tags represented in active published article snapshots.
+   */
+  @Public()
+  @Get('taxonomy/tags')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Discover tags represented in published articles',
+    description:
+      'Returns tags represented in active published snapshots along with publicly visible article counts.',
+  })
+  @ApiOkResponse({
+    description: 'Discovered tags with article counts.',
+    type: [PublicDiscoveredTagDto],
+  })
+  async discoverTags(): Promise<PublicDiscoveredTagDto[]> {
+    return this.readerService.discoverTags();
   }
 
   /**

@@ -15,6 +15,7 @@ import { EmailModule } from './modules/email/email.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ArticlesModule } from './modules/articles/articles.module';
+import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import appConfig from './config/app.config';
 import emailConfig from './config/email.config';
 import jwtConfig from './config/jwt.config';
@@ -70,6 +71,7 @@ import jwtConfig from './config/jwt.config';
     SessionsModule, // Phase 2.2.4A — session persistence foundation
     AuditModule,   // Phase Q-2.3B — durable database audit logging foundation
     ArticlesModule, // Checkpoint A-3 / Stage 6B — author draft management
+    TaxonomyModule, // Checkpoint C-1C — Category and Tag backend API foundation
   ],
   controllers: [AppController],
   providers: [

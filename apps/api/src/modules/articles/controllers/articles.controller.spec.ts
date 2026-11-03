@@ -40,6 +40,8 @@ describe('ArticlesController', () => {
     draftRevision: 1,
     publishedRevision: 0,
     currentSnapshotId: null,
+    categoryId: null,
+    tagIds: [],
     createdAt: '2026-10-25T10:00:00.000Z',
     updatedAt: '2026-10-25T10:00:00.000Z',
     publishedAt: null,

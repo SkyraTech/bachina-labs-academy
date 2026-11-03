@@ -230,4 +230,110 @@ describe('UpdateArticleDto', () => {
       expect(errors.some((e) => e.property === 'coverMediaId')).toBe(true);
     });
   });
+
+  describe('taxonomy fields (categoryId & tagIds)', () => {
+    it('accepts valid categoryId (UUIDv4) and null', async () => {
+      const valid = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+      });
+      expect(valid.length).toBe(0);
+
+      const nullCat = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: null,
+      });
+      expect(nullCat.length).toBe(0);
+    });
+
+    it('rejects invalid UUID categoryId', async () => {
+      const invalid = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: 'not-a-uuid',
+      });
+      expect(invalid.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const emptyStr = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: '',
+      });
+      expect(emptyStr.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const numeric = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: 12345,
+      });
+      expect(numeric.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const objVal = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: { id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d' },
+      });
+      expect(objVal.some((e) => e.property === 'categoryId')).toBe(true);
+
+      const arrayVal = await transformAndValidate({
+        expectedRevision: 1,
+        categoryId: ['a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'],
+      });
+      expect(arrayVal.some((e) => e.property === 'categoryId')).toBe(true);
+    });
+
+    it('accepts valid array of unique UUID tagIds up to 20 (counts 0, 1, 5, 6, 19, 20)', async () => {
+      const makeUuids = (count: number) =>
+        Array.from({ length: count }, (_, i) =>
+          `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`,
+        );
+
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: [] })).length).toBe(0);
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: makeUuids(1) })).length).toBe(0);
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: makeUuids(5) })).length).toBe(0);
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: makeUuids(6) })).length).toBe(0);
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: makeUuids(19) })).length).toBe(0);
+      expect((await transformAndValidate({ expectedRevision: 1, tagIds: makeUuids(20) })).length).toBe(0);
+    });
+
+    it('rejects non-array tagIds', async () => {
+      const strVal = await transformAndValidate({
+        expectedRevision: 1,
+        tagIds: 'not-an-array',
+      });
+      expect(strVal.some((e) => e.property === 'tagIds')).toBe(true);
+
+      const numVal = await transformAndValidate({
+        expectedRevision: 1,
+        tagIds: 12345,
+      });
+      expect(numVal.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects duplicate tagIds', async () => {
+      const duplicate = await transformAndValidate({
+        expectedRevision: 1,
+        tagIds: [
+          'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+          'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+        ],
+      });
+      expect(duplicate.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects more than 20 tagIds', async () => {
+      const over20 = Array.from({ length: 21 }, (_, i) =>
+        `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`,
+      );
+      const invalid = await transformAndValidate({
+        expectedRevision: 1,
+        tagIds: over20,
+      });
+      expect(invalid.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+
+    it('rejects non-UUID items in tagIds array', async () => {
+      const invalid = await transformAndValidate({
+        expectedRevision: 1,
+        tagIds: ['not-a-uuid'],
+      });
+      expect(invalid.some((e) => e.property === 'tagIds')).toBe(true);
+    });
+  });
 });

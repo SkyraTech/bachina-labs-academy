@@ -13,6 +13,10 @@ import {
   type IndependentAuditEvent,
   type TransactionalAuditEvent,
 } from '../src/modules/audit/types/audit-event.types.js';
+import {
+  assertDisposableTestDatabase,
+  safelyDropDisposableDatabase,
+} from './test-db-isolation.js';
 
 describe('Audit Infrastructure Real PostgreSQL 17 Integration (e2e)', () => {
   let disposableDbName: string;
@@ -75,7 +79,8 @@ describe('Audit Infrastructure Real PostgreSQL 17 Integration (e2e)', () => {
     }
 
     // 2. Generate cryptographically random unique database name
-    disposableDbName = `academy_sec_${crypto.randomBytes(8).toString('hex')}`;
+    disposableDbName = `academy_auth_audit_${crypto.randomBytes(8).toString('hex')}`;
+    assertDisposableTestDatabase(disposableDbName, 'academy_auth_audit_');
 
     // 3. Confirm target database does not exist
     const checkSql = `SELECT count(*) FROM pg_database WHERE datname = '${disposableDbName}';`;
@@ -205,19 +210,12 @@ describe('Audit Infrastructure Real PostgreSQL 17 Integration (e2e)', () => {
       await prismaRuntime.$disconnect();
     }
 
-    // 2. Tear down isolated disposable database
-    if (disposableDbName && disposableDbName.startsWith('academy_sec_')) {
-      try {
-        // Terminate any remaining connections to this test database
-        runAdminPsql(`
-          SELECT pg_terminate_backend(pid) 
-          FROM pg_stat_activity 
-          WHERE datname = '${disposableDbName}' AND pid <> pg_backend_pid();
-        `);
-        runAdminPsql(`DROP DATABASE IF EXISTS "${disposableDbName}";`);
-      } catch (err) {
-        console.error(`Failed to drop disposable database ${disposableDbName}:`, err);
-      }
+    // 2. Tear down isolated disposable database safely with connection draining and verified drop
+    if (disposableDbName) {
+      assertDisposableTestDatabase(disposableDbName, 'academy_auth_audit_');
+      await safelyDropDisposableDatabase(disposableDbName, (sql) => runAdminPsql(sql), {
+        allowedPrefix: 'academy_auth_audit_',
+      });
     }
   }, 20000);
 

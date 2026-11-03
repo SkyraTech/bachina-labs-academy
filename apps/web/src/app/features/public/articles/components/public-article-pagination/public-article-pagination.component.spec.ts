@@ -84,4 +84,48 @@ describe('PublicArticlePaginationComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('nav')).toBeNull();
   });
+
+  describe('Accessibility & Windowing Semantics (Checkpoint C-3D)', () => {
+    it('renders role="group" and aria-label="Page numbers" on page buttons wrapper', () => {
+      const group = fixture.nativeElement.querySelector('div[role="group"][aria-label="Page numbers"]');
+      expect(group).not.toBeNull();
+    });
+
+    it('sets aria-current="page" and active-page class exclusively on the current active page', () => {
+      componentRef.setInput('page', 2);
+      componentRef.setInput('totalPages', 4);
+      fixture.detectChanges();
+
+      const buttons = fixture.nativeElement.querySelectorAll('.pagination-number-btn');
+      expect(buttons.length).toBe(4);
+
+      // Page 1 should not have aria-current
+      expect(buttons[0].getAttribute('aria-current')).toBeNull();
+      expect(buttons[0].classList.contains('active-page')).toBe(false);
+
+      // Page 2 should have aria-current="page"
+      expect(buttons[1].getAttribute('aria-current')).toBe('page');
+      expect(buttons[1].classList.contains('active-page')).toBe(true);
+
+      // Page 3 should not have aria-current
+      expect(buttons[2].getAttribute('aria-current')).toBeNull();
+      expect(buttons[2].classList.contains('active-page')).toBe(false);
+    });
+
+    it('computes centered 5-page sliding window for middle pages of large totalPages', () => {
+      componentRef.setInput('page', 10);
+      componentRef.setInput('totalPages', 20);
+      fixture.detectChanges();
+
+      expect(component.visiblePages()).toEqual([8, 9, 10, 11, 12]);
+    });
+
+    it('clamps sliding window at the upper boundary for last page of large totalPages', () => {
+      componentRef.setInput('page', 20);
+      componentRef.setInput('totalPages', 20);
+      fixture.detectChanges();
+
+      expect(component.visiblePages()).toEqual([16, 17, 18, 19, 20]);
+    });
+  });
 });

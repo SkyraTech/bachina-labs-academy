@@ -9,6 +9,9 @@ import {
   ValidateIf,
   IsInt,
   Min,
+  IsArray,
+  ArrayMaxSize,
+  ArrayUnique,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -59,4 +62,18 @@ export class UpdateArticleDto {
     message: 'coverMediaId must be a valid UUIDv4 or null',
   })
   coverMediaId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsUUID('4', {
+    message: 'categoryId must be a valid UUIDv4 or null',
+  })
+  categoryId?: string | null;
+
+  @IsOptional()
+  @IsArray({ message: 'tagIds must be an array' })
+  @ArrayMaxSize(20, { message: 'tagIds must not contain more than 20 tags' })
+  @IsUUID('4', { each: true, message: 'Each tag ID must be a valid UUIDv4' })
+  @ArrayUnique({ message: 'tagIds must not contain duplicate tag IDs' })
+  tagIds?: string[];
 }

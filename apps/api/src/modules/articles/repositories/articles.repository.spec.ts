@@ -86,9 +86,18 @@ describe('ArticlesRepository', () => {
           summary: MOCK_ARTICLE.summary,
           typographyPreset: 'MODERN_SANS',
           coverMediaId: null,
+          categoryId: null,
           status: 'DRAFT',
           draftRevision: 1,
           publishedRevision: 0,
+          tags: undefined,
+        },
+        include: {
+          category: true,
+          tags: {
+            include: { tag: true },
+            orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
+          },
         },
       });
       expect(result).toEqual(MOCK_ARTICLE);
@@ -111,6 +120,13 @@ describe('ArticlesRepository', () => {
         where: {
           authorId: MOCK_ARTICLE.authorId,
           status: ArticleStatus.DRAFT,
+        },
+        include: {
+          category: true,
+          tags: {
+            include: { tag: true },
+            orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
+          },
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: 10,
@@ -158,8 +174,13 @@ describe('ArticlesRepository', () => {
           authorId: MOCK_ARTICLE.authorId,
         },
         include: {
+          category: true,
           blocks: {
             orderBy: [{ position: 'asc' }, { id: 'asc' }],
+          },
+          tags: {
+            include: { tag: true },
+            orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
           },
         },
       });

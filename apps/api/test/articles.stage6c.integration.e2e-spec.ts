@@ -139,11 +139,22 @@ describe('Article Stage 6C Real PostgreSQL 17 Integration (e2e)', () => {
     });
     await prismaAdmin.$connect();
 
-    // 9. Verify 11 applied migrations in disposable database
+    // 9. Verify exact authentic migrations in disposable database
+    const migrationsPath = fs.existsSync(path.resolve('prisma/migrations'))
+      ? path.resolve('prisma/migrations')
+      : path.resolve('apps/api/prisma/migrations');
+    const expectedMigrationNames = fs
+      .readdirSync(migrationsPath)
+      .filter((d) => fs.existsSync(path.join(migrationsPath, d, 'migration.sql')))
+      .sort();
+
     const appliedMigrations = await prismaAdmin.$queryRaw<{ migration_name: string }[]>`
       SELECT migration_name FROM _prisma_migrations WHERE rolled_back_at IS NULL ORDER BY finished_at ASC;
     `;
-    expect(appliedMigrations.length).toBe(11);
+    const appliedNames = appliedMigrations.map((m) => m.migration_name).sort();
+    expect(appliedNames).toEqual(expectedMigrationNames);
+    expect(appliedNames.length).toBe(13);
+    expect(appliedNames).toContain('20261101000000_add_article_snapshot_taxonomy');
 
     // 10. Wire repository and service
     repository = new ArticlesRepository(prismaRuntime as any);

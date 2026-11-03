@@ -14,6 +14,8 @@ describe('ArticlePublicReaderController', () => {
   let serviceMock: {
     listPublishedArticles: ReturnType<typeof vi.fn>;
     getPublishedArticleBySlug: ReturnType<typeof vi.fn>;
+    discoverCategories: ReturnType<typeof vi.fn>;
+    discoverTags: ReturnType<typeof vi.fn>;
   };
   let mediaServiceMock: {
     getPublicMediaContent: ReturnType<typeof vi.fn>;
@@ -28,6 +30,8 @@ describe('ArticlePublicReaderController', () => {
     serviceMock = {
       listPublishedArticles: vi.fn(),
       getPublishedArticleBySlug: vi.fn(),
+      discoverCategories: vi.fn(),
+      discoverTags: vi.fn(),
     };
     mediaServiceMock = {
       getPublicMediaContent: vi.fn(),
@@ -98,6 +102,26 @@ describe('ArticlePublicReaderController', () => {
       );
       expect(isPublic).toBe(true);
     });
+
+    it('decorates discoverCategories with @Public() and sets path to taxonomy/categories', () => {
+      const isPublic = reflector.get<boolean>(
+        IS_PUBLIC_KEY,
+        proto['discoverCategories'],
+      );
+      expect(isPublic).toBe(true);
+      const path = Reflect.getMetadata('path', proto['discoverCategories']);
+      expect(path).toBe('taxonomy/categories');
+    });
+
+    it('decorates discoverTags with @Public() and sets path to taxonomy/tags', () => {
+      const isPublic = reflector.get<boolean>(
+        IS_PUBLIC_KEY,
+        proto['discoverTags'],
+      );
+      expect(isPublic).toBe(true);
+      const path = Reflect.getMetadata('path', proto['discoverTags']);
+      expect(path).toBe('taxonomy/tags');
+    });
   });
 
   describe('Method delegations', () => {
@@ -113,6 +137,28 @@ describe('ArticlePublicReaderController', () => {
 
       const result = await controller.listPublishedArticles({ page: 1, limit: 20 });
       expect(serviceMock.listPublishedArticles).toHaveBeenCalledWith({ page: 1, limit: 20 });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('delegates listPublishedArticles with search query (q) and taxonomy filters to service', async () => {
+      const mockResult = {
+        items: [],
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+      };
+      serviceMock.listPublishedArticles.mockResolvedValue(mockResult);
+
+      const query = {
+        page: 1,
+        limit: 20,
+        category: 'backend-engineering',
+        tag: 'postgresql',
+        q: 'database optimization',
+      };
+      const result = await controller.listPublishedArticles(query);
+      expect(serviceMock.listPublishedArticles).toHaveBeenCalledWith(query);
       expect(result).toEqual(mockResult);
     });
 
@@ -169,6 +215,38 @@ describe('ArticlePublicReaderController', () => {
       );
       expect(end).toHaveBeenCalledWith(mockContent.buffer);
       expect(ended).toBe(true);
+    });
+
+    it('delegates discoverCategories to service', async () => {
+      const mockCategories = [
+        {
+          id: 'c1111111-0000-4000-8000-000000000001',
+          name: 'Backend Engineering',
+          slug: 'backend-engineering',
+          articleCount: 5,
+        },
+      ];
+      serviceMock.discoverCategories.mockResolvedValue(mockCategories);
+
+      const result = await controller.discoverCategories();
+      expect(serviceMock.discoverCategories).toHaveBeenCalled();
+      expect(result).toEqual(mockCategories);
+    });
+
+    it('delegates discoverTags to service', async () => {
+      const mockTags = [
+        {
+          id: 't1111111-0000-4000-8000-000000000001',
+          name: 'PostgreSQL',
+          slug: 'postgresql',
+          articleCount: 3,
+        },
+      ];
+      serviceMock.discoverTags.mockResolvedValue(mockTags);
+
+      const result = await controller.discoverTags();
+      expect(serviceMock.discoverTags).toHaveBeenCalled();
+      expect(result).toEqual(mockTags);
     });
   });
 });

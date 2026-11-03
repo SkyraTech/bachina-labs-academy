@@ -2,8 +2,36 @@
 :host {
   display: block;
   min-height: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .public-article-catalog {
   min-height: calc(100vh - 250px);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+app-public-article-card {
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+}
+
+:host ::ng-deep .public-article-card {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .card-cover-container {
+  min-height: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  :host ::ng-deep .public-article-card {
+    padding: 1rem;
+  }
 }

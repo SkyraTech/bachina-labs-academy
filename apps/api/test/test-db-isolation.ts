@@ -1,7 +1,14 @@
 /**
  * Test Database Isolation Guard
- * Enforces strict fail-closed validation of disposable database targets.
+ * Enforces strict fail-closed validation and reliable teardown of disposable database targets.
  */
+
+export const APPROVED_DISPOSABLE_PREFIXES = [
+  'academy_auth_audit_',
+  'academy_e2e_suite_',
+  'academy_audit_',
+] as const;
+
 export function assertDisposableTestDatabase(
   targetDb: string | undefined | null,
   allowedPrefix?: string,
@@ -9,6 +16,7 @@ export function assertDisposableTestDatabase(
   if (!targetDb || typeof targetDb !== 'string' || targetDb.trim() === '') {
     throw new Error('Test database rejection: database name is empty or undefined.');
   }
+
   const normalized = targetDb.trim().toLowerCase();
   if (normalized === 'bachina_labs_academy') {
     throw new Error(
@@ -19,9 +27,16 @@ export function assertDisposableTestDatabase(
     throw new Error(`Test database rejection: target database cannot be system database "${normalized}".`);
   }
 
+  // Reject leading/trailing whitespace or uppercase characters strictly
+  if (targetDb !== targetDb.trim() || targetDb !== targetDb.toLowerCase()) {
+    throw new Error(
+      `Test database rejection: database "${targetDb}" must be strictly lowercase without leading or trailing whitespace.`,
+    );
+  }
+
   const validPrefixes = allowedPrefix
     ? [allowedPrefix]
-    : ['academy_auth_audit_', 'academy_audit_', 'academy_e2e_suite_'];
+    : ['academy_auth_audit_', 'academy_e2e_suite_', 'academy_audit_'];
 
   const matchedPrefix = validPrefixes.find((p) => normalized.startsWith(p));
   if (!matchedPrefix) {
@@ -31,9 +46,72 @@ export function assertDisposableTestDatabase(
   }
 
   const suffix = normalized.slice(matchedPrefix.length);
-  if (!/^[0-9a-f]{8,}$/.test(suffix)) {
+  // Strict 16 lowercase hex characters contract
+  if (!/^[0-9a-f]{16}$/.test(suffix)) {
     throw new Error(
-      `Test database rejection: database "${normalized}" does not have a valid collision-resistant hex suffix.`,
+      `Test database rejection: database "${normalized}" does not have a valid collision-resistant hex suffix (must be exactly 16 lowercase hex characters).`,
+    );
+  }
+}
+
+/**
+ * Safely drops an owned disposable test database with connection draining and fail-loud guarantees.
+ *
+ * Sequence:
+ * 1. Validates disposable database name identity.
+ * 2. Waits for active connections to drain naturally up to maxWaitMs.
+ * 3. Drops the database cleanly without unconditional WITH (FORCE).
+ * 4. Verifies absolute post-drop absence in pg_database; fails loud if still present.
+ */
+export async function safelyDropDisposableDatabase(
+  dbName: string,
+  runPsql: (sql: string, targetDb?: string) => string | Promise<string>,
+  options: {
+    allowedPrefix?: string;
+    maxWaitMs?: number;
+    pollIntervalMs?: number;
+  } = {},
+): Promise<void> {
+  assertDisposableTestDatabase(dbName, options.allowedPrefix);
+
+  const maxWaitMs = options.maxWaitMs ?? 5000;
+  const pollIntervalMs = options.pollIntervalMs ?? 100;
+  const startTime = Date.now();
+
+  // 1. Wait for active connections to drain
+  let remaining = -1;
+  while (Date.now() - startTime < maxWaitMs) {
+    const activeRes = await runPsql(
+      `SELECT count(*) FROM pg_stat_activity WHERE datname = '${dbName}' AND pid <> pg_backend_pid();`,
+    );
+    const countMatch = String(activeRes).match(/\b(\d+)\b/);
+    const count = countMatch ? parseInt(countMatch[1], 10) : 0;
+    remaining = count;
+    if (count === 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  if (remaining > 0) {
+    // Fail loud immediately without attempting unauthorized cross-role process termination
+    throw new Error(
+      `Fail-loud cleanup error: connections to disposable database "${dbName}" failed to drain within ${maxWaitMs}ms (${remaining} active connections remaining).`,
+    );
+  }
+
+  // 2. Drop the verified disposable database cleanly without WITH (FORCE)
+  await runPsql(`DROP DATABASE IF EXISTS "${dbName}";`);
+
+  // 3. Fail-loud verification: ensure database is confirmed absent
+  const checkRes = await runPsql(
+    `SELECT count(*) FROM pg_database WHERE datname = '${dbName}';`,
+  );
+  const checkMatch = String(checkRes).match(/\b(\d+)\b/);
+  const stillExists = checkMatch ? parseInt(checkMatch[1], 10) : 0;
+  if (stillExists !== 0) {
+    throw new Error(
+      `Fail-loud cleanup error: disposable database "${dbName}" still exists after drop attempt.`,
     );
   }
 }

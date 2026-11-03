@@ -4,10 +4,11 @@ import {
   ForbiddenException,
   NotFoundException,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { ArticlesService } from './articles.service.js';
 import { ArticlesRepository } from '../repositories/articles.repository.js';
-import { UserRole, UserStatus, ArticleStatus } from '@prisma/client';
+import { UserRole, UserStatus, ArticleStatus, Prisma } from '@prisma/client';
 import type { AuthenticatedUser } from '../../auth/types/jwt.types.js';
 
 describe('ArticlesService', () => {
@@ -17,6 +18,10 @@ describe('ArticlesService', () => {
     findMyArticles: ReturnType<typeof vi.fn>;
     findPrivateById: ReturnType<typeof vi.fn>;
     findMediaAsset: ReturnType<typeof vi.fn>;
+    findCategoryById: ReturnType<typeof vi.fn>;
+    findTagsByIds: ReturnType<typeof vi.fn>;
+    findArticleTagIds: ReturnType<typeof vi.fn>;
+    replaceArticleTags: ReturnType<typeof vi.fn>;
   };
 
   const VALID_USER: AuthenticatedUser = {
@@ -55,6 +60,7 @@ describe('ArticlesService', () => {
     draftRevision: 1,
     publishedRevision: 0,
     currentSnapshotId: null,
+    categoryId: null,
     createdAt: MOCK_DATE,
     updatedAt: MOCK_DATE,
     publishedAt: null,
@@ -66,6 +72,10 @@ describe('ArticlesService', () => {
       findMyArticles: vi.fn(),
       findPrivateById: vi.fn(),
       findMediaAsset: vi.fn(),
+      findCategoryById: vi.fn(),
+      findTagsByIds: vi.fn(),
+      findArticleTagIds: vi.fn(),
+      replaceArticleTags: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -134,6 +144,8 @@ describe('ArticlesService', () => {
         summary: 'A comprehensive guide.',
         typographyPreset: undefined,
         coverMediaId: undefined,
+        categoryId: null,
+        tagIds: undefined,
       });
 
       expect(result).toEqual({
@@ -149,6 +161,10 @@ describe('ArticlesService', () => {
         draftRevision: 1,
         publishedRevision: 0,
         currentSnapshotId: null,
+        categoryId: null,
+        tagIds: [],
+        category: null,
+        tags: [],
         createdAt: MOCK_DATE.toISOString(),
         updatedAt: MOCK_DATE.toISOString(),
         publishedAt: null,
@@ -261,6 +277,9 @@ describe('ArticlesService', () => {
         items: [
           {
             ...MOCK_ARTICLE,
+            tagIds: [],
+            category: null,
+            tags: [],
             createdAt: MOCK_DATE.toISOString(),
             updatedAt: MOCK_DATE.toISOString(),
           },
@@ -344,6 +363,10 @@ describe('ArticlesService', () => {
       findArticleForUpdate: ReturnType<typeof vi.fn>;
       updateArticle: ReturnType<typeof vi.fn>;
       findMediaAsset: ReturnType<typeof vi.fn>;
+      findCategoryById: ReturnType<typeof vi.fn>;
+      findTagsByIds: ReturnType<typeof vi.fn>;
+      findArticleTagIds: ReturnType<typeof vi.fn>;
+      replaceArticleTags: ReturnType<typeof vi.fn>;
     };
 
     beforeEach(() => {
@@ -351,11 +374,19 @@ describe('ArticlesService', () => {
         findArticleForUpdate: vi.fn(),
         updateArticle: vi.fn(),
         findMediaAsset: vi.fn(),
+        findCategoryById: vi.fn(),
+        findTagsByIds: vi.fn(),
+        findArticleTagIds: vi.fn().mockResolvedValue([]),
+        replaceArticleTags: vi.fn().mockResolvedValue(undefined),
       };
       (repositoryMock as any).transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
       (repositoryMock as any).findArticleForUpdate = mockTx.findArticleForUpdate;
       (repositoryMock as any).updateArticle = mockTx.updateArticle;
       (repositoryMock as any).findMediaAsset = mockTx.findMediaAsset;
+      (repositoryMock as any).findCategoryById = mockTx.findCategoryById;
+      (repositoryMock as any).findTagsByIds = mockTx.findTagsByIds;
+      (repositoryMock as any).findArticleTagIds = mockTx.findArticleTagIds;
+      (repositoryMock as any).replaceArticleTags = mockTx.replaceArticleTags;
     });
 
     it('rejects ineligible accounts (unverified / suspended)', async () => {
@@ -744,6 +775,448 @@ describe('ArticlesService', () => {
       );
       expect(mockTx.countSnapshots).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
       expect(mockTx.deleteArticle).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
+    });
+  });
+
+  // ── Taxonomy Assignment & Validation (Checkpoint C-2) ────────────────────
+
+  describe('Taxonomy Assignment and Validation (Checkpoint C-2)', () => {
+    const validCategoryId = 'c1111111-0000-4000-8000-000000000001';
+    const validTagId1 = 't1111111-0000-4000-8000-000000000001';
+    const validTagId2 = 't2222222-0000-4000-8000-000000000002';
+
+    let mockTx: {
+      findArticleForUpdate: ReturnType<typeof vi.fn>;
+      updateArticle: ReturnType<typeof vi.fn>;
+      findMediaAsset: ReturnType<typeof vi.fn>;
+      findCategoryById: ReturnType<typeof vi.fn>;
+      findTagsByIds: ReturnType<typeof vi.fn>;
+      findArticleTagIds: ReturnType<typeof vi.fn>;
+      replaceArticleTags: ReturnType<typeof vi.fn>;
+      findPrivateById: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockTx = {
+        findArticleForUpdate: vi.fn(),
+        updateArticle: vi.fn(),
+        findMediaAsset: vi.fn(),
+        findCategoryById: vi.fn(),
+        findTagsByIds: vi.fn(),
+        findArticleTagIds: vi.fn().mockResolvedValue([]),
+        replaceArticleTags: vi.fn().mockResolvedValue(undefined),
+        findPrivateById: vi.fn(),
+      };
+      (repositoryMock as any).transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+      (repositoryMock as any).findArticleForUpdate = mockTx.findArticleForUpdate;
+      (repositoryMock as any).updateArticle = mockTx.updateArticle;
+      (repositoryMock as any).findMediaAsset = mockTx.findMediaAsset;
+      (repositoryMock as any).findCategoryById = mockTx.findCategoryById;
+      (repositoryMock as any).findTagsByIds = mockTx.findTagsByIds;
+      (repositoryMock as any).findArticleTagIds = mockTx.findArticleTagIds;
+      (repositoryMock as any).replaceArticleTags = mockTx.replaceArticleTags;
+      (repositoryMock as any).findPrivateById = mockTx.findPrivateById;
+    });
+
+    it('creates an article draft with Category and multiple Tags', async () => {
+      repositoryMock.findCategoryById = vi.fn().mockResolvedValue({ id: validCategoryId, name: 'Architecture' });
+      repositoryMock.findTagsByIds = vi.fn().mockResolvedValue([
+        { id: validTagId1, slug: 'nestjs', name: 'NestJS' },
+        { id: validTagId2, slug: 'postgres', name: 'PostgreSQL' },
+      ]);
+      repositoryMock.create.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: validCategoryId,
+        tags: [
+          { articleId: MOCK_ARTICLE.id, tagId: validTagId1, tag: { slug: 'nestjs' } },
+          { articleId: MOCK_ARTICLE.id, tagId: validTagId2, tag: { slug: 'postgres' } },
+        ],
+      });
+
+      const result = await service.createDraft(VALID_USER, {
+        title: 'Taxonomy Article',
+        draftSlug: 'taxonomy-article',
+        categoryId: validCategoryId,
+        tagIds: [validTagId1, validTagId2],
+      });
+
+      expect(repositoryMock.findCategoryById).toHaveBeenCalledWith(validCategoryId);
+      expect(repositoryMock.findTagsByIds).toHaveBeenCalledWith([validTagId1, validTagId2]);
+      expect(repositoryMock.create).toHaveBeenCalledWith({
+        authorId: VALID_USER.id,
+        title: 'Taxonomy Article',
+        draftSlug: 'taxonomy-article',
+        summary: undefined,
+        typographyPreset: undefined,
+        coverMediaId: undefined,
+        categoryId: validCategoryId,
+        tagIds: [validTagId1, validTagId2],
+      });
+      expect(result.categoryId).toBe(validCategoryId);
+      expect(result.tagIds).toEqual([validTagId1, validTagId2]);
+    });
+
+    it('rejects creation when Category does not exist with BadRequestException', async () => {
+      repositoryMock.findCategoryById = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Taxonomy Article',
+          draftSlug: 'taxonomy-article',
+          categoryId: 'missing-category-id',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects creation when one or more Tags do not exist with BadRequestException', async () => {
+      repositoryMock.findTagsByIds = vi.fn().mockResolvedValue([{ id: validTagId1, slug: 'nestjs' }]);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Taxonomy Article',
+          draftSlug: 'taxonomy-article',
+          tagIds: [validTagId1, 'missing-tag-id'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('replaces Category and replaces Tag set on draft update with revision increment', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: 'old-category-id',
+        draftRevision: 3,
+      });
+      mockTx.findArticleTagIds.mockResolvedValue(['old-tag-id']);
+      mockTx.findCategoryById.mockResolvedValue({ id: validCategoryId });
+      mockTx.findTagsByIds.mockResolvedValue([
+        { id: validTagId1, slug: 'nestjs' },
+        { id: validTagId2, slug: 'postgres' },
+      ]);
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: validCategoryId,
+        draftRevision: 4,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 3,
+        categoryId: validCategoryId,
+        tagIds: [validTagId1, validTagId2],
+      });
+
+      expect(mockTx.findCategoryById).toHaveBeenCalledWith(validCategoryId, mockTx);
+      expect(mockTx.findTagsByIds).toHaveBeenCalledWith([validTagId1, validTagId2], mockTx);
+      expect(mockTx.replaceArticleTags).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        [validTagId1, validTagId2],
+        mockTx,
+      );
+      expect(result.categoryId).toBe(validCategoryId);
+      expect(result.tagIds).toEqual([validTagId1, validTagId2]);
+      expect(result.draftRevision).toBe(4);
+    });
+
+    it('explicitly clears Category when categoryId is null and increments revision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: 'old-category-id',
+        draftRevision: 2,
+      });
+      mockTx.findArticleTagIds.mockResolvedValue([]);
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: null,
+        draftRevision: 3,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 2,
+        categoryId: null,
+      });
+
+      expect(result.categoryId).toBeNull();
+      expect(result.draftRevision).toBe(3);
+    });
+
+    it('explicitly clears all Tags when tagIds is empty array [] and increments revision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 2,
+      });
+      mockTx.findArticleTagIds.mockResolvedValue([validTagId1]);
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 2,
+        tagIds: [],
+      });
+
+      expect(mockTx.replaceArticleTags).toHaveBeenCalledWith(MOCK_ARTICLE.id, [], mockTx);
+      expect(result.tagIds).toEqual([]);
+      expect(result.draftRevision).toBe(3);
+    });
+
+    it('preserves Category and Tags when taxonomy fields are omitted in draft update', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        title: 'Original Title',
+        categoryId: validCategoryId,
+        draftRevision: 1,
+      });
+      mockTx.findPrivateById.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        title: 'Updated Title Only',
+        categoryId: validCategoryId,
+        draftRevision: 2,
+        tags: [{ tagId: validTagId1, tag: { slug: 'nestjs' } }],
+      });
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        title: 'Updated Title Only',
+        categoryId: validCategoryId,
+        draftRevision: 2,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        title: 'Updated Title Only',
+      });
+
+      expect(mockTx.replaceArticleTags).not.toHaveBeenCalled();
+      expect(result.title).toBe('Updated Title Only');
+      expect(result.categoryId).toBe(validCategoryId);
+      expect(result.tagIds).toEqual([validTagId1]);
+      expect(result.draftRevision).toBe(2);
+    });
+
+    it('detects taxonomy no-op and returns article without incrementing revision', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: validCategoryId,
+        draftRevision: 5,
+      });
+      mockTx.findCategoryById.mockResolvedValue({ id: validCategoryId, slug: 'backend' });
+      mockTx.findTagsByIds.mockResolvedValue([{ id: validTagId1, slug: 'nestjs' }]);
+      mockTx.findArticleTagIds.mockResolvedValue([validTagId1]);
+      mockTx.findPrivateById.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: validCategoryId,
+        draftRevision: 5,
+        tags: [{ tagId: validTagId1, tag: { slug: 'nestjs' } }],
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 5,
+        categoryId: validCategoryId,
+        tagIds: [validTagId1],
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(mockTx.replaceArticleTags).not.toHaveBeenCalled();
+      expect(result.draftRevision).toBe(5);
+      expect(result.categoryId).toBe(validCategoryId);
+      expect(result.tagIds).toEqual([validTagId1]);
+    });
+
+    it('maps Prisma P2003 on category to BadRequestException during creation race', async () => {
+      repositoryMock.findCategoryById = vi.fn().mockResolvedValue({ id: validCategoryId });
+      const p2003Category = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+        code: 'P2003',
+        clientVersion: '6.19.3',
+        meta: { field_name: 'articles_category_id_fkey' },
+      });
+      repositoryMock.create.mockRejectedValue(p2003Category);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Race Article',
+          draftSlug: 'race-article',
+          categoryId: validCategoryId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('maps Prisma P2003 on tag to BadRequestException during creation race', async () => {
+      repositoryMock.findTagsByIds = vi.fn().mockResolvedValue([{ id: validTagId1, slug: 'nestjs' }]);
+      const p2003Tag = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+        code: 'P2003',
+        clientVersion: '6.19.3',
+        meta: { field_name: 'article_tags_tag_id_fkey' },
+      });
+      repositoryMock.create.mockRejectedValue(p2003Tag);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Race Article',
+          draftSlug: 'race-article',
+          tagIds: [validTagId1],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('maps Prisma P2002 to ConflictException during creation slug collision', async () => {
+      const p2002Slug = new Prisma.PrismaClientKnownRequestError('Unique constraint violation', {
+        code: 'P2002',
+        clientVersion: '6.19.3',
+        meta: { target: ['draft_slug'] },
+      });
+      repositoryMock.create.mockRejectedValue(p2002Slug);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Collision Article',
+          draftSlug: 'collision-article',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('propagates unexpected database error during creation without misclassifying', async () => {
+      const dbError = new Error('Database connection terminated unexpectedly');
+      repositoryMock.create.mockRejectedValue(dbError);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Crash Article',
+          draftSlug: 'crash-article',
+        }),
+      ).rejects.toThrow('Database connection terminated unexpectedly');
+    });
+
+    it('maps Prisma P2003 on category to BadRequestException during draft update race', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        categoryId: 'old-category-id',
+        draftRevision: 1,
+      });
+      mockTx.findCategoryById.mockResolvedValue({ id: validCategoryId });
+      const p2003Category = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+        code: 'P2003',
+        clientVersion: '6.19.3',
+        meta: { field_name: 'articles_category_id_fkey' },
+      });
+      mockTx.updateArticle.mockRejectedValue(p2003Category);
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          categoryId: validCategoryId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('maps Prisma P2003 on tag to BadRequestException during draft update race', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 1,
+      });
+      mockTx.findTagsByIds.mockResolvedValue([{ id: validTagId1, slug: 'nestjs' }]);
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 2,
+      });
+      const p2003Tag = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+        code: 'P2003',
+        clientVersion: '6.19.3',
+        meta: { field_name: 'article_tags_tag_id_fkey' },
+      });
+      mockTx.replaceArticleTags.mockRejectedValue(p2003Tag);
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          tagIds: [validTagId1],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('maps Prisma P2025 on category nested connect to BadRequestException during update', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 1,
+      });
+      mockTx.findCategoryById.mockResolvedValue({ id: validCategoryId });
+      const p2025Cat = new Prisma.PrismaClientKnownRequestError('Record required but not found', {
+        code: 'P2025',
+        clientVersion: '6.19.3',
+        meta: { cause: "No 'Category' record(s) was found for a nested connect on ArticleToCategory" },
+      });
+      mockTx.updateArticle.mockRejectedValue(p2025Cat);
+
+      const err = await service
+        .updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          categoryId: validCategoryId,
+        })
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).message).toBe('Category not found.');
+    });
+
+    it('maps Prisma P2003 with unrelated constraint to generic entity not found error without leaking', async () => {
+      const p2003Unrelated = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+        code: 'P2003',
+        clientVersion: '6.19.3',
+        meta: { constraint: 'unrelated_foreign_key_fkey' },
+      });
+      repositoryMock.create.mockRejectedValue(p2003Unrelated);
+
+      const err = await service
+        .createDraft(VALID_USER, {
+          title: 'Unrelated FK Article',
+          draftSlug: 'unrelated-fk-article',
+        })
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).message).toBe('Referenced entity not found.');
+    });
+
+    it('rethrows P2025 unrelated to taxonomy without fabricating taxonomy validation error', async () => {
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 1,
+      });
+      const p2025Unrelated = new Prisma.PrismaClientKnownRequestError('Unrelated record not found', {
+        code: 'P2025',
+        clientVersion: '6.19.3',
+        meta: { cause: 'Some other record not found' },
+      });
+      mockTx.updateArticle.mockRejectedValue(p2025Unrelated);
+
+      await expect(
+        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 1,
+          title: 'New Title',
+        }),
+      ).rejects.toThrow(p2025Unrelated);
+    });
+
+    it('does not misclassify an error containing word tag in an unrelated message', async () => {
+      const unrelatedError = new Error('Failed to parse html tag in content parser');
+      repositoryMock.create.mockRejectedValue(unrelatedError);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Parser Error Article',
+          draftSlug: 'parser-error-article',
+        }),
+      ).rejects.toThrow('Failed to parse html tag in content parser');
+    });
+
+    it('does not misclassify an error containing word category in an unrelated message', async () => {
+      const unrelatedError = new Error('Log category disk_io failed');
+      repositoryMock.create.mockRejectedValue(unrelatedError);
+
+      await expect(
+        service.createDraft(VALID_USER, {
+          title: 'Disk IO Article',
+          draftSlug: 'disk-io-article',
+        }),
+      ).rejects.toThrow('Log category disk_io failed');
     });
   });
 });
