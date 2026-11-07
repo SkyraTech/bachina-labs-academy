@@ -17,8 +17,12 @@ import { PublicArticleApiService } from '../../services/public-article-api.servi
 import {
   PublicArticleDetailResponse,
   TypographyPreset,
+  computeHeadingAnchors,
 } from '../../models/public-article.models';
 import { PublicArticleBlockComponent } from '../public-article-block/public-article-block.component';
+import { ReaderTableOfContentsComponent } from '../reader-table-of-contents/reader-table-of-contents.component';
+import { ArticleShareActionsComponent } from '../article-share-actions/article-share-actions.component';
+import { ArticleCommentsComponent } from '../article-comments/article-comments.component';
 
 /**
  * Injection token for the approved public site origin (e.g. 'https://bachinalabs.academy').
@@ -50,7 +54,15 @@ export interface TocItem {
 @Component({
   selector: 'app-public-article-reader',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, PublicArticleBlockComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    DatePipe,
+    PublicArticleBlockComponent,
+    ReaderTableOfContentsComponent,
+    ArticleShareActionsComponent,
+    ArticleCommentsComponent,
+  ],
   templateUrl: './public-article-reader.component.html',
   styleUrl: './public-article-reader.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,27 +103,24 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
     }
   });
 
-  readonly tableOfContents = computed<TocItem[]>(() => {
-    const art = this.article();
-    if (!art?.blocks) return [];
+  readonly activeHeadingId = signal<string | null>(null);
+  private observer: IntersectionObserver | null = null;
+  private historyListener: (() => void) | null = null;
 
-    const toc: TocItem[] = [];
-    for (const b of art.blocks) {
-      if (b.type === 'HEADING' && typeof b.content['text'] === 'string') {
-        const text = b.content['text'];
-        const level = typeof b.content['level'] === 'number' ? b.content['level'] : 2;
-        if (level <= 3) {
-          const id = text
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\s-]/g, '')
-            .replace(/[\s_-]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-          toc.push({ id, text, level });
-        }
-      }
-    }
-    return toc;
+  private readonly headingData = computed(() => {
+    return computeHeadingAnchors(this.article()?.blocks);
+  });
+
+  readonly tableOfContents = computed<TocItem[]>(() => {
+    return this.headingData().items.map((h) => ({
+      id: h.anchorId,
+      text: h.text,
+      level: h.level,
+    }));
+  });
+
+  readonly blockAnchorMap = computed<ReadonlyMap<string, string>>(() => {
+    return this.headingData().blockMap;
   });
 
   constructor() {
@@ -120,6 +129,20 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      this.historyListener = () => {
+        const hash = window.location.hash;
+        if (hash) {
+          this.scrollToFragmentTarget(hash, true);
+        } else {
+          this.activeHeadingId.set(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+      window.addEventListener('popstate', this.historyListener);
+      window.addEventListener('hashchange', this.historyListener);
+    }
+
     this.route.paramMap
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => {
@@ -136,6 +159,12 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cleanupObserver();
+    if (this.historyListener && typeof window !== 'undefined') {
+      window.removeEventListener('popstate', this.historyListener);
+      window.removeEventListener('hashchange', this.historyListener);
+      this.historyListener = null;
+    }
     if (this.shareStatusTimeout) {
       clearTimeout(this.shareStatusTimeout);
       this.shareStatusTimeout = null;
@@ -143,8 +172,80 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
     this.clearArticleMetadata('destroy');
   }
 
+  private parseFragmentId(hash: string): string {
+    if (!hash) return '';
+    const clean = hash.startsWith('#') ? hash.slice(1) : hash;
+    try {
+      return decodeURIComponent(clean);
+    } catch {
+      return clean;
+    }
+  }
+
+  private scrollToFragmentTarget(fragmentId: string, smooth = true): void {
+    if (typeof window === 'undefined' || !fragmentId) return;
+    const decodedId = this.parseFragmentId(fragmentId);
+    if (!decodedId) return;
+
+    const targetEl = this.document.getElementById(decodedId);
+    if (targetEl) {
+      const prefersReduced =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      targetEl.scrollIntoView({
+        behavior: !smooth || prefersReduced ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      this.activeHeadingId.set(decodedId);
+    }
+  }
+
+  private setupObserver(): void {
+    if (typeof window === 'undefined') return;
+    this.cleanupObserver();
+
+    setTimeout(() => {
+      // Direct fragment navigation on load or refresh
+      if (typeof window !== 'undefined' && window.location.hash) {
+        this.scrollToFragmentTarget(window.location.hash, false);
+      }
+
+      const toc = this.tableOfContents();
+      if (toc.length < 2 || !('IntersectionObserver' in window)) return;
+
+      this.observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.filter((e) => e.isIntersecting);
+          if (visible.length > 0) {
+            visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            this.activeHeadingId.set(visible[0].target.id);
+          }
+        },
+        {
+          rootMargin: '-80px 0px -60% 0px',
+          threshold: [0, 1.0],
+        },
+      );
+
+      for (const item of toc) {
+        const el = this.document.getElementById(item.id);
+        if (el) {
+          this.observer.observe(el);
+        }
+      }
+    }, 0);
+  }
+
+  private cleanupObserver(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+  }
+
   loadArticle(slug: string = this.slug()): void {
     const currentReqId = ++this.requestId;
+    this.cleanupObserver();
     this.article.set(null);
     this.loading.set(true);
     this.notFound.set(false);
@@ -162,6 +263,7 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
           this.article.set(res);
           this.updateMetadata(res);
           this.loading.set(false);
+          this.setupObserver();
         },
         error: (err: { status?: number }) => {
           if (currentReqId !== this.requestId) return;
@@ -405,30 +507,31 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
     );
   }
 
-  resolvedShareUrl(): string | null {
+  resolvedShareUrl(sectionAnchor?: string): string | null {
     const art = this.article();
     if (!art || !art.slug) {
       return null;
     }
     const slug = encodeURIComponent(art.slug);
 
+    let base: string | null = null;
     // 1. First preference: verified approved canonical origin
     if (this.publicOrigin) {
       const sanitized = this.sanitizeOrigin(this.publicOrigin);
       if (sanitized) {
-        return `${sanitized}/articles/${slug}`;
+        base = `${sanitized}/articles/${slug}`;
       }
     }
 
     // 2. Fallback: verified current browser location origin
-    if (typeof this.document !== 'undefined' && this.document.location) {
+    if (!base && typeof this.document !== 'undefined' && this.document.location) {
       const loc = this.document.location;
       const rawOrigin = loc.origin;
       if (rawOrigin && (rawOrigin.startsWith('https://') || rawOrigin.startsWith('http://'))) {
         try {
           const parsed = new URL(`${rawOrigin}/articles/${slug}`);
           if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
-            return `${parsed.protocol}//${parsed.host}/articles/${slug}`;
+            base = `${parsed.protocol}//${parsed.host}/articles/${slug}`;
           }
         } catch {
           // ignore invalid
@@ -436,14 +539,18 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
       }
     }
 
-    return null;
+    if (!base) return null;
+    if (sectionAnchor && sectionAnchor.trim()) {
+      return `${base}#${encodeURIComponent(sectionAnchor.trim())}`;
+    }
+    return base;
   }
 
-  async copyArticleLink(): Promise<void> {
+  async copyArticleLink(sectionAnchor?: string): Promise<void> {
     const art = this.article();
     if (!art) return;
 
-    const url = this.resolvedShareUrl();
+    const url = this.resolvedShareUrl(sectionAnchor);
     if (!url) {
       this.setShareFeedback('Unable to copy link: share URL unavailable');
       return;
@@ -456,7 +563,7 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
     ) {
       try {
         await navigator.clipboard.writeText(url);
-        this.setShareFeedback('Link copied');
+        this.setShareFeedback(sectionAnchor ? 'Section link copied' : 'Link copied');
         this.showManualCopy.set(false);
         return;
       } catch {
@@ -465,6 +572,12 @@ export class PublicArticleReaderComponent implements OnInit, OnDestroy {
     }
     this.showManualCopy.set(true);
     this.setShareFeedback('Unable to copy link automatically');
+  }
+
+  async copySectionLink(): Promise<void> {
+    const headingId = this.activeHeadingId();
+    if (!headingId) return;
+    await this.copyArticleLink(headingId);
   }
 
   async shareArticle(): Promise<void> {

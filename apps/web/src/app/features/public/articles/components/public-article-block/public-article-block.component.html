@@ -5,7 +5,7 @@
       @switch (block().content['level']) {
         @case (1) {
           <h1
-            [id]="getHeadingId(block().content['text'])"
+            [id]="resolveHeadingId(block().content['text'])"
             class="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--color-text)] mt-12 mb-4 scroll-mt-24"
           >
             {{ block().content['text'] }}
@@ -13,7 +13,7 @@
         }
         @case (2) {
           <h2
-            [id]="getHeadingId(block().content['text'])"
+            [id]="resolveHeadingId(block().content['text'])"
             class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)] mt-10 mb-3 scroll-mt-24"
           >
             {{ block().content['text'] }}
@@ -21,15 +21,23 @@
         }
         @case (3) {
           <h3
-            [id]="getHeadingId(block().content['text'])"
+            [id]="resolveHeadingId(block().content['text'])"
             class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text)] mt-8 mb-2 scroll-mt-24"
           >
             {{ block().content['text'] }}
           </h3>
         }
+        @case (4) {
+          <h4
+            [id]="resolveHeadingId(block().content['text'])"
+            class="text-lg sm:text-xl font-semibold text-[var(--color-text)] mt-6 mb-2 scroll-mt-24"
+          >
+            {{ block().content['text'] }}
+          </h4>
+        }
         @default {
           <h4
-            [id]="getHeadingId(block().content['text'])"
+            [id]="resolveHeadingId(block().content['text'])"
             class="text-lg sm:text-xl font-semibold text-[var(--color-text)] mt-6 mb-2 scroll-mt-24"
           >
             {{ block().content['text'] }}

@@ -757,4 +757,165 @@ describe('PublicArticleReaderComponent — Unsafe Origin Rejection', () => {
     expect(doc.head.querySelector("link[rel='canonical']")).toBeNull();
     expect(metaService.getTag("property='og:url'")).toBeNull();
   });
+
+  describe('TOC and Heading Anchor Hardening (P5-R)', () => {
+    let component: PublicArticleReaderComponent;
+    let fixture: ComponentFixture<PublicArticleReaderComponent>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [PublicArticleReaderComponent],
+        providers: [
+          provideRouter([]),
+          {
+            provide: PublicArticleApiService,
+            useValue: {
+              getPublishedArticleBySlug: vi.fn().mockReturnValue(of(mockDetailResponse)),
+            },
+          },
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              paramMap: of(convertToParamMap({ slug: 'architecting-event-driven-microservices' })),
+            },
+          },
+        ],
+      }).compileComponents();
+
+      fixture = TestBed.createComponent(PublicArticleReaderComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+    });
+
+    it('computes deterministic, Unicode-safe anchors for non-Latin and repeated headings across levels 1..4', () => {
+      const unicodeArticle: PublicArticleDetailResponse = {
+        ...mockDetailResponse,
+        blocks: [
+          {
+            id: 'b-1',
+            type: 'HEADING',
+            position: 0,
+            schemaVersion: 1,
+            content: { text: 'Introduction to Web Architecture', level: 1 },
+            media: null,
+          },
+          {
+            id: 'b-2',
+            type: 'HEADING',
+            position: 1,
+            schemaVersion: 1,
+            content: { text: 'Café & Architecture', level: 2 },
+            media: null,
+          },
+          {
+            id: 'b-3',
+            type: 'HEADING',
+            position: 2,
+            schemaVersion: 1,
+            content: { text: '日本語 Guide', level: 2 },
+            media: null,
+          },
+          {
+            id: 'b-4',
+            type: 'HEADING',
+            position: 3,
+            schemaVersion: 1,
+            content: { text: 'परिचय Overview', level: 3 },
+            media: null,
+          },
+          {
+            id: 'b-5',
+            type: 'HEADING',
+            position: 4,
+            schemaVersion: 1,
+            content: { text: 'Level 4 Technical Detail', level: 4 },
+            media: null,
+          },
+          {
+            id: 'b-6',
+            type: 'HEADING',
+            position: 5,
+            schemaVersion: 1,
+            content: { text: '日本語 Guide', level: 2 },
+            media: null,
+          },
+          {
+            id: 'b-7',
+            type: 'HEADING',
+            position: 6,
+            schemaVersion: 1,
+            content: { text: '🚀', level: 2 },
+            media: null,
+          },
+        ],
+      };
+
+      component.article.set(unicodeArticle);
+      fixture.detectChanges();
+
+      const toc = component.tableOfContents();
+      expect(toc).toHaveLength(7);
+
+      // Level 1
+      expect(toc[0].id).toBe('introduction-to-web-architecture');
+      expect(toc[0].level).toBe(1);
+
+      // Level 2 with accent
+      expect(toc[1].id).toBe('café-architecture');
+      expect(toc[1].level).toBe(2);
+
+      // Level 2 Japanese
+      expect(toc[2].id).toBe('日本語-guide');
+      expect(toc[2].level).toBe(2);
+
+      // Level 3 Hindi combining marks
+      expect(toc[3].id).toBe('परिचय-overview');
+      expect(toc[3].level).toBe(3);
+
+      // Level 4
+      expect(toc[4].id).toBe('level-4-technical-detail');
+      expect(toc[4].level).toBe(4);
+
+      // Repeated heading disambiguation (-1 suffix)
+      expect(toc[5].id).toBe('日本語-guide-1');
+      expect(toc[5].level).toBe(2);
+
+      // Emoji-only fallback
+      expect(toc[6].id).toBe('heading');
+
+      // Check blockAnchorMap matches 1:1
+      const anchorMap = component.blockAnchorMap();
+      expect(anchorMap.get('b-1')).toBe('introduction-to-web-architecture');
+      expect(anchorMap.get('b-2')).toBe('café-architecture');
+      expect(anchorMap.get('b-3')).toBe('日本語-guide');
+      expect(anchorMap.get('b-4')).toBe('परिचय-overview');
+      expect(anchorMap.get('b-5')).toBe('level-4-technical-detail');
+      expect(anchorMap.get('b-6')).toBe('日本語-guide-1');
+      expect(anchorMap.get('b-7')).toBe('heading');
+    });
+
+    it('gracefully degrades to empty TOC when article has < 2 headings', () => {
+      const singleHeadingArticle: PublicArticleDetailResponse = {
+        ...mockDetailResponse,
+        blocks: [
+          {
+            id: 'b-1',
+            type: 'HEADING',
+            position: 0,
+            schemaVersion: 1,
+            content: { text: 'Sole Heading', level: 2 },
+            media: null,
+          },
+        ],
+      };
+
+      component.article.set(singleHeadingArticle);
+      fixture.detectChanges();
+
+      expect(component.tableOfContents()).toHaveLength(1);
+      // In template, TOC container is omitted when tableOfContents().length < 2
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('app-reader-table-of-contents')).toBeNull();
+    });
+  });
 });

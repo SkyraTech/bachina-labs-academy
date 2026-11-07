@@ -58,6 +58,14 @@ export const routes: Routes = [
           ).then((m) => m.PublicArticleReaderComponent),
         title: 'Article · Bachina Labs Academy',
       },
+      {
+        path: 'authors/:authorId',
+        loadComponent: () =>
+          import(
+            './features/public/authors/components/public-author-profile/public-author-profile.component'
+          ).then((m) => m.PublicAuthorProfileComponent),
+        title: 'Author Profile · Bachina Labs Academy',
+      },
     ],
   },
 
@@ -144,10 +152,55 @@ export const routes: Routes = [
         path: 'admin',
         canActivate: [authGuard, roleGuard(['ADMIN'])],
         loadComponent: () =>
-          import('./features/admin/admin-placeholder.component').then(
-            (m) => m.AdminDashboardPlaceholderComponent,
+          import('./features/admin/dashboard/admin-dashboard.component').then(
+            (m) => m.AdminDashboardComponent,
           ),
-        title: 'Admin Control Hub · Bachina Labs Academy',
+        title: 'Platform Administration · Bachina Labs Academy',
+      },
+      {
+        path: 'admin/users',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/users/admin-users.component').then(
+            (m) => m.AdminUsersComponent,
+          ),
+        title: 'User Directory · Bachina Labs Academy',
+      },
+      {
+        path: 'admin/articles',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/articles/admin-articles.component').then(
+            (m) => m.AdminArticlesComponent,
+          ),
+        title: 'Article Oversight · Bachina Labs Academy',
+      },
+      {
+        path: 'admin/categories',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/categories/admin-categories.component').then(
+            (m) => m.AdminCategoriesComponent,
+          ),
+        title: 'Category Management · Bachina Labs Academy',
+      },
+      {
+        path: 'admin/tags',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/tags/admin-tags.component').then(
+            (m) => m.AdminTagsComponent,
+          ),
+        title: 'Tag Management · Bachina Labs Academy',
+      },
+      {
+        path: 'admin/comments',
+        canActivate: [authGuard, roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/admin/comments/admin-comments.component').then(
+            (m) => m.AdminCommentsComponent,
+          ),
+        title: 'Comment Moderation · Bachina Labs Academy',
       },
       {
         path: 'account',

@@ -22,6 +22,8 @@ describe('ArticlesService', () => {
     findTagsByIds: ReturnType<typeof vi.fn>;
     findArticleTagIds: ReturnType<typeof vi.fn>;
     replaceArticleTags: ReturnType<typeof vi.fn>;
+    checkDraftSlugExists: ReturnType<typeof vi.fn>;
+    duplicateArticle: ReturnType<typeof vi.fn>;
   };
 
   const VALID_USER: AuthenticatedUser = {
@@ -76,6 +78,8 @@ describe('ArticlesService', () => {
       findTagsByIds: vi.fn(),
       findArticleTagIds: vi.fn(),
       replaceArticleTags: vi.fn(),
+      checkDraftSlugExists: vi.fn(),
+      duplicateArticle: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1217,6 +1221,110 @@ describe('ArticlesService', () => {
           draftSlug: 'disk-io-article',
         }),
       ).rejects.toThrow('Log category disk_io failed');
+    });
+  });
+
+  describe('duplicateArticle', () => {
+    it('rejects unverified users with ForbiddenException', async () => {
+      await expect(
+        service.duplicateArticle(UNVERIFIED_USER, MOCK_ARTICLE.id),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws NotFoundException if source article does not exist or belongs to another user', async () => {
+      repositoryMock.findPrivateById.mockResolvedValue(null);
+
+      await expect(
+        service.duplicateArticle(VALID_USER, 'non-existent-id'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('atomically duplicates article with (Copy) title and unique slug', async () => {
+      const sourceArticle = {
+        ...MOCK_ARTICLE,
+        blocks: [
+          {
+            id: 'b1111111-0000-4000-8000-000000000001',
+            articleId: MOCK_ARTICLE.id,
+            type: 'RICH_TEXT',
+            position: 1000,
+            content: { html: '<p>Content</p>' },
+            mediaAssetId: null,
+            schemaVersion: 1,
+            createdAt: MOCK_DATE,
+            updatedAt: MOCK_DATE,
+          },
+        ],
+        tags: [],
+      };
+      repositoryMock.findPrivateById.mockResolvedValue(sourceArticle);
+      repositoryMock.checkDraftSlugExists.mockResolvedValue(false);
+
+      const duplicatedResult = {
+        ...sourceArticle,
+        id: 'dup-0001-4000-8000-000000000001',
+        title: 'Relational Database Design (Copy)',
+        draftSlug: 'relational-database-design-copy',
+        status: ArticleStatus.DRAFT,
+        draftRevision: 1,
+        publishedRevision: 0,
+        publishedSlug: null,
+        currentSnapshotId: null,
+        publishedAt: null,
+      };
+      repositoryMock.duplicateArticle.mockResolvedValue(duplicatedResult);
+
+      const result = await service.duplicateArticle(VALID_USER, MOCK_ARTICLE.id);
+
+      expect(repositoryMock.checkDraftSlugExists).toHaveBeenCalledWith(
+        'relational-database-design-copy',
+        VALID_USER.id,
+      );
+      expect(repositoryMock.duplicateArticle).toHaveBeenCalledWith(
+        MOCK_ARTICLE.id,
+        VALID_USER.id,
+        'Relational Database Design (Copy)',
+        'relational-database-design-copy',
+      );
+      expect(result.id).toBe('dup-0001-4000-8000-000000000001');
+      expect(result.status).toBe(ArticleStatus.DRAFT);
+      expect(result.blocks).toHaveLength(1);
+    });
+
+    it('handles slug collisions by appending a counter', async () => {
+      const sourceArticle = {
+        ...MOCK_ARTICLE,
+        blocks: [],
+        tags: [],
+      };
+      repositoryMock.findPrivateById.mockResolvedValue(sourceArticle);
+      // First candidate exists, second does not
+      repositoryMock.checkDraftSlugExists
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+
+      const duplicatedResult = {
+        ...sourceArticle,
+        id: 'dup-0002-4000-8000-000000000001',
+        title: 'Relational Database Design (Copy)',
+        draftSlug: 'relational-database-design-copy-2',
+        status: ArticleStatus.DRAFT,
+      };
+      repositoryMock.duplicateArticle.mockResolvedValue(duplicatedResult);
+
+      const result = await service.duplicateArticle(VALID_USER, MOCK_ARTICLE.id);
+
+      expect(repositoryMock.checkDraftSlugExists).toHaveBeenNthCalledWith(
+        1,
+        'relational-database-design-copy',
+        VALID_USER.id,
+      );
+      expect(repositoryMock.checkDraftSlugExists).toHaveBeenNthCalledWith(
+        2,
+        'relational-database-design-copy-2',
+        VALID_USER.id,
+      );
+      expect(result.draftSlug).toBe('relational-database-design-copy-2');
     });
   });
 });

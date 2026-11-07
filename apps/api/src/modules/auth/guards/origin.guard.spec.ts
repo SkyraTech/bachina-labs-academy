@@ -94,6 +94,17 @@ describe('OriginGuard', () => {
         guard.canActivate(createMockContext('POST', { headers: { origin: 'file:///etc/passwd' } })),
       ).toThrow(new ForbiddenException('Origin protocol not allowed.'));
     });
+
+    it('rejects same-site untrusted port (e.g. http://localhost:4300) even if Host header matches', () => {
+      const guard = createGuard(['http://localhost:4200']);
+      expect(() =>
+        guard.canActivate(
+          createMockContext('POST', {
+            headers: { origin: 'http://localhost:4300', host: 'localhost:4300' },
+          }),
+        ),
+      ).toThrow(new ForbiddenException('Origin not allowed.'));
+    });
   });
 
   describe('Contradictory Origin and Fetch Metadata headers', () => {

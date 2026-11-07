@@ -41,6 +41,20 @@ export class PublicTaxonomyTagDto {
   slug!: string;
 }
 
+export class PublicAuthorSummaryDto {
+  @ApiProperty({
+    description: 'Unique stable author identifier (UUID)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: 'Public author display name',
+    example: 'Academy Author',
+  })
+  displayName!: string;
+}
+
 export class PublicArticleItemDto {
   @ApiProperty({
     description: 'Unique identifier of the article',
@@ -110,6 +124,12 @@ export class PublicArticleItemDto {
     type: [PublicTaxonomyTagDto],
   })
   tags!: PublicTaxonomyTagDto[];
+
+  @ApiProperty({
+    description: 'Public author attribution',
+    type: PublicAuthorSummaryDto,
+  })
+  author!: PublicAuthorSummaryDto;
 }
 
 export class PublicArticleListResponseDto {

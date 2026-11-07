@@ -71,34 +71,51 @@ export class ArticlePublicReaderService {
     const categorySlug = query.category?.trim() || undefined;
     const tagSlug = query.tag?.trim() || undefined;
     const searchTerm = query.q?.trim() || undefined;
+    const authorId = query.authorId?.trim() || undefined;
 
-    const hasFilter = Boolean(categorySlug || tagSlug || searchTerm);
+    const hasFilter = Boolean(categorySlug || tagSlug || searchTerm || authorId);
 
     const [rows, total] = await Promise.all([
       hasFilter
-        ? searchTerm
+        ? authorId
           ? this.repository.findPublishedArticles(
               offset,
               limit,
               categorySlug,
               tagSlug,
               searchTerm,
+              authorId,
             )
-          : this.repository.findPublishedArticles(
-              offset,
-              limit,
-              categorySlug,
-              tagSlug,
-            )
+          : searchTerm
+            ? this.repository.findPublishedArticles(
+                offset,
+                limit,
+                categorySlug,
+                tagSlug,
+                searchTerm,
+              )
+            : this.repository.findPublishedArticles(
+                offset,
+                limit,
+                categorySlug,
+                tagSlug,
+              )
         : this.repository.findPublishedArticles(offset, limit),
       hasFilter
-        ? searchTerm
+        ? authorId
           ? this.repository.countPublishedArticles(
               categorySlug,
               tagSlug,
               searchTerm,
+              authorId,
             )
-          : this.repository.countPublishedArticles(categorySlug, tagSlug)
+          : searchTerm
+            ? this.repository.countPublishedArticles(
+                categorySlug,
+                tagSlug,
+                searchTerm,
+              )
+            : this.repository.countPublishedArticles(categorySlug, tagSlug)
         : this.repository.countPublishedArticles(),
     ]);
 
@@ -135,6 +152,10 @@ export class ArticlePublicReaderService {
         taxonomyCaptured: taxonomy.taxonomyCaptured,
         category: taxonomy.category,
         tags: taxonomy.tags,
+        author: {
+          id: r.authorId,
+          displayName: 'Academy Author',
+        },
       };
     });
 
@@ -284,6 +305,10 @@ export class ArticlePublicReaderService {
       taxonomyCaptured: taxonomy.taxonomyCaptured,
       category: taxonomy.category,
       tags: taxonomy.tags,
+      author: {
+        id: row.authorId,
+        displayName: 'Academy Author',
+      },
       blocks: projectedBlocks,
     };
   }

@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.share-action-btn {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.share-action-btn:active {
+  transform: translateY(1px);
+}
+

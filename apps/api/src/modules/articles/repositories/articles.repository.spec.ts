@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { ArticlesRepository } from './articles.repository.js';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { ArticleStatus } from '@prisma/client';
@@ -319,6 +320,188 @@ describe('ArticlesRepository', () => {
       expect(mockTx.article.delete).toHaveBeenCalledWith({
         where: { id: MOCK_ARTICLE.id },
       });
+    });
+  });
+
+  describe('duplicateArticle', () => {
+    it('throws NotFoundException if source article does not exist or author does not match', async () => {
+      const mockTx = {
+        $queryRaw: vi.fn().mockResolvedValue([{ id: MOCK_ARTICLE.authorId }]),
+        article: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      };
+      (prismaMock as any).$transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+
+      await expect(
+        repository.duplicateArticle(
+          'nonexistent-id',
+          MOCK_ARTICLE.authorId,
+          'Original Title (Copy)',
+          'original-title-copy',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockTx.$queryRaw).toHaveBeenCalled();
+      expect(mockTx.article.findFirst).toHaveBeenCalledWith({
+        where: { id: 'nonexistent-id', authorId: MOCK_ARTICLE.authorId },
+        include: {
+          blocks: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+          tags: { select: { tagId: true } },
+        },
+      });
+    });
+
+    it('acquires author row lock, resets revisions, preserves blocks and tags with fresh identities', async () => {
+      const sourceArticle = {
+        ...MOCK_ARTICLE,
+        title: 'Original Title',
+        draftSlug: 'original-title',
+        publishedSlug: 'original-title',
+        publishedRevision: 3,
+        draftRevision: 5,
+        status: ArticleStatus.PUBLISHED,
+        currentSnapshotId: 'snap-123',
+        publishedAt: new Date(),
+        coverMediaId: 'media-cover-1',
+        blocks: [
+          {
+            id: 'block-old-1',
+            type: 'PARAGRAPH',
+            position: 1000,
+            content: { text: 'Hello' },
+            schemaVersion: 1,
+            mediaAssetId: null,
+          },
+        ],
+        tags: [{ tagId: 'tag-1' }],
+      };
+
+      const duplicatedArticle = {
+        ...MOCK_ARTICLE,
+        id: 'new-dup-article-id',
+        title: 'Original Title (Copy)',
+        draftSlug: 'original-title-copy',
+        publishedSlug: null,
+        status: ArticleStatus.DRAFT,
+        draftRevision: 1,
+        publishedRevision: 0,
+        currentSnapshotId: null,
+        publishedAt: null,
+        blocks: [
+          {
+            id: 'new-block-id-1',
+            type: 'PARAGRAPH',
+            position: 1000,
+            content: { text: 'Hello' },
+            schemaVersion: 1,
+            mediaAssetId: null,
+          },
+        ],
+        tags: [{ tagId: 'tag-1' }],
+      };
+
+      const mockTx = {
+        $queryRaw: vi.fn().mockResolvedValue([{ id: sourceArticle.authorId }]),
+        article: {
+          findFirst: vi
+            .fn()
+            // 1st call: find source article
+            .mockResolvedValueOnce(sourceArticle)
+            // 2nd call: check unique slug 'original-title-copy' -> null (available)
+            .mockResolvedValueOnce(null),
+          create: vi.fn().mockResolvedValue(duplicatedArticle),
+          findFirstOrThrow: vi.fn().mockResolvedValue(duplicatedArticle),
+        },
+        articleBlock: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        articleTag: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      (prismaMock as any).$transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+
+      const result = await repository.duplicateArticle(
+        sourceArticle.id,
+        sourceArticle.authorId,
+        'Original Title (Copy)',
+        'original-title-copy',
+      );
+
+      expect(mockTx.$queryRaw).toHaveBeenCalled();
+      expect(mockTx.article.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            authorId: sourceArticle.authorId,
+            title: 'Original Title (Copy)',
+            draftSlug: 'original-title-copy',
+            publishedSlug: null,
+            status: ArticleStatus.DRAFT,
+            draftRevision: 1,
+            publishedRevision: 0,
+            currentSnapshotId: null,
+            publishedAt: null,
+            coverMediaId: 'media-cover-1',
+          }),
+        }),
+      );
+      expect(result.id).toBe('new-dup-article-id');
+      expect(result.draftRevision).toBe(1);
+      expect(result.publishedRevision).toBe(0);
+    });
+
+    it('increments copy suffix when base copy slug is already taken', async () => {
+      const sourceArticle = {
+        ...MOCK_ARTICLE,
+        title: 'Concurrent Article',
+        draftSlug: 'concurrent-article',
+        blocks: [],
+        tags: [],
+      };
+
+      const duplicatedArticle = {
+        ...MOCK_ARTICLE,
+        id: 'dup-id-2',
+        draftSlug: 'concurrent-article-copy-2',
+      };
+
+      const mockTx = {
+        $queryRaw: vi.fn().mockResolvedValue([{ id: sourceArticle.authorId }]),
+        article: {
+          findFirst: vi
+            .fn()
+            .mockResolvedValueOnce(sourceArticle)
+            // First check: concurrent-article-copy is taken
+            .mockResolvedValueOnce({ id: 'existing-copy' })
+            // Second check: concurrent-article-copy-2 is available
+            .mockResolvedValueOnce(null),
+          create: vi.fn().mockResolvedValue(duplicatedArticle),
+          findFirstOrThrow: vi.fn().mockResolvedValue(duplicatedArticle),
+        },
+        articleBlock: {
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        articleTag: {
+          createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+      };
+      (prismaMock as any).$transaction = vi.fn().mockImplementation((cb) => cb(mockTx));
+
+      const result = await repository.duplicateArticle(
+        sourceArticle.id,
+        sourceArticle.authorId,
+        'Concurrent Article (Copy)',
+        'concurrent-article-copy',
+      );
+
+      expect(result.draftSlug).toBe('concurrent-article-copy-2');
+      expect(mockTx.article.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            draftSlug: 'concurrent-article-copy-2',
+          }),
+        }),
+      );
     });
   });
 });

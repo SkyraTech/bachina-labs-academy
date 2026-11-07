@@ -1,11 +1,12 @@
-<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-sm">
-  <div class="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-4">
-    <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--color-text)]">
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3.5 sm:p-4 shadow-xs">
+  <div class="flex items-center justify-between pb-2.5 border-b border-[var(--color-border)] mb-3.5">
+    <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--color-text)]">
       Article Settings
     </h3>
     @if (isDirty()) {
-      <span class="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-        Unsaved Changes
+      <span class="status-pill-dirty">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        <span>Unsaved Changes</span>
       </span>
     }
   </div>
@@ -142,6 +143,22 @@
           </label>
         }
       </div>
+    </div>
+
+    <!-- Category -->
+    <div class="pt-2 border-t border-[var(--color-border)]">
+      <app-article-category-selector
+        [selectedCategoryId]="categoryId()"
+        (categoryChange)="onCategoryChanged($event)"
+      />
+    </div>
+
+    <!-- Tags -->
+    <div>
+      <app-article-tag-selector
+        [selectedTagIds]="tagIds()"
+        (tagsChange)="onTagsChanged($event)"
+      />
     </div>
 
     <!-- Save Button -->

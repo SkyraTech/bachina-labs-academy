@@ -1,0 +1,283 @@
+<app-page-header
+  title="Comment Moderation"
+  eyebrow="Admin Oversight"
+  description="Audit reader comments, moderate policy violations, and inspect 30-day retention privacy compliance."
+></app-page-header>
+
+<div class="mt-8 space-y-6">
+  <!-- Notifications -->
+  @if (successMessage()) {
+    <div role="status" class="flex items-center justify-between p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm">
+      <div class="flex items-center gap-2.5">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span>{{ successMessage() }}</span>
+      </div>
+      <button type="button" (click)="dismissMessages()" class="text-emerald-700 dark:text-emerald-400 hover:opacity-75 focus-visible:outline-none" aria-label="Dismiss">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div role="alert" class="flex items-center justify-between p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400 text-sm">
+      <div class="flex items-center gap-2.5">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+      <button type="button" (click)="dismissMessages()" class="text-rose-700 dark:text-rose-400 hover:opacity-75 focus-visible:outline-none" aria-label="Dismiss">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Filter Bar -->
+  <div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface,#ffffff)] dark:bg-[var(--color-surface-dark,#1f2937)]">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-semibold text-[var(--color-text-secondary,#6b7280)] mr-1">Status:</span>
+      <button
+        type="button"
+        (click)="setFilter(undefined)"
+        [class]="statusFilter() === undefined ? 'bg-[var(--color-brand,#ea580c)] text-white shadow-sm' : 'border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] text-[var(--color-text-secondary,#6b7280)] hover:bg-[var(--color-surface-hover,#f3f4f6)]'"
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none"
+      >
+        All Comments
+      </button>
+      <button
+        type="button"
+        (click)="setFilter('VISIBLE')"
+        [class]="statusFilter() === 'VISIBLE' ? 'bg-[var(--color-brand,#ea580c)] text-white shadow-sm' : 'border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] text-[var(--color-text-secondary,#6b7280)] hover:bg-[var(--color-surface-hover,#f3f4f6)]'"
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none"
+      >
+        Visible Only
+      </button>
+      <button
+        type="button"
+        (click)="setFilter('REMOVED')"
+        [class]="statusFilter() === 'REMOVED' ? 'bg-[var(--color-brand,#ea580c)] text-white shadow-sm' : 'border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] text-[var(--color-text-secondary,#6b7280)] hover:bg-[var(--color-surface-hover,#f3f4f6)]'"
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none"
+      >
+        Removed Only
+      </button>
+    </div>
+
+    <div class="text-xs text-[var(--color-text-secondary,#6b7280)]">
+      Total comments: <span class="font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">{{ totalCount() }}</span>
+    </div>
+  </div>
+
+  <!-- Comments Table -->
+  <div class="rounded-2xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface,#ffffff)] dark:bg-[var(--color-surface-dark,#1f2937)] overflow-hidden shadow-sm">
+    @if (loading()) {
+      <div class="py-16 flex justify-center items-center gap-3 text-sm text-[var(--color-text-secondary,#6b7280)]">
+        <svg class="animate-spin h-5 w-5 text-[var(--color-brand,#ea580c)]" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Loading moderated comments...</span>
+      </div>
+    } @else if (comments().length === 0) {
+      <div class="py-16 text-center text-sm text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)]">
+        No comments match the current status filter.
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface-hover,#f9fafb)] dark:bg-[var(--color-surface-dark,#111827)] text-xs font-semibold text-[var(--color-text-secondary,#6b7280)]">
+            <tr>
+              <th scope="col" class="px-6 py-3.5">Author & Article</th>
+              <th scope="col" class="px-6 py-3.5">Comment Content</th>
+              <th scope="col" class="px-6 py-3.5">Status & Reason</th>
+              <th scope="col" class="px-6 py-3.5">Created At</th>
+              <th scope="col" class="px-6 py-3.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--color-border,#e5e7eb)] dark:divide-[var(--color-border-dark,#374151)]">
+            @for (c of comments(); track c.id) {
+              <tr class="hover:bg-[var(--color-surface-hover,#f9fafb)]/60 dark:hover:bg-[var(--color-surface-hover-dark,#374151)]/30 transition-colors">
+                <!-- Author & Article -->
+                <td class="px-6 py-4 align-top">
+                  <div class="font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">
+                    {{ c.authorDisplayName }}
+                  </div>
+                  <div class="mt-0.5 text-xs text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)] line-clamp-1">
+                    {{ c.articleTitle }}
+                  </div>
+                  <div class="mt-0.5 text-[11px] font-mono text-[var(--color-text-secondary,#9ca3af)]">
+                    /articles/{{ c.articleSlug }}
+                  </div>
+                </td>
+
+                <!-- Body Text -->
+                <td class="px-6 py-4 align-top max-w-md">
+                  @if (c.retentionRedacted) {
+                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 italic">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <span>[Body scrubbed — 30-day retention expired]</span>
+                    </div>
+                  } @else {
+                    <p class="text-xs leading-relaxed text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#e5e7eb)] whitespace-pre-wrap break-words line-clamp-3">
+                      {{ c.body }}
+                    </p>
+                  }
+                </td>
+
+                <!-- Status & Removal Reason -->
+                <td class="px-6 py-4 align-top whitespace-nowrap">
+                  @if (c.status === 'VISIBLE') {
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Visible
+                    </span>
+                  } @else {
+                    <div class="space-y-1">
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        Removed
+                      </span>
+                      @if (c.removalReason) {
+                        <div class="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                          Reason: {{ c.removalReason }}
+                        </div>
+                      }
+                    </div>
+                  }
+                </td>
+
+                <!-- Created Date -->
+                <td class="px-6 py-4 align-top whitespace-nowrap text-xs text-[var(--color-text-secondary,#6b7280)]">
+                  {{ c.createdAt | date:'mediumDate' }}
+                  <div class="text-[11px] text-[var(--color-text-secondary,#9ca3af)]">
+                    {{ c.createdAt | date:'shortTime' }}
+                  </div>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-6 py-4 align-top text-right whitespace-nowrap">
+                  @if (c.status === 'VISIBLE') {
+                    <button
+                      type="button"
+                      (click)="openRemoveDialog(c)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 text-xs font-semibold transition-colors focus-visible:outline-none"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Soft Remove</span>
+                    </button>
+                  } @else {
+                    <span class="text-xs text-[var(--color-text-secondary,#9ca3af)] italic">
+                      Moderated
+                    </span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-6 py-4 border-t border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface-hover,#f9fafb)] dark:bg-[var(--color-surface-dark,#111827)] text-xs">
+          <button
+            type="button"
+            [disabled]="currentPage() <= 1 || loading()"
+            (click)="fetchComments(currentPage() - 1)"
+            class="px-3.5 py-1.5 rounded-lg border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)] hover:bg-[var(--color-surface,#ffffff)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            &larr; Previous
+          </button>
+          <span class="text-[var(--color-text-secondary,#6b7280)]">
+            Page {{ currentPage() }} of {{ totalPages() }}
+          </span>
+          <button
+            type="button"
+            [disabled]="currentPage() >= totalPages() || loading()"
+            (click)="fetchComments(currentPage() + 1)"
+            class="px-3.5 py-1.5 rounded-lg border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)] hover:bg-[var(--color-surface,#ffffff)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Next &rarr;
+          </button>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Soft Remove Confirmation Modal -->
+  @if (moderatingCommentId()) {
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+    >
+      <div class="w-full max-w-lg rounded-2xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface,#ffffff)] dark:bg-[var(--color-surface-dark,#1f2937)] p-6 shadow-xl">
+        <div class="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-4">
+          <svg class="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h3 id="modal-title" class="text-lg font-bold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">
+            Soft-Remove Comment
+          </h3>
+        </div>
+
+        <p class="text-sm text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)] mb-4">
+          This comment will be immediately hidden from public article pages. It will be retained privately in the database for 30 days for audit purposes, after which its body will be permanently scrubbed.
+        </p>
+
+        <div class="space-y-3 mb-6">
+          <label for="moderationReasonSelect" class="block text-xs font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">
+            Select Removal Reason
+          </label>
+          <select
+            id="moderationReasonSelect"
+            [ngModel]="selectedReason()"
+            (ngModelChange)="selectedReason.set($event)"
+            class="w-full rounded-xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-bg,#ffffff)] dark:bg-[var(--color-bg-dark,#111827)] px-3.5 py-2.5 text-sm text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)] focus:border-[var(--color-brand,#ea580c)] focus:outline-none"
+          >
+            @for (reason of moderationReasons; track reason.value) {
+              <option [value]="reason.value">{{ reason.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)]">
+          <button
+            type="button"
+            (click)="cancelRemove()"
+            class="px-4 py-2 rounded-xl text-xs font-semibold text-[var(--color-text-secondary,#6b7280)] hover:bg-[var(--color-surface-hover,#f3f4f6)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            (click)="confirmRemove()"
+            [disabled]="removing()"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+          >
+            @if (removing()) {
+              <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Removing...</span>
+            } @else {
+              <span>Confirm Removal</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

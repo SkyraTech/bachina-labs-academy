@@ -11,7 +11,10 @@ import { ArticlesRepository } from '../src/modules/articles/repositories/article
 import { ArticlesService } from '../src/modules/articles/services/articles.service.js';
 import { ArticlesController } from '../src/modules/articles/controllers/articles.controller.js';
 import { VerifiedEmailGuard } from '../src/common/authorization/guards/verified-email.guard.js';
-import { assertDisposableTestDatabase } from './test-db-isolation.js';
+import {
+  assertDisposableTestDatabase,
+  safelyDropDisposableDatabase,
+} from './test-db-isolation.js';
 import type { AuthenticatedUser } from '../src/modules/auth/types/jwt.types.js';
 
 describe('Article Stage 6C Real PostgreSQL 17 Integration (e2e)', () => {
@@ -153,7 +156,7 @@ describe('Article Stage 6C Real PostgreSQL 17 Integration (e2e)', () => {
     `;
     const appliedNames = appliedMigrations.map((m) => m.migration_name).sort();
     expect(appliedNames).toEqual(expectedMigrationNames);
-    expect(appliedNames.length).toBe(13);
+    expect(appliedNames.length).toBeGreaterThanOrEqual(13);
     expect(appliedNames).toContain('20261101000000_add_article_snapshot_taxonomy');
 
     // 10. Wire repository and service
@@ -238,14 +241,11 @@ describe('Article Stage 6C Real PostgreSQL 17 Integration (e2e)', () => {
       await prismaAdmin.$disconnect();
     }
 
-    if (disposableDbName && disposableDbName.startsWith('academy_auth_audit_')) {
+    if (disposableDbName) {
       try {
-        runAdminPsql(`
-          SELECT pg_terminate_backend(pid) 
-          FROM pg_stat_activity 
-          WHERE datname = '${disposableDbName}' AND pid <> pg_backend_pid();
-        `);
-        runAdminPsql(`DROP DATABASE IF EXISTS "${disposableDbName}";`);
+        await safelyDropDisposableDatabase(disposableDbName, (sql, target) => runAdminPsql(sql, target), {
+          allowedPrefix: 'academy_auth_audit_',
+        });
       } catch (err) {
         console.error(`Failed to drop disposable database ${disposableDbName}:`, err);
       }

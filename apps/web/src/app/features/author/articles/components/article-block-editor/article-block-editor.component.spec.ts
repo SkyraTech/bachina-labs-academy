@@ -408,4 +408,62 @@ describe('ArticleBlockEditorComponent', () => {
     );
     expect(component.isDirty()).toBe(false);
   });
+
+  describe('RICH_TEXT visual editor integration', () => {
+    const sampleRichBlock: ArticleBlock = {
+      id: 'b-rich-1',
+      articleId: 'art-1',
+      type: 'RICH_TEXT',
+      position: 1,
+      content: { html: '<p>Initial rich text</p>' },
+      mediaAssetId: null,
+      schemaVersion: 1,
+      createdAt: '2026-10-25T10:00:00Z',
+      updatedAt: '2026-10-25T10:00:00Z',
+    };
+
+    beforeEach(() => {
+      selectedBlockSignal.set(sampleRichBlock);
+      TestBed.flushEffects();
+    });
+
+    it('should receive content changes from visual editor', () => {
+      component.onRichTextContentChange('<p><strong>Formatted</strong> content</p>');
+      expect(component.richTextHtml).toBe('<p><strong>Formatted</strong> content</p>');
+    });
+
+    it('should mark dirty when visual editor emits isDirty', () => {
+      component.onRichTextDirtyChange(true);
+      expect(component.isDirty()).toBe(true);
+      expect(stateMock.markDirty).toHaveBeenCalled();
+    });
+
+    it('should block save when source is invalid', async () => {
+      component.onRichTextContentChange('<p class="invalid">Bad HTML</p>');
+      component.onRichTextSourceValidChange(false);
+      expect(component.isValid()).toBe(false);
+
+      await component.onSave();
+      expect(stateMock.updateBlock).not.toHaveBeenCalled();
+    });
+
+    it('should save clean normalized HTML when valid', async () => {
+      component.onRichTextContentChange('<p><strong>Clean</strong></p>');
+      component.onRichTextSourceValidChange(true);
+      expect(component.isValid()).toBe(true);
+
+      await component.onSave();
+      expect(stateMock.updateBlock).toHaveBeenCalledWith(
+        'b-rich-1',
+        { html: '<p><strong>Clean</strong></p>' },
+        null,
+      );
+    });
+
+    it('should reset isSourceValid on cancel', () => {
+      component.onRichTextSourceValidChange(false);
+      component.onCancel();
+      expect(component.isSourceValid()).toBe(true);
+    });
+  });
 });

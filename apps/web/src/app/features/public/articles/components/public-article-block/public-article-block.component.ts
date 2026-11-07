@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PublicArticleBlock } from '../../models/public-article.models';
+import { PublicArticleBlock, slugifyHeading } from '../../models/public-article.models';
 
 /**
  * PublicArticleBlockComponent — Renders an individual immutable article content block.
@@ -25,18 +25,20 @@ import { PublicArticleBlock } from '../../models/public-article.models';
 })
 export class PublicArticleBlockComponent {
   readonly block = input.required<PublicArticleBlock>();
+  readonly anchorId = input<string>();
+
+  resolveHeadingId(text: unknown): string {
+    const custom = this.anchorId();
+    if (custom) return custom;
+    return this.getHeadingId(text);
+  }
 
   /**
-   * Generates a slugified HTML ID for heading blocks to enable anchor links and TOC.
+   * Generates a deterministic Unicode-safe slug for heading blocks when rendered outside reader context.
    */
   getHeadingId(text: unknown): string {
     if (typeof text !== 'string') return '';
-    return text
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    return slugifyHeading(text);
   }
 
   asHtml(content: Record<string, unknown>): string {

@@ -80,6 +80,10 @@ describe('DashboardLayoutComponent', () => {
 
     const labels = component['sidebarItems']().map((i) => i.label);
     expect(labels).toContain('Admin Hub');
+    expect(labels).toContain('Users');
+    expect(labels).toContain('Articles');
+    expect(labels).toContain('Categories');
+    expect(labels).toContain('Tags');
     expect(labels).toContain('Account Security');
     expect(labels).not.toContain('Overview');
   });

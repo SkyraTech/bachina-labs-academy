@@ -10,6 +10,12 @@ import {
 } from '../models/article.models';
 import { ToastService } from '../../../../shared/ui';
 
+export interface BlockEditorHandler {
+  isValid: () => boolean;
+  save: () => Promise<boolean>;
+  discard: () => void;
+}
+
 @Injectable()
 export class ArticleEditorStateService {
   private readonly api = inject(ArticleEditorApiService);
@@ -22,6 +28,12 @@ export class ArticleEditorStateService {
   readonly conflictMessage = signal<string | null>(null);
   readonly selectedBlockId = signal<string | null>(null);
   readonly activeTab = signal<'editor' | 'preview'>('editor');
+
+  readonly isBlockDirty = signal<boolean>(false);
+  readonly pendingBlockId = signal<string | null>(null);
+  readonly showUnsavedSwitchDialog = signal<boolean>(false);
+
+  private blockEditorHandler: BlockEditorHandler | null = null;
 
   readonly currentRevision = computed(() => this.article()?.draftRevision ?? 1);
   readonly blocks = computed(() => {
@@ -69,7 +81,7 @@ export class ArticleEditorStateService {
   }
 
   /**
-   * Updates article metadata (title, draftSlug, summary, typographyPreset, coverMediaId).
+   * Updates article metadata (title, draftSlug, summary, typographyPreset, coverMediaId, categoryId, tagIds).
    */
   async updateMetadata(patch: {
     title?: string;
@@ -77,6 +89,8 @@ export class ArticleEditorStateService {
     summary?: string | null;
     typographyPreset?: TypographyPreset;
     coverMediaId?: string | null;
+    categoryId?: string | null;
+    tagIds?: string[];
   }): Promise<boolean> {
     const current = this.article();
     if (!current) return false;
@@ -104,6 +118,10 @@ export class ArticleEditorStateService {
         summary: updated.summary,
         typographyPreset: updated.typographyPreset as TypographyPreset,
         coverMediaId: updated.coverMediaId,
+        categoryId: updated.categoryId,
+        tagIds: updated.tagIds,
+        category: updated.category,
+        tags: updated.tags,
         draftRevision: updated.draftRevision,
         status: updated.status,
         updatedAt: updated.updatedAt,
@@ -350,6 +368,36 @@ export class ArticleEditorStateService {
   }
 
   /**
+   * Duplicates the current article into a separate new draft.
+   */
+  async duplicateArticle(): Promise<EditableArticle | null> {
+    const current = this.article();
+    if (!current) return null;
+
+    if (this.hasUnsavedChanges()) {
+      this.toast.error('Please save your pending changes before duplicating.');
+      return null;
+    }
+
+    if (this.isSaving()) return null;
+
+    this.saveState.set('SAVING');
+    this.conflictMessage.set(null);
+
+    try {
+      const duplicated = await firstValueFrom(
+        this.api.duplicateArticle(current.id),
+      );
+      this.saveState.set('SAVED');
+      this.toast.success('Article draft duplicated successfully.');
+      return duplicated;
+    } catch (err: unknown) {
+      this.handleMutationError(err, 'Failed to duplicate article.');
+      return null;
+    }
+  }
+
+  /**
    * Marks state as containing unsaved local changes.
    */
   markDirty(): void {
@@ -358,11 +406,108 @@ export class ArticleEditorStateService {
     }
   }
 
+  registerBlockEditorHandler(handler: BlockEditorHandler): void {
+    this.blockEditorHandler = handler;
+  }
+
+  unregisterBlockEditorHandler(): void {
+    this.blockEditorHandler = null;
+  }
+
+  isCurrentBlockValid(): boolean {
+    return this.blockEditorHandler ? this.blockEditorHandler.isValid() : true;
+  }
+
+  async saveCurrentBlock(): Promise<boolean> {
+    if (!this.blockEditorHandler) return false;
+    return this.blockEditorHandler.save();
+  }
+
+  discardCurrentBlock(): void {
+    if (this.blockEditorHandler) {
+      this.blockEditorHandler.discard();
+    }
+  }
+
   /**
    * Selects a block by ID for editing.
+   * Protects against unsaved changes if the current block is dirty.
+   * No-op if selecting the already active block.
    */
   selectBlock(blockId: string | null): void {
+    // 1. Same-block selection is a strict no-op
+    if (blockId && blockId === this.selectedBlockId()) {
+      return;
+    }
+
+    // 2. If a save operation is in-flight, ignore block switch attempts
+    if (this.isSaving()) {
+      return;
+    }
+
+    // 3. If current block has unsaved changes, prompt confirmation
+    if (this.isBlockDirty()) {
+      if (!this.showUnsavedSwitchDialog()) {
+        this.pendingBlockId.set(blockId);
+        this.showUnsavedSwitchDialog.set(true);
+      }
+      return;
+    }
+
+    // 4. Clean switch
     this.selectedBlockId.set(blockId);
+  }
+
+  /**
+   * Dismisses unsaved switch confirmation without switching (Keep Editing).
+   */
+  dismissUnsavedSwitch(): void {
+    this.showUnsavedSwitchDialog.set(false);
+    this.pendingBlockId.set(null);
+  }
+
+  /**
+   * Discards unsaved edits in current block and completes the switch to destination.
+   */
+  discardAndSwitch(): void {
+    const destination = this.pendingBlockId();
+    this.showUnsavedSwitchDialog.set(false);
+    this.pendingBlockId.set(null);
+
+    this.discardCurrentBlock();
+    this.isBlockDirty.set(false);
+
+    if (destination) {
+      this.selectedBlockId.set(destination);
+    }
+  }
+
+  /**
+   * Saves the current block and switches to the destination block upon confirmed success.
+   */
+  async saveAndSwitch(): Promise<void> {
+    const destination = this.pendingBlockId();
+
+    if (!this.isCurrentBlockValid()) {
+      this.showUnsavedSwitchDialog.set(false);
+      this.pendingBlockId.set(null);
+      this.toast.error('Cannot save block: Please fix validation errors before switching.');
+      return;
+    }
+
+    const success = await this.saveCurrentBlock();
+    if (success) {
+      this.showUnsavedSwitchDialog.set(false);
+      this.pendingBlockId.set(null);
+      this.isBlockDirty.set(false);
+      if (destination) {
+        this.selectedBlockId.set(destination);
+      }
+    } else {
+      // Save failed or 409 conflict: keep edits intact on current block
+      this.showUnsavedSwitchDialog.set(false);
+      this.pendingBlockId.set(null);
+    }
   }
 
   /**

@@ -98,6 +98,10 @@ export interface EditableArticle {
   status: ArticleStatus;
   typographyPreset: TypographyPreset;
   coverMediaId: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
+  category?: { id: string; name: string; slug: string } | null;
+  tags?: { id: string; name: string; slug: string }[];
   draftRevision: number;
   publishedRevision: number;
   currentSnapshotId: string | null;
@@ -113,6 +117,8 @@ export interface CreateArticleRequest {
   summary?: string | null;
   typographyPreset?: TypographyPreset;
   coverMediaId?: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
 }
 
 export interface UpdateArticleMetadataRequest {
@@ -122,6 +128,8 @@ export interface UpdateArticleMetadataRequest {
   summary?: string | null;
   typographyPreset?: TypographyPreset;
   coverMediaId?: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
 }
 
 export interface CreateBlockRequest {

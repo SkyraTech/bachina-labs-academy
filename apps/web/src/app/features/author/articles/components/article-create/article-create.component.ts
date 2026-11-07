@@ -13,6 +13,9 @@ import { ArticleEditorApiService } from '../../services/article-editor-api.servi
 import { ToastService } from '../../../../../shared/ui';
 import { TypographyPreset } from '../../models/article.models';
 
+import { ArticleCategorySelectorComponent } from '../article-category-selector/article-category-selector.component';
+import { ArticleTagSelectorComponent } from '../article-tag-selector/article-tag-selector.component';
+
 export function generateSlug(text: string): string {
   return text
     .toLowerCase()
@@ -25,7 +28,14 @@ export function generateSlug(text: string): string {
 @Component({
   selector: 'app-article-create',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, PageHeaderComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    ReactiveFormsModule,
+    PageHeaderComponent,
+    ArticleCategorySelectorComponent,
+    ArticleTagSelectorComponent,
+  ],
   templateUrl: './article-create.component.html',
   styleUrl: './article-create.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +47,8 @@ export class ArticleCreateComponent {
   private readonly toast = inject(ToastService);
 
   readonly submitting = signal(false);
+  readonly categoryId = signal<string | null>(null);
+  readonly tagIds = signal<string[]>([]);
   private userEditedSlug = false;
 
   readonly form: FormGroup = this.fb.group({
@@ -87,6 +99,8 @@ export class ArticleCreateComponent {
           draftSlug: val.draftSlug.trim(),
           summary: val.summary?.trim() || null,
           typographyPreset: val.typographyPreset,
+          categoryId: this.categoryId(),
+          tagIds: this.tagIds(),
         }),
       );
 

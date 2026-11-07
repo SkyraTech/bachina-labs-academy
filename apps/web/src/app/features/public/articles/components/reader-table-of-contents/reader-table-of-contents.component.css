@@ -1,0 +1,131 @@
+/* ── Mobile Disclosure ── */
+.toc-mobile-wrapper {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.toc-mobile-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.toc-mobile-trigger:focus-visible {
+  outline: 2px solid var(--color-brand, #ea580c);
+  outline-offset: -2px;
+}
+
+.toc-mobile-content {
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  padding: 0.5rem;
+  background: var(--color-workspace-bg, #f8fafc);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.toc-link {
+  color: var(--color-text-secondary, #475569);
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.toc-link:hover {
+  color: var(--color-brand, #ea580c);
+  background: rgba(234, 88, 12, 0.05);
+}
+
+.toc-link.active {
+  color: var(--color-brand-deep, #c2410c);
+  font-weight: 600;
+  background: var(--color-brand-surface, rgba(234, 88, 12, 0.1));
+}
+
+/* ── Desktop Sticky Sidebar ── */
+.toc-desktop-sidebar {
+  position: relative;
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.toc-sticky-container {
+  position: sticky;
+  top: 6rem;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  padding-right: 0.75rem;
+  padding-left: 0.25rem;
+}
+
+.toc-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #64748b);
+  margin: 0 0 0.875rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  border-left: 2px solid var(--color-border, #e2e8f0);
+}
+
+.toc-item {
+  position: relative;
+}
+
+.toc-desktop-link {
+  display: block;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary, #475569);
+  text-decoration: none;
+  padding: 0.375rem 0.5rem 0.375rem 1rem;
+  margin-left: -2px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease-in-out;
+  border-radius: 0 4px 4px 0;
+}
+
+.toc-desktop-link:hover {
+  color: var(--color-brand, #ea580c);
+  border-left-color: var(--color-brand, #ea580c);
+}
+
+.toc-desktop-link.active {
+  color: var(--color-brand-deep, #c2410c);
+  font-weight: 600;
+  border-left-color: var(--color-brand, #ea580c);
+  background: var(--color-brand-surface, rgba(234, 88, 12, 0.05));
+}
+
+.indent-level-2 {
+  padding-left: 1.5rem;
+}
+
+.indent-level-3 {
+  padding-left: 2.25rem;
+}
+
+.indent-level-4 {
+  padding-left: 3rem;
+}
+

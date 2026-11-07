@@ -703,5 +703,61 @@ export class ArticlesService {
           : new Date(block.updatedAt).toISOString(),
     };
   }
+
+  /**
+   * Duplicates an owned article into a separate new draft with cloned blocks and tags.
+   */
+  async duplicateArticle(
+    user: AuthenticatedUser,
+    articleId: string,
+  ): Promise<ArticleDetailResponseDto> {
+    AccountEligibilityPolicy.assertEligible(user);
+
+    const source = await this.repository.findPrivateById(articleId, user.id);
+    if (!source) {
+      throw new NotFoundException('Article not found.');
+    }
+
+    let newTitle = `${source.title} (Copy)`.trim();
+    if (newTitle.length > 255) {
+      newTitle = newTitle.slice(0, 255);
+    }
+
+    const maxSlugBase = 250;
+    const sourceBase = source.draftSlug.slice(0, maxSlugBase).replace(/-+$/, '');
+    let baseSlug = `${sourceBase}-copy`;
+    baseSlug = baseSlug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    if (baseSlug.length < 3) baseSlug = `article-${baseSlug}`;
+
+    let uniqueSlug = baseSlug;
+    let counter = 2;
+    while (await this.repository.checkDraftSlugExists(uniqueSlug, user.id)) {
+      const suffix = `-${counter}`;
+      const maxBaseLength = 280 - suffix.length;
+      const safeBase = baseSlug.slice(0, Math.max(1, maxBaseLength));
+      uniqueSlug = `${safeBase}${suffix}`;
+      counter++;
+    }
+
+    const duplicated = await this.repository.duplicateArticle(
+      articleId,
+      user.id,
+      newTitle,
+      uniqueSlug,
+    );
+
+    this.logger.log(
+      `Article ${articleId} duplicated by author ${user.id} -> new draft ${duplicated.id} (${uniqueSlug})`,
+    );
+
+    return {
+      ...this.mapToArticleResponse(duplicated),
+      blocks: duplicated.blocks.map((b) => this.mapToBlockResponse(b)),
+    };
+  }
 }
 

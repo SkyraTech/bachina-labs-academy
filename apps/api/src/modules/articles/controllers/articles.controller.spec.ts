@@ -16,6 +16,7 @@ describe('ArticlesController', () => {
     getPrivateArticle: ReturnType<typeof vi.fn>;
     updateDraftMetadata: ReturnType<typeof vi.fn>;
     deleteEligibleDraft: ReturnType<typeof vi.fn>;
+    duplicateArticle: ReturnType<typeof vi.fn>;
   };
 
   const VALID_USER: AuthenticatedUser = {
@@ -54,6 +55,7 @@ describe('ArticlesController', () => {
       getPrivateArticle: vi.fn(),
       updateDraftMetadata: vi.fn(),
       deleteEligibleDraft: vi.fn(),
+      duplicateArticle: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -231,6 +233,27 @@ describe('ArticlesController', () => {
         MOCK_ARTICLE_RESPONSE.id,
         query,
       );
+    });
+  });
+
+  describe('duplicate', () => {
+    it('delegates to service.duplicateArticle with user and articleId', async () => {
+      const mockDuplicatedDetail = {
+        ...MOCK_ARTICLE_RESPONSE,
+        id: 'dup-0001-4000-8000-000000000001',
+        title: 'Relational Database Design (Copy)',
+        draftSlug: 'relational-database-design-copy',
+        blocks: [],
+      };
+      serviceMock.duplicateArticle.mockResolvedValue(mockDuplicatedDetail);
+
+      const result = await controller.duplicate(VALID_USER, MOCK_ARTICLE_RESPONSE.id);
+
+      expect(serviceMock.duplicateArticle).toHaveBeenCalledWith(
+        VALID_USER,
+        MOCK_ARTICLE_RESPONSE.id,
+      );
+      expect(result).toEqual(mockDuplicatedDetail);
     });
   });
 });

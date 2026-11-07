@@ -40,22 +40,40 @@ export class OriginGuard implements CanActivate {
     const referer = request.headers['referer'];
     const host = request.headers['host'];
 
-    // Check whether the request targets a sensitive auth route or carries auth cookies
+    // Check whether the request targets a sensitive auth route or carries auth cookies / authenticated session
     const hasAuthCookies = Boolean(
-      request.cookies?.[ACCESS_COOKIE_NAME] || request.cookies?.[REFRESH_COOKIE_NAME],
+      request.cookies?.[ACCESS_COOKIE_NAME] ||
+      request.cookies?.[REFRESH_COOKIE_NAME] ||
+      (request.headers?.cookie &&
+        (request.headers.cookie.includes(`${ACCESS_COOKIE_NAME}=`) ||
+          request.headers.cookie.includes(`${REFRESH_COOKIE_NAME}=`))),
     );
+    const isUserAuthenticated = hasAuthCookies || Boolean((request as any).user);
     const url = request.url || '';
     const isSensitiveAuthRoute =
       url.includes('/auth/login') ||
       url.includes('/auth/refresh') ||
-      hasAuthCookies;
+      isUserAuthenticated;
 
-    // Helper: test if an origin URL is allowed (configured frontend origin or server's own host)
+    // Helper: verify if the request's Host header matches a trusted server host (prevent Host header poisoning)
+    const isTrustedHost = (h: string): boolean => {
+      const rawPort = this.configService?.get ? this.configService.get<any>('app.port', 3000) : 3000;
+      const port = typeof rawPort === 'number' ? rawPort : 3000;
+      const trustedHosts = [
+        `localhost:${port}`,
+        `127.0.0.1:${port}`,
+        'localhost',
+        '127.0.0.1',
+      ];
+      return trustedHosts.includes(h.trim().toLowerCase());
+    };
+
+    // Helper: test if an origin URL is allowed (configured frontend origin or trusted server's own host)
     const isAllowed = (originUrl: string): boolean => {
       if (this.allowedOrigins.includes(originUrl)) {
         return true;
       }
-      if (host) {
+      if (host && isTrustedHost(host)) {
         if (originUrl === `http://${host}` || originUrl === `https://${host}`) {
           return true;
         }
@@ -63,9 +81,9 @@ export class OriginGuard implements CanActivate {
       return false;
     };
 
-    // Helper: test if origin strictly matches server's own host
+    // Helper: test if origin strictly matches trusted server's own host
     const isSameHost = (originUrl: string): boolean => {
-      if (!host) return false;
+      if (!host || !isTrustedHost(host)) return false;
       return originUrl === `http://${host}` || originUrl === `https://${host}`;
     };
 

@@ -7,3 +7,23 @@
   tab-size: 2;
   font-family: var(--font-mono, monospace);
 }
+
+.status-pill-dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+:host-context([data-theme="dark"]) .status-pill-dirty {
+  background-color: #291e0a;
+  color: #fde68a;
+  border-color: #78350f;
+}

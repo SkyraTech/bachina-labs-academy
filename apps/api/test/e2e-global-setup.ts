@@ -2,7 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { assertDisposableTestDatabase } from './test-db-isolation.js';
+import {
+  assertDisposableTestDatabase,
+  safelyDropDisposableDatabase,
+} from './test-db-isolation.js';
 
 let disposableDbName: string | null = null;
 let psqlPath: string;
@@ -116,11 +119,11 @@ export async function teardown(): Promise<void> {
     try {
       const data = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
       const dbToDrop = data.dbName || disposableDbName;
-      if (dbToDrop && dbToDrop.startsWith('academy_e2e_suite_')) {
-        runAdminPsql(
-          `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbToDrop}' AND pid <> pg_backend_pid();`,
-        );
-        runAdminPsql(`DROP DATABASE IF EXISTS "${dbToDrop}";`);
+      if (dbToDrop) {
+        assertDisposableTestDatabase(dbToDrop, 'academy_e2e_suite_');
+        await safelyDropDisposableDatabase(dbToDrop, (sql, target) => runAdminPsql(sql, target), {
+          allowedPrefix: 'academy_e2e_suite_',
+        });
       }
     } catch (err) {
       console.error('Failed to teardown disposable e2e suite database:', err);

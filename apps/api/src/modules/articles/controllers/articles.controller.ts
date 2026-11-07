@@ -161,5 +161,27 @@ export class ArticlesController {
   ): Promise<void> {
     await this.articlesService.deleteEligibleDraft(user, articleId, query);
   }
+
+  /**
+   * POST /api/v1/articles/:articleId/duplicate
+   *
+   * Duplicates an owned article into a separate new draft.
+   */
+  @Post(':articleId/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(UserRole.AUTHOR, UserRole.ADMIN)
+  @UseGuards(VerifiedEmailGuard)
+  @ApiOperation({ summary: 'Duplicate an owned article into a new draft' })
+  @ApiCreatedResponse({ description: 'Article duplicated successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid article UUID.' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or email unverified.' })
+  @ApiNotFoundResponse({ description: 'Article not found.' })
+  async duplicate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('articleId', new ParseUUIDPipe({ version: '4' })) articleId: string,
+  ): Promise<ArticleDetailResponseDto> {
+    return this.articlesService.duplicateArticle(user, articleId);
+  }
 }
 

@@ -13,7 +13,10 @@ import { UsersRepository } from '../src/modules/users/users.repository.js';
 import { SessionsRepository } from '../src/modules/sessions/sessions.repository.js';
 import { SessionsService } from '../src/modules/sessions/sessions.service.js';
 import { EmailVerificationTokenRepository } from '../src/modules/auth/repositories/email-verification-token.repository.js';
-import { assertDisposableTestDatabase } from './test-db-isolation.js';
+import {
+  assertDisposableTestDatabase,
+  safelyDropDisposableDatabase,
+} from './test-db-isolation.js';
 
 describe('Transactional Authentication Audit Integration Real PostgreSQL 17 (e2e)', () => {
   let disposableDbName: string;
@@ -237,10 +240,9 @@ describe('Transactional Authentication Audit Integration Real PostgreSQL 17 (e2e
     // Clean up disposable database explicitly
     if (disposableDbName) {
       try {
-        runAdminPsql(
-          `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${disposableDbName}' AND pid <> pg_backend_pid();`,
-        );
-        runAdminPsql(`DROP DATABASE IF EXISTS "${disposableDbName}";`);
+        await safelyDropDisposableDatabase(disposableDbName, (sql, target) => runAdminPsql(sql, target), {
+          allowedPrefix: 'academy_auth_audit_',
+        });
       } catch (err) {
         console.error(`Failed to clean up disposable database ${disposableDbName}:`, err);
       }

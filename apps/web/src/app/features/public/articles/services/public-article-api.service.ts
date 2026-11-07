@@ -43,6 +43,9 @@ export class PublicArticleApiService {
     if (params?.q !== undefined && params.q.trim() !== '') {
       queryParams['q'] = params.q.trim();
     }
+    if (params?.authorId !== undefined && params.authorId.trim() !== '') {
+      queryParams['authorId'] = params.authorId.trim();
+    }
 
     return this.api.get<PublicArticleListResponse>('articles/public', {
       params: queryParams,

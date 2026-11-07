@@ -1,95 +1,257 @@
-<div class="flex flex-col gap-16 lg:gap-20 py-4 sm:py-8">
-  <!-- Hero Section -->
-  <section class="text-center max-w-4xl mx-auto flex flex-col items-center gap-6">
+<div class="homepage-container flex flex-col gap-16 lg:gap-24 py-4 sm:py-8">
+  <!-- 1. Hero Section -->
+  <section class="text-center max-w-4xl mx-auto flex flex-col items-center gap-6" aria-labelledby="hero-heading">
     <!-- Eyebrow Badge -->
     <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-brand)]/10 border border-[var(--color-brand)]/30 text-[var(--color-brand)] text-xs font-bold tracking-wider uppercase backdrop-blur-md">
       <span class="w-2 h-2 rounded-full bg-[var(--color-brand)] animate-pulse"></span>
       <span>The Bachina Labs Academy</span>
     </div>
 
-    <!-- Headline -->
-    <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text)] leading-[1.15]">
+    <!-- Main Headline -->
+    <h1 id="hero-heading" class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text)] leading-[1.15]">
       Build knowledge.<br />
       <span class="hero-gradient-text">Share what matters.</span>
     </h1>
 
-    <!-- Supporting Text -->
+    <!-- Supporting Mission Text -->
     <p class="text-base sm:text-lg lg:text-xl text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto">
       Discover practical engineering insights, publish in-depth technical guides, and learn from architects who build at scale.
     </p>
 
-    <!-- CTA Buttons -->
+    <!-- Search Form -->
+    <form (submit)="onSearchSubmit($event)" class="homepage-search-container w-full max-w-2xl mt-2" role="search" aria-label="Search published articles">
+      <div class="search-input-wrapper">
+        <svg class="search-icon w-5 h-5 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="search"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          name="homepageSearch"
+          placeholder="Search architecture, systems design, NestJS, Angular..."
+          data-testid="homepage-search-input"
+          aria-label="Search published articles by keyword"
+          class="homepage-search-input"
+        />
+        @if (searchQuery().trim()) {
+          <button
+            type="button"
+            (click)="onClearSearch()"
+            data-testid="homepage-search-clear"
+            aria-label="Clear search query"
+            class="search-clear-btn"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        }
+        <button
+          type="submit"
+          data-testid="homepage-search-submit"
+          class="homepage-search-btn"
+        >
+          Search
+        </button>
+      </div>
+    </form>
+
+    <!-- Hero CTA Buttons -->
     <div class="flex items-center justify-center gap-4 flex-wrap w-full pt-1">
-      <a routerLink="/articles" class="cta-primary">
+      <a routerLink="/articles" class="cta-primary" data-testid="homepage-explore-cta">
         <span>Explore articles</span>
         <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
         </svg>
       </a>
-      <a routerLink="/register" class="cta-secondary">
+      <a routerLink="/register" class="cta-secondary" data-testid="homepage-start-writing-cta">
         <span>Start writing</span>
       </a>
     </div>
 
-    <!-- Topics Pills -->
-    <div class="flex items-center justify-center gap-2 flex-wrap pt-3">
-      <span class="text-xs font-semibold text-[var(--color-text-muted)] mr-1">Topics:</span>
-      <a routerLink="/articles" class="topic-tag">#Architecture</a>
-      <a routerLink="/articles" class="topic-tag">#NestJS</a>
-      <a routerLink="/articles" class="topic-tag">#PostgreSQL</a>
-      <a routerLink="/articles" class="topic-tag">#AngularSignals</a>
-      <a routerLink="/articles" class="topic-tag">#DevOps</a>
-    </div>
+    <!-- Quick Topic Tags -->
+    @if (tags().length > 0) {
+      <div class="flex items-center justify-center gap-2 flex-wrap pt-3" aria-label="Explore topics">
+        <span class="text-xs font-semibold text-[var(--color-text-muted)] mr-1">Explore Topics:</span>
+        @for (t of tags().slice(0, 5); track t.slug) {
+          <button
+            type="button"
+            (click)="onSelectTag(t.slug)"
+            class="topic-tag"
+            data-testid="homepage-trending-topic"
+          >
+            #{{ t.name }}
+          </button>
+        }
+      </div>
+    }
   </section>
 
-  <!-- Featured Editorial Spotlight & Pipeline Preview -->
-  <section class="showcase-card" aria-label="Editorial Spotlight">
-    <div class="flex items-center justify-between px-5 py-3.5 bg-[var(--color-surface-hover)] border-b border-[var(--color-border)]">
-      <div class="flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+  <!-- 2. Recent Articles Section (Replacing Fake Featured Articles per Schema Audit) -->
+  <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="recent-articles-heading">
+    <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <h2 id="recent-articles-heading" class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] m-0">
+            Recent Publications
+          </h2>
+        </div>
+        <p class="text-sm text-[var(--color-text-secondary)] mt-1 m-0">
+          Freshly published guides, blueprints, and architecture patterns from Academy contributors.
+        </p>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[var(--color-coral-surface)] text-[var(--color-coral)] border border-[var(--color-coral-border)]">
-          Editorial Spotlight
-        </span>
-        <span class="hidden sm:inline text-xs font-mono font-semibold text-[var(--color-brand)] uppercase tracking-wider">
-          Platform Preview
-        </span>
-      </div>
-      <span class="text-xs text-[var(--color-text-muted)]">Publishing in preparation</span>
+      <a
+        routerLink="/articles"
+        class="text-sm font-semibold text-[var(--color-brand)] hover:underline inline-flex items-center gap-1.5"
+        data-testid="homepage-view-all-link"
+      >
+        <span>View all articles</span>
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </a>
     </div>
 
-    <div class="p-6 sm:p-8 flex flex-col gap-4 text-left">
-      <h2 class="text-xl sm:text-2xl font-bold text-[var(--color-text)] m-0">
-        Curating Engineering Knowledge & Architecture Blueprints
-      </h2>
-
-      <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0">
-        Bachina Labs Academy is an engineering knowledge hub where technical authors and software architects share production-grade patterns, systems designs, and practical guides. The publishing pipeline and reader catalog are being prepared for the upcoming platform release.
-      </p>
-
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Architecture Patterns</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Systems Design</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Author Workspaces</span>
-        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">Peer-Reviewed Guides</span>
+    <!-- Loading Skeleton -->
+    @if (loading()) {
+      <div data-testid="homepage-loading-skeleton" class="homepage-skeleton-grid" aria-busy="true" aria-label="Loading recent articles">
+        @for (idx of [1, 2, 3, 4, 5, 6]; track idx) {
+          <div class="skeleton-card">
+            <div class="skeleton-header"></div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-text"></div>
+            <div class="skeleton-footer"></div>
+          </div>
+        }
       </div>
+    }
 
-      <div class="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Author registration and account security are active. Full article library coming next.</span>
-        </div>
-        <a routerLink="/articles" class="text-xs font-semibold text-[var(--color-brand)] hover:underline">
-          View knowledge base scaffold →
+    <!-- Error State with Retry -->
+    @if (!loading() && error()) {
+      <div data-testid="homepage-error-state" class="homepage-state-container error-state" role="alert">
+        <svg class="w-10 h-10 text-red-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p class="text-base font-medium text-[var(--color-text)] mb-3">{{ error() }}</p>
+        <button
+          type="button"
+          (click)="loadHomepageData()"
+          data-testid="homepage-retry-btn"
+          class="cta-secondary"
+        >
+          Retry
+        </button>
+      </div>
+    }
+
+    <!-- Empty State -->
+    @if (!loading() && !error() && recentArticles().length === 0) {
+      <div data-testid="homepage-empty-state" class="homepage-state-container empty-state">
+        <svg class="w-12 h-12 text-[var(--color-text-muted)] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        <h3 class="text-lg font-bold text-[var(--color-text)] m-0">No published articles yet</h3>
+        <p class="text-sm text-[var(--color-text-secondary)] mt-1 mb-4">
+          Articles will appear here once authors publish their technical blueprints.
+        </p>
+        <a routerLink="/register" class="cta-secondary text-sm">
+          Become the first author
         </a>
       </div>
-    </div>
+    }
+
+    <!-- Articles Grid -->
+    @if (!loading() && !error() && recentArticles().length > 0) {
+      <div data-testid="homepage-recent-grid" class="homepage-recent-grid">
+        @for (article of recentArticles(); track article.id) {
+          <app-public-article-card [article]="article" />
+        }
+      </div>
+    }
   </section>
 
-  <!-- Features Section -->
+  <!-- 3. Category Discovery Section -->
+  @if (categories().length > 0) {
+    <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="categories-heading">
+      <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Knowledge Taxonomy</span>
+          <h2 id="categories-heading" class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] m-0">
+            Explore by Category
+          </h2>
+        </div>
+        <a
+          routerLink="/articles"
+          class="text-sm font-semibold text-[var(--color-brand)] hover:underline inline-flex items-center gap-1"
+        >
+          All categories →
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        @for (cat of categories(); track cat.slug) {
+          <button
+            type="button"
+            (click)="onSelectCategory(cat.slug)"
+            class="category-discovery-card text-left"
+            data-testid="homepage-category-chip"
+            [attr.aria-label]="'Explore ' + cat.name + ' (' + cat.articleCount + ' articles)'"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-[var(--color-text)] group-hover:text-[var(--color-brand)] transition-colors">
+                {{ cat.name }}
+              </span>
+              <span class="count-badge">
+                {{ cat.articleCount }}
+              </span>
+            </div>
+            <p class="text-xs text-[var(--color-text-secondary)] mt-1.5 m-0">
+              Browse {{ cat.name }} blueprints, architecture guides, and reference implementations.
+            </p>
+          </button>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- 4. Tag Discovery Section -->
+  @if (tags().length > 0) {
+    <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="tags-heading">
+      <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Specialized Topics</span>
+          <h2 id="tags-heading" class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] m-0">
+            Browse by Tag
+          </h2>
+        </div>
+        <a
+          routerLink="/articles"
+          class="text-sm font-semibold text-[var(--color-brand)] hover:underline inline-flex items-center gap-1"
+        >
+          All tags →
+        </a>
+      </div>
+
+      <div class="flex flex-wrap gap-2.5">
+        @for (t of tags(); track t.slug) {
+          <button
+            type="button"
+            (click)="onSelectTag(t.slug)"
+            class="tag-discovery-chip"
+            data-testid="homepage-tag-chip"
+            [attr.aria-label]="'Explore tag ' + t.name + ' (' + t.articleCount + ' articles)'"
+          >
+            <span class="font-semibold text-xs text-[var(--color-text)]">#{{ t.name }}</span>
+            <span class="tag-count-badge">{{ t.articleCount }}</span>
+          </button>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- 5. Platform Capabilities & Author Invitation -->
   <section class="max-w-6xl mx-auto w-full flex flex-col gap-10" aria-labelledby="features-heading">
     <div class="text-center max-w-xl mx-auto flex flex-col gap-2">
       <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Platform Capabilities</span>

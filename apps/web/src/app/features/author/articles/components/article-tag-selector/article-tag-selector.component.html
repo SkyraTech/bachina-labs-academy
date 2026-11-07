@@ -1,0 +1,139 @@
+<div class="space-y-2">
+  <div class="flex items-center justify-between">
+    <label for="tag-search-input" class="block text-xs font-semibold text-[var(--color-text)]">
+      Tags
+    </label>
+    <span class="text-[11px] text-[var(--color-text-muted)] font-mono">
+      {{ selectedTagIds().length }}/20
+    </span>
+  </div>
+
+  <!-- Validation Alert (e.g. max limit reached) -->
+  @if (validationMessage()) {
+    <div
+      class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400"
+      data-testid="tag-validation-error"
+      role="alert"
+    >
+      {{ validationMessage() }}
+    </div>
+  }
+
+  <!-- Selected Tags Chips Area -->
+  <div class="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+    @if (selectedTags().length === 0) {
+      <span class="text-xs text-[var(--color-text-muted)] self-center italic px-1">
+        No tags selected yet.
+      </span>
+    } @else {
+      @for (tag of selectedTags(); track tag.id) {
+        <span
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] shadow-2xs"
+          data-testid="tag-chip"
+        >
+          <span class="font-mono text-[var(--color-brand)]">#</span>
+          <span>{{ tag.name }}</span>
+          @if (!disabled()) {
+            <button
+              type="button"
+              (click)="removeTag(tag.id)"
+              data-testid="remove-tag-btn"
+              [attr.aria-label]="'Remove tag ' + tag.name"
+              class="text-[var(--color-text-muted)] hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
+            >
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          }
+        </span>
+      }
+    }
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div
+      class="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)] animate-pulse"
+      data-testid="tag-loading"
+      aria-busy="true"
+    >
+      <div class="w-4 h-4 rounded-full border-2 border-[var(--color-brand)] border-t-transparent animate-spin"></div>
+      <span>Loading tags...</span>
+    </div>
+  } @else if (error()) {
+    <div
+      class="p-2.5 rounded-xl border border-red-500/20 bg-red-500/10 text-xs text-red-600 dark:text-red-400 flex items-center justify-between gap-2"
+      data-testid="tag-error"
+      role="alert"
+    >
+      <span>{{ error() }}</span>
+      <button
+        type="button"
+        (click)="loadTags()"
+        data-testid="tag-retry-btn"
+        class="px-2 py-0.5 rounded font-semibold bg-red-500/20 hover:bg-red-500/30 text-xs transition-colors cursor-pointer"
+      >
+        Retry
+      </button>
+    </div>
+  } @else {
+
+    <!-- Tag Search & Add Dropdown -->
+    @if (!disabled() && selectedTagIds().length < 20) {
+      <div class="relative">
+        <div class="relative">
+          <input
+            id="tag-search-input"
+            type="text"
+            data-testid="tag-search-input"
+            [ngModel]="searchQuery()"
+            [ngModelOptions]="{standalone: true}"
+            (ngModelChange)="searchQuery.set($event)"
+            (focus)="isDropdownOpen.set(true)"
+            placeholder="Search tags to add..."
+            class="w-full px-3 py-1.5 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+          />
+          <button
+            type="button"
+            (click)="toggleDropdown()"
+            data-testid="toggle-tag-dropdown-btn"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1 text-xs cursor-pointer"
+            aria-label="Toggle tag list"
+          >
+            ▼
+          </button>
+        </div>
+
+        @if (isDropdownOpen()) {
+          <div
+            class="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl z-30 p-1 space-y-0.5"
+            data-testid="tag-dropdown"
+          >
+            @if (allTags().length === 0) {
+              <div class="p-3 text-center text-xs text-[var(--color-text-muted)]" data-testid="tag-catalog-empty">
+                No tags available yet. An administrator can create tags.
+              </div>
+            } @else if (unselectedFilteredTags().length === 0) {
+              <div class="p-3 text-center text-xs text-[var(--color-text-muted)]" data-testid="no-matching-tags">
+                No matching tags found.
+              </div>
+            } @else {
+              @for (tag of unselectedFilteredTags(); track tag.id) {
+                <button
+                  type="button"
+                  (click)="addTag(tag.id)"
+                  data-testid="add-tag-option tag-option"
+                  class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-[var(--color-surface-hover)] flex items-center justify-between transition-colors cursor-pointer text-[var(--color-text)]"
+                >
+                  <span class="font-medium">{{ tag.name }}</span>
+                  <span class="text-[10px] font-mono text-[var(--color-text-muted)]">#{{ tag.slug }}</span>
+                </button>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

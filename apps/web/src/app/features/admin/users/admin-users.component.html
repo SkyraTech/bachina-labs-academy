@@ -1,0 +1,311 @@
+<div class="admin-users-container">
+  <app-page-header
+    title="User Directory"
+    description="Inspect and search registered platform accounts, authentication roles, and email verification states."
+  >
+    <div class="header-actions">
+      <button
+        type="button"
+        class="refresh-btn"
+        (click)="fetchUsers()"
+        [disabled]="loading()"
+        aria-label="Refresh user directory"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </app-page-header>
+
+  <!-- Filter Bar -->
+  <div class="filter-card">
+    <div class="search-box">
+      <svg class="w-4 h-4 search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <input
+        id="users-search-input"
+        type="text"
+        [(ngModel)]="searchQuery"
+        (keydown.enter)="onSearchSubmit()"
+        placeholder="Search users by email..."
+        aria-label="Search users by email"
+        class="search-input"
+      />
+      @if (searchQuery()) {
+        <button type="button" class="clear-search-btn" (click)="searchQuery.set(''); onSearchSubmit()" aria-label="Clear search">
+          &times;
+        </button>
+      }
+    </div>
+
+    <div class="filter-controls">
+      <div class="filter-select-wrapper">
+        <label for="users-role-filter" class="sr-only">Role Filter</label>
+        <select
+          id="users-role-filter"
+          [(ngModel)]="roleFilter"
+          (change)="onFilterChange()"
+          class="filter-select"
+          aria-label="Filter by user role"
+        >
+          <option value="ALL">All Roles</option>
+          <option value="AUTHOR">Author</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </div>
+
+      <div class="filter-select-wrapper">
+        <label for="users-status-filter" class="sr-only">Status Filter</label>
+        <select
+          id="users-status-filter"
+          [(ngModel)]="statusFilter"
+          (change)="onFilterChange()"
+          class="filter-select"
+          aria-label="Filter by account status"
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="SUSPENDED">Suspended</option>
+          <option value="DISABLED">Disabled</option>
+        </select>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <button type="button" class="clear-filters-btn" (click)="clearFilters()">
+          Clear Filters
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (errorMessage(); as error) {
+    <div class="error-banner" role="alert">
+      <div class="error-content">
+        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="retry-btn" (click)="fetchUsers()">Retry</button>
+    </div>
+  }
+
+  <!-- Loading Skeleton -->
+  @if (loading()) {
+    <div class="skeleton-table" aria-busy="true" aria-label="Loading user directory">
+      <div class="space-y-3">
+        <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+        <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+        <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+        <app-loading-skeleton height="2.5rem"></app-loading-skeleton>
+      </div>
+    </div>
+  } @else if (users().length === 0) {
+    <!-- Empty State -->
+    <div class="empty-state-wrapper">
+      <app-empty-state
+        title="No users found"
+        description="No user accounts match the selected filters or search query."
+      ></app-empty-state>
+      @if (hasActiveFilters()) {
+        <button type="button" class="reset-search-btn" (click)="clearFilters()">
+          Reset Search Filters
+        </button>
+      }
+    </div>
+  } @else {
+    <!-- Table View -->
+    <div class="table-container">
+      <table class="users-table" aria-label="User Accounts Directory">
+        <thead>
+          <tr>
+            <th scope="col">User / Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">Status</th>
+            <th scope="col">Email Verified</th>
+            <th scope="col">Registered</th>
+            <th scope="col" class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users(); track user.id) {
+            <tr class="table-row" [attr.data-user-id]="user.id">
+              <td>
+                <div class="user-cell">
+                  <span class="user-email" data-testid="user-email">{{ user.email }}</span>
+                  <span class="user-id-subtle">{{ user.id }}</span>
+                </div>
+              </td>
+              <td>
+                <span
+                  class="role-badge"
+                  [ngClass]="{
+                    'badge-admin': user.role === 'ADMIN',
+                    'badge-author': user.role === 'AUTHOR'
+                  }"
+                  data-testid="user-role"
+                >
+                  {{ user.role }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="status-badge"
+                  [ngClass]="{
+                    'badge-active': user.status === 'ACTIVE',
+                    'badge-suspended': user.status === 'SUSPENDED',
+                    'badge-disabled': user.status === 'DISABLED'
+                  }"
+                  data-testid="user-status"
+                >
+                  {{ user.status }}
+                </span>
+              </td>
+              <td>
+                @if (user.isEmailVerified) {
+                  <span class="verified-pill" data-testid="user-verified">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Verified</span>
+                  </span>
+                } @else {
+                  <span class="unverified-pill" data-testid="user-unverified">
+                    <span>Unverified</span>
+                  </span>
+                }
+              </td>
+              <td>
+                <span class="date-text">{{ user.createdAt | date: 'mediumDate' }}</span>
+              </td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="view-btn"
+                  [attr.id]="'btn-view-user-' + user.id"
+                  (click)="viewUser(user)"
+                  aria-label="View user details"
+                >
+                  Inspect
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination-bar">
+      <div class="pagination-info">
+        Showing <span class="font-medium">{{ (page() - 1) * limit() + 1 }}</span> to
+        <span class="font-medium">{{ ((page() - 1) * limit() + users().length) }}</span> of
+        <span class="font-medium" data-testid="users-total-count">{{ total() }}</span> users
+      </div>
+
+      <div class="pagination-actions">
+        <button
+          type="button"
+          class="page-btn"
+          id="btn-users-prev-page"
+          [disabled]="page() <= 1"
+          (click)="goToPage(page() - 1)"
+          aria-label="Previous page"
+        >
+          Previous
+        </button>
+        <span class="page-indicator" data-testid="users-page-indicator">
+          Page {{ page() }} of {{ totalPages() }}
+        </span>
+        <button
+          type="button"
+          class="page-btn"
+          id="btn-users-next-page"
+          [disabled]="page() >= totalPages()"
+          (click)="goToPage(page() + 1)"
+          aria-label="Next page"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Read-Only Inspection Modal -->
+  @if (selectedUser(); as selected) {
+    <div class="modal-backdrop" (click)="onBackdropClick($event)" role="presentation">
+      <div
+        class="modal-dialog"
+        role="dialog"
+        aria-labelledby="user-modal-title"
+        aria-modal="true"
+      >
+        <div class="modal-header">
+          <h2 id="user-modal-title" class="modal-title">User Account Details</h2>
+          <button
+            type="button"
+            class="close-modal-btn"
+            id="btn-close-user-modal"
+            (click)="closeModal()"
+            aria-label="Close modal"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-row">
+            <span class="detail-label">Account ID</span>
+            <span class="detail-value font-mono text-xs" data-testid="modal-user-id">{{ selected.id }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email Address</span>
+            <span class="detail-value font-medium" data-testid="modal-user-email">{{ selected.email }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Platform Role</span>
+            <span class="detail-value" data-testid="modal-user-role">{{ selected.role }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Account Status</span>
+            <span class="detail-value" data-testid="modal-user-status">{{ selected.status }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email Verification</span>
+            <span class="detail-value" data-testid="modal-user-verified">
+              {{ selected.isEmailVerified ? 'Verified' : 'Unverified' }}
+              @if (selected.emailVerifiedAt) {
+                ({{ selected.emailVerifiedAt | date: 'medium' }})
+              }
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Created At</span>
+            <span class="detail-value">{{ selected.createdAt | date: 'medium' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Last Updated</span>
+            <span class="detail-value">{{ selected.updatedAt | date: 'medium' }}</span>
+          </div>
+
+          <div class="notice-box">
+            <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>Account mutations (suspension, role reallocation, deletion) are strictly protected by platform security policy.</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="modal-close-btn" (click)="closeModal()">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

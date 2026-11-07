@@ -1,19 +1,174 @@
 <app-page-header
-  title="Account & Security"
-  eyebrow="Settings"
-  description="Manage profile information, active login sessions, and password security."
+  title="Account Settings"
+  eyebrow="Profile & Preferences"
+  description="Manage your public attribution, display name, and active security sessions."
 ></app-page-header>
 
-<div class="mt-8">
-  <app-empty-state
-    title="Account settings"
-    description="Profile preference controls will be integrated in subsequent phases. Active devices and session revocation are available now under Account Security."
-  >
-    <a routerLink="/account/security" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-[11px] bg-[var(--btn-primary-bg,#ea580c)] text-white hover:bg-[var(--btn-primary-hover,#c2410c)] active:bg-[var(--btn-primary-pressed,#9a3412)] shadow-[0_4px_14px_rgba(234,88,12,0.35)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] focus-visible:ring-offset-2">
-      <span>View Active Sessions</span>
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-      </svg>
-    </a>
-  </app-empty-state>
+<div class="mt-8 max-w-3xl space-y-8">
+  <!-- Notifications -->
+  @if (successMessage()) {
+    <div
+      role="status"
+      class="flex items-center justify-between p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm"
+    >
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span>{{ successMessage() }}</span>
+      </div>
+      <button
+        type="button"
+        (click)="dismissMessages()"
+        class="text-emerald-700 dark:text-emerald-400 hover:opacity-75 focus-visible:outline-none"
+        aria-label="Dismiss message"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div
+      role="alert"
+      class="flex items-center justify-between p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400 text-sm"
+    >
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+      <button
+        type="button"
+        (click)="dismissMessages()"
+        class="text-rose-700 dark:text-rose-400 hover:opacity-75 focus-visible:outline-none"
+        aria-label="Dismiss error"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Profile Card -->
+  <section class="rounded-2xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface,#ffffff)] dark:bg-[var(--color-surface-dark,#1f2937)] p-6 sm:p-8 shadow-sm">
+    <div class="flex items-start justify-between border-b border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] pb-6">
+      <div>
+        <h2 class="text-xl font-bold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">
+          Public Profile Identity
+        </h2>
+        <p class="mt-1 text-sm text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)]">
+          Customize your public attribution name for articles and reader comments. Your registered email is never published.
+        </p>
+      </div>
+      <div>
+        @if (isFallback()) {
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            Default Fallback
+          </span>
+        } @else {
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Custom Display Name
+          </span>
+        }
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="py-12 flex justify-center items-center gap-3 text-sm text-[var(--color-text-secondary,#6b7280)]">
+        <svg class="animate-spin h-5 w-5 text-[var(--color-brand,#ea580c)]" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Loading profile settings...</span>
+      </div>
+    } @else {
+      <form (ngSubmit)="saveProfile()" class="mt-6 space-y-6">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label
+              for="displayNameInput"
+              class="block text-sm font-semibold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]"
+            >
+              Public Display Name
+            </label>
+            <span class="text-xs text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)]">
+              {{ displayNameInput().length }}/50
+            </span>
+          </div>
+          <input
+            id="displayNameInput"
+            name="displayNameInput"
+            type="text"
+            [ngModel]="displayNameInput()"
+            (ngModelChange)="displayNameInput.set($event)"
+            maxlength="50"
+            placeholder="e.g. Dr. Jane Doe"
+            class="w-full rounded-xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-bg,#ffffff)] dark:bg-[var(--color-bg-dark,#111827)] px-4 py-2.5 text-sm text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)] placeholder-[var(--color-text-secondary,#9ca3af)] focus:border-[var(--color-brand,#ea580c)] focus:ring-2 focus:ring-[var(--color-brand,#ea580c)]/20 focus:outline-none transition-colors"
+          />
+          @if (validationError() && displayNameInput().length > 0) {
+            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+              {{ validationError() }}
+            </p>
+          } @else {
+            <p class="mt-1.5 text-xs text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)]">
+              2–50 characters. Letters, numbers, spaces, dots, hyphens, and apostrophes are supported.
+            </p>
+          }
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)]">
+          <div class="text-xs text-[var(--color-text-secondary,#6b7280)]">
+            @if (profile()?.updatedAt) {
+              Last updated: {{ profile()?.updatedAt | date:'mediumDate' }}
+            }
+          </div>
+          <button
+            type="submit"
+            [disabled]="isSaveDisabled()"
+            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--btn-primary-bg,#ea580c)] hover:bg-[var(--btn-primary-hover,#c2410c)] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand,#ea580c)]"
+          >
+            @if (saving()) {
+              <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Saving...</span>
+            } @else {
+              <span>Save Display Name</span>
+            }
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+
+  <!-- Security & Active Sessions Navigation Card -->
+  <section class="rounded-2xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] bg-[var(--color-surface,#ffffff)] dark:bg-[var(--color-surface-dark,#1f2937)] p-6 sm:p-8 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h3 class="text-base font-bold text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)]">
+          Account Security & Login Sessions
+        </h3>
+        <p class="mt-1 text-sm text-[var(--color-text-secondary,#6b7280)] dark:text-[var(--color-text-secondary-dark,#9ca3af)]">
+          Inspect and revoke active browser sessions across your devices.
+        </p>
+      </div>
+      <a
+        routerLink="/account/security"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border border-[var(--color-border,#e5e7eb)] dark:border-[var(--color-border-dark,#374151)] hover:bg-[var(--color-surface-hover,#f3f4f6)] dark:hover:bg-[var(--color-surface-hover-dark,#374151)] text-[var(--color-text-primary,#111827)] dark:text-[var(--color-text-primary-dark,#f9fafb)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand,#ea580c)]"
+      >
+        <span>Manage Sessions</span>
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+  </section>
 </div>

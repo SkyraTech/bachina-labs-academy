@@ -55,5 +55,15 @@ prisma/generated/
 # --- pnpm ---
 .pnpm-store/
 
+# --- Temporary and Scratch Files ---
+scratch/
+*.tmp
+*.bak
+*.swp
+*~
+
 # --- OS ---
 Desktop.ini
+.DS_Store
+Thumbs.db
+

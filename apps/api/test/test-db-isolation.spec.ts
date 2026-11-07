@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   assertDisposableTestDatabase,
+  assertDatabaseUrlSafe,
   safelyDropDisposableDatabase,
 } from './test-db-isolation.js';
 
@@ -253,6 +254,169 @@ describe('Test Database Isolation Guard (assertDisposableTestDatabase & safelyDr
     });
   });
 
+  describe('Section 10: Complete Database Safety Negative Tests (Fail-Closed Rejection)', () => {
+    // 1. Primary database
+    it('1. rejects protected primary database strictly in URL', () => {
+      expect(() =>
+        assertDatabaseUrlSafe('postgresql://user:pass@127.0.0.1:5432/bachina_labs_academy'),
+      ).toThrow(/cannot be production or development database "bachina_labs_academy"/i);
+    });
+
+    // 2. Database named postgres
+    it('2. rejects system database named postgres', () => {
+      expect(() =>
+        assertDatabaseUrlSafe('postgresql://user:pass@127.0.0.1:5432/postgres'),
+      ).toThrow(/cannot be system database "postgres"/i);
+    });
+
+    // 3. Missing URL
+    it('3. rejects missing, empty, or undefined URL', () => {
+      expect(() => assertDatabaseUrlSafe('')).toThrow(/DATABASE_URL is not set or empty/i);
+      expect(() => assertDatabaseUrlSafe(undefined)).toThrow(/DATABASE_URL is not set or empty/i);
+      expect(() => assertDatabaseUrlSafe('   ')).toThrow(/DATABASE_URL is not set or empty/i);
+    });
+
+    // 4. Empty database name
+    it('4. rejects empty database name in URL path', () => {
+      expect(() =>
+        assertDatabaseUrlSafe('postgresql://user:pass@127.0.0.1:5432/'),
+      ).toThrow(/Database name in URL is empty/i);
+    });
+
+    // 5. Malformed URL
+    it('5. rejects malformed URL string', () => {
+      expect(() => assertDatabaseUrlSafe('not-a-valid-database-url')).toThrow(
+        /DATABASE_URL format is invalid/i,
+      );
+    });
+
+    // 6. Nonlocal host
+    it('6. rejects non-local host and implicit localhost aliases strictly', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@192.168.1.100:5432/academy_e2e_suite_${validHex16}`,
+        ),
+      ).toThrow(/Host "192.168.1.100" is not supported. Must be strictly "127.0.0.1"/i);
+
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@localhost:5432/academy_e2e_suite_${validHex16}`,
+        ),
+      ).toThrow(/Host "localhost" is not supported. Must be strictly "127.0.0.1"/i);
+    });
+
+    // 7. Unexpected port
+    it('7. rejects unexpected port (must be strictly 5432)', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@127.0.0.1:5433/academy_e2e_suite_${validHex16}`,
+        ),
+      ).toThrow(/Port "5433" is unexpected. Must be strictly "5432"/i);
+    });
+
+    // 8. Wrong prefix
+    it('8. rejects unapproved prefix in database name', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@127.0.0.1:5432/unapproved_prefix_${validHex16}`,
+        ),
+      ).toThrow(/does not start with an approved disposable prefix/i);
+    });
+
+    // 9. Uppercase hexadecimal suffix
+    it('9. rejects uppercase hexadecimal suffix in database name', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_${validHex16.toUpperCase()}`,
+        ),
+      ).toThrow(/must be strictly lowercase/i);
+    });
+
+    // 10. Incorrect suffix length
+    it('10. rejects incorrect suffix length (not exactly 16 hex chars)', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          'postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_0123456789abcde', // 15 chars
+        ),
+      ).toThrow(/must be exactly 16 lowercase hex characters/i);
+
+      expect(() =>
+        assertDatabaseUrlSafe(
+          'postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_0123456789abcdef0', // 17 chars
+        ),
+      ).toThrow(/must be exactly 16 lowercase hex characters/i);
+    });
+
+    // 11. Timestamp-based disposable name
+    it('11. rejects timestamp-based disposable name format', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          'postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_20261106123456',
+        ),
+      ).toThrow(/must be exactly 16 lowercase hex characters/i);
+    });
+
+    // 12. Valid-looking but preexisting unowned database check
+    it('12. rejects database creation if database unexpectedly already exists in pg_database', () => {
+      const mockPsqlQuery = (sql: string) => {
+        if (sql.includes('pg_database')) {
+          return 'count\n-----\n    1\n(1 row)'; // already exists!
+        }
+        return '';
+      };
+      const checkRes = mockPsqlQuery(
+        `SELECT count(*) FROM pg_database WHERE datname = 'academy_e2e_suite_${validHex16}';`,
+      );
+      expect(() => {
+        const countMatch = checkRes.match(/\b(\d+)\b/);
+        const count = countMatch ? parseInt(countMatch[1], 10) : 0;
+        if (count > 0) {
+          throw new Error('Proposed disposable database unexpectedly already exists in pg_database.');
+        }
+      }).toThrow(/unexpectedly already exists/i);
+    });
+
+    // 13. Attempted bypass flag
+    it('13. rejects attempted bypass flags strictly (--force-primary, etc.)', () => {
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_${validHex16}`,
+          ['--force-primary'],
+        ),
+      ).toThrow(/Attempted bypass flag "--force-primary" is strictly forbidden/i);
+
+      expect(() =>
+        assertDatabaseUrlSafe(
+          `postgresql://user:pass@127.0.0.1:5432/academy_e2e_suite_${validHex16}`,
+          ['--allow-production'],
+        ),
+      ).toThrow(/Attempted bypass flag "--allow-production" is strictly forbidden/i);
+    });
+
+    // 14. Invalid cleanup ownership
+    it('14. rejects cleanup when target database is not registered in verifiedOwnedDatabases', async () => {
+      const db = `academy_e2e_suite_${validHex16}`;
+      const runner = vi.fn();
+      const owned = new Set<string>(['academy_e2e_suite_different16hex']);
+
+      await expect(
+        safelyDropDisposableDatabase(db, runner, {
+          verifiedOwnedDatabases: owned,
+        }),
+      ).rejects.toThrow(/was not registered as owned by the current test run/i);
+      expect(runner).not.toHaveBeenCalled();
+    });
+
+    // 15. Unknown target during teardown
+    it('15. rejects teardown when target is an unknown or unapproved database name', async () => {
+      const runner = vi.fn();
+      await expect(
+        safelyDropDisposableDatabase('unapproved_target_database', runner),
+      ).rejects.toThrow(/does not start with an approved disposable prefix/i);
+      expect(runner).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Real Disposable Database Lifecycle (Integration)', () => {
     it('fails explicitly when required configuration file is missing', () => {
       const missingEnvPath = 'path/to/nonexistent/.env';
@@ -366,6 +530,6 @@ describe('Test Database Isolation Guard (assertDisposableTestDatabase & safelyDr
       // 6. Verify absence post-drop
       const postCheck = runPsql(`SELECT count(*) FROM pg_database WHERE datname = '${disposableDb}';`);
       expect(postCheck).toContain('0');
-    });
+    }, 60000);
   });
 });

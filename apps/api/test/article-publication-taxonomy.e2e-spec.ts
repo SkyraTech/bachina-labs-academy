@@ -297,7 +297,7 @@ describe('Article Publication & Taxonomy Snapshot Integration (e2e)', () => {
       `;
       const appliedNames = applied.map((m) => m.migration_name).sort();
       expect(appliedNames).toEqual(expectedMigrationNames);
-      expect(appliedNames.length).toBe(13);
+      expect(appliedNames.length).toBeGreaterThanOrEqual(13);
       expect(appliedNames).toContain('20261101000000_add_article_snapshot_taxonomy');
     });
 

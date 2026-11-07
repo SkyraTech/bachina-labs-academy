@@ -1,0 +1,96 @@
+<!-- Mobile Collapsible Disclosure (< lg) -->
+@if (mode() === 'all' || mode() === 'mobile') {
+  <div class="lg:hidden toc-mobile-wrapper mb-8" data-testid="reader-toc-mobile">
+    <button
+      type="button"
+      class="toc-mobile-trigger"
+      (click)="toggleMobile()"
+      [attr.aria-expanded]="mobileOpen()"
+      aria-controls="mobile-toc-nav"
+      data-testid="reader-toc-mobile-toggle"
+    >
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+        <span class="font-bold text-xs uppercase tracking-wider text-[var(--color-text)]">
+          On this page ({{ tocItems().length }} sections)
+        </span>
+      </div>
+      <svg
+        class="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200"
+        [class.rotate-180]="mobileOpen()"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    @if (mobileOpen()) {
+      <nav
+        id="mobile-toc-nav"
+        class="toc-mobile-content"
+        aria-label="Table of Contents (Mobile)"
+      >
+        <ul class="space-y-1 py-2 text-sm">
+          @for (item of tocItems(); track item.id) {
+            <li>
+              <a
+                [href]="'#' + item.id"
+                (click)="scrollToSection($event, item.id)"
+                class="toc-link block py-1.5 px-3 rounded-md transition-colors"
+                [class.active]="activeId() === item.id"
+                [class.pl-8]="item.level === 4"
+                [class.pl-6]="item.level === 3"
+                [class.pl-4]="item.level === 2"
+                [attr.aria-current]="activeId() === item.id ? 'location' : null"
+                [attr.data-testid]="'toc-link-' + item.id"
+              >
+                {{ item.text }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+    }
+  </div>
+}
+
+<!-- Desktop Sticky Sidebar (lg+) -->
+@if (mode() === 'all' || mode() === 'desktop') {
+  <aside
+    class="hidden lg:block toc-desktop-sidebar"
+    aria-label="Table of Contents"
+    data-testid="reader-toc-desktop"
+  >
+    <div class="toc-sticky-container">
+      <h2 class="toc-title">
+        On this page
+      </h2>
+      <nav aria-label="Table of Contents">
+        <ul class="toc-list">
+          @for (item of tocItems(); track item.id) {
+            <li class="toc-item">
+              <a
+                [href]="'#' + item.id"
+                (click)="scrollToSection($event, item.id)"
+                class="toc-desktop-link"
+                [class.active]="activeId() === item.id"
+                [class.indent-level-2]="item.level === 2"
+                [class.indent-level-3]="item.level === 3"
+                [class.indent-level-4]="item.level === 4"
+                [attr.aria-current]="activeId() === item.id ? 'location' : null"
+                [attr.data-testid]="'toc-desktop-link-' + item.id"
+              >
+                {{ item.text }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+    </div>
+  </aside>
+}

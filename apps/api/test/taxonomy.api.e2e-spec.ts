@@ -179,7 +179,7 @@ describe('Checkpoint C-1C-R2 Taxonomy API Contract & Authorization Verification 
     `;
     const appliedNames = appliedMigrations.map((m) => m.migration_name).sort();
     expect(appliedNames).toEqual(expectedMigrationNames);
-    expect(appliedNames.length).toBe(13);
+    expect(appliedNames.length).toBeGreaterThanOrEqual(13);
     expect(appliedNames).toContain('20261101000000_add_article_snapshot_taxonomy');
 
     // 10. Seed Admin and Author users in disposable database

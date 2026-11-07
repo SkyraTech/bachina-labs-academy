@@ -1,8 +1,8 @@
-<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-4xl mx-auto">
   <div class="mb-6">
     <a
       routerLink="/author/articles"
-      class="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-brand)] transition-colors mb-4"
+      class="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-brand)] transition-colors mb-3"
     >
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -17,7 +17,7 @@
     ></app-page-header>
   </div>
 
-  <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-8 shadow-sm">
+  <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 sm:p-7 shadow-xs">
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
       <!-- Title -->
       <div>
@@ -100,10 +100,12 @@
         <span class="block text-sm font-semibold text-[var(--color-text)] mb-2">
           Typography Preset
         </span>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <label
-            class="flex flex-col p-3.5 rounded-xl border cursor-pointer transition-all"
+            class="flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:border-[var(--color-brand)]/60"
             [class.border-[var(--color-brand)]]="form.get('typographyPreset')?.value === 'MODERN_SANS'"
+            [class.ring-2]="form.get('typographyPreset')?.value === 'MODERN_SANS'"
+            [class.ring-[var(--color-brand)]/20]="form.get('typographyPreset')?.value === 'MODERN_SANS'"
             [class.bg-[var(--color-brand-surface)]]="form.get('typographyPreset')?.value === 'MODERN_SANS'"
             [class.border-[var(--color-border)]]="form.get('typographyPreset')?.value !== 'MODERN_SANS'"
           >
@@ -120,8 +122,10 @@
           </label>
 
           <label
-            class="flex flex-col p-3.5 rounded-xl border cursor-pointer transition-all"
+            class="flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:border-[var(--color-brand)]/60"
             [class.border-[var(--color-brand)]]="form.get('typographyPreset')?.value === 'EDITORIAL_SERIF'"
+            [class.ring-2]="form.get('typographyPreset')?.value === 'EDITORIAL_SERIF'"
+            [class.ring-[var(--color-brand)]/20]="form.get('typographyPreset')?.value === 'EDITORIAL_SERIF'"
             [class.bg-[var(--color-brand-surface)]]="form.get('typographyPreset')?.value === 'EDITORIAL_SERIF'"
             [class.border-[var(--color-border)]]="form.get('typographyPreset')?.value !== 'EDITORIAL_SERIF'"
           >
@@ -138,8 +142,10 @@
           </label>
 
           <label
-            class="flex flex-col p-3.5 rounded-xl border cursor-pointer transition-all"
+            class="flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:border-[var(--color-brand)]/60"
             [class.border-[var(--color-brand)]]="form.get('typographyPreset')?.value === 'TECHNICAL_MINIMAL'"
+            [class.ring-2]="form.get('typographyPreset')?.value === 'TECHNICAL_MINIMAL'"
+            [class.ring-[var(--color-brand)]/20]="form.get('typographyPreset')?.value === 'TECHNICAL_MINIMAL'"
             [class.bg-[var(--color-brand-surface)]]="form.get('typographyPreset')?.value === 'TECHNICAL_MINIMAL'"
             [class.border-[var(--color-border)]]="form.get('typographyPreset')?.value !== 'TECHNICAL_MINIMAL'"
           >
@@ -154,6 +160,22 @@
             </div>
             <span class="text-xs text-[var(--color-text-secondary)] mt-1">JetBrains Mono · Dense engineering docs</span>
           </label>
+        </div>
+      </div>
+
+      <!-- Taxonomy (Category & Tags) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[var(--color-border)]">
+        <div>
+          <app-article-category-selector
+            [selectedCategoryId]="categoryId()"
+            (categoryChange)="categoryId.set($event)"
+          />
+        </div>
+        <div>
+          <app-article-tag-selector
+            [selectedTagIds]="tagIds()"
+            (tagsChange)="tagIds.set($event)"
+          />
         </div>
       </div>
 

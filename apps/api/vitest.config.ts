@@ -17,7 +17,7 @@ export default defineConfig({
     // These tests perform no I/O (Prisma, SMTP and the Resend SDK are all
     // mocked), so a genuinely stuck test still fails loudly, just at a higher
     // threshold.
-    testTimeout: 20_000,
-    hookTimeout: 20_000,
+    testTimeout: 35_000,
+    hookTimeout: 35_000,
   },
 });

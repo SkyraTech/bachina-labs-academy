@@ -4,9 +4,12 @@ import {
   inject,
   signal,
   OnInit,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { A11yModule } from '@angular/cdk/a11y';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleBlockListComponent } from '../article-block-list/article-block-list.component';
 import { ArticleBlockEditorComponent } from '../article-block-editor/article-block-editor.component';
@@ -25,6 +28,7 @@ import {
   imports: [
     CommonModule,
     RouterLink,
+    A11yModule,
     ArticleBlockListComponent,
     ArticleBlockEditorComponent,
     ArticleMetadataEditorComponent,
@@ -40,14 +44,24 @@ import {
 })
 export class ArticleEditorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   readonly state = inject(ArticleEditorStateService);
 
   readonly mobileTab = signal<'outline' | 'content' | 'settings'>('content');
 
   ngOnInit(): void {
-    const articleId = this.route.snapshot.paramMap.get('articleId');
-    if (articleId) {
-      this.state.loadArticle(articleId);
+    if (this.route.paramMap) {
+      this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+        const articleId = params.get('articleId');
+        if (articleId) {
+          this.state.loadArticle(articleId);
+        }
+      });
+    } else {
+      const articleId = this.route.snapshot?.paramMap?.get('articleId');
+      if (articleId) {
+        this.state.loadArticle(articleId);
+      }
     }
   }
 

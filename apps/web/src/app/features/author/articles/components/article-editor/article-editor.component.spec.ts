@@ -132,4 +132,50 @@ describe('ArticleEditorComponent', () => {
     expect(component.getStatusVariant('DRAFT')).toBe('neutral');
     expect(component.getStatusVariant('ARCHIVED')).toBe('error');
   });
+
+  it('6. should render unsaved block-switch confirmation dialog when showUnsavedSwitchDialog is true', () => {
+    stateService.showUnsavedSwitchDialog.set(true);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[data-testid="unsaved-switch-dialog"]');
+    expect(dialog).toBeTruthy();
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(fixture.nativeElement.querySelector('[data-testid="unsaved-save-btn"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="unsaved-discard-btn"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="unsaved-keep-btn"]')).toBeTruthy();
+  });
+
+  it('7. should trigger dismissUnsavedSwitch when Keep Editing is clicked', () => {
+    stateService.showUnsavedSwitchDialog.set(true);
+    const dismissSpy = vi.spyOn(stateService, 'dismissUnsavedSwitch');
+    fixture.detectChanges();
+
+    const keepBtn: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="unsaved-keep-btn"]');
+    keepBtn.click();
+
+    expect(dismissSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('8. should trigger discardAndSwitch when Discard and Switch is clicked', () => {
+    stateService.showUnsavedSwitchDialog.set(true);
+    const discardSpy = vi.spyOn(stateService, 'discardAndSwitch');
+    fixture.detectChanges();
+
+    const discardBtn: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="unsaved-discard-btn"]');
+    discardBtn.click();
+
+    expect(discardSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('9. should trigger saveAndSwitch when Save and Switch is clicked', () => {
+    stateService.showUnsavedSwitchDialog.set(true);
+    const saveSpy = vi.spyOn(stateService, 'saveAndSwitch');
+    fixture.detectChanges();
+
+    const saveBtn: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="unsaved-save-btn"]');
+    saveBtn.click();
+
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+  });
 });

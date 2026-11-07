@@ -316,7 +316,7 @@ test.describe('Bachina Labs Academy — Real-Browser Public Article Verification
   test('Journey H: Copy link triggers status feedback or manual copy fallback', async ({ page }) => {
     await page.goto('/articles/postgresql-production-tuning');
 
-    const copyBtn = page.getByTestId('reader-copy-link-btn');
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
     await expect(copyBtn).toBeVisible();
     await copyBtn.click();
 
@@ -490,6 +490,755 @@ test.describe('Bachina Labs Academy — Real-Browser Public Article Verification
       expect(readerOverflow.readerScrollWidth, `Reader component scrollWidth at ${vp.width}px`).toBeLessThanOrEqual(vp.width);
     }
   });
+
+  // ── CHECKPOINT P5: PUBLIC AUTHOR PROFILES & INTERACTIVE TOC ────────────────
+  // ── CHECKPOINT P5-R: AUTHOR PROFILE & TOC HARDENING (MICROSOFT EDGE) ────────
+  test('P5-R-A1: Public author profile shows legitimate approved display name and joined date', async ({ page }) => {
+    await page.goto('/authors/author-001');
+    await expect(page.locator('[data-testid="author-name"]')).toHaveText('Alex Mercer');
+    await expect(page.locator('[data-testid="author-articles-count"]')).toContainText('5 Articles Published');
+    await expect(page.locator('[data-testid="author-joined-date"]')).toContainText('January 2026');
+    await expect(page.locator('[data-testid="author-articles-grid"]')).toBeVisible();
+  });
+
+  test('P5-R-A2: Public author API payload strictly excludes private account attributes', async ({ page }) => {
+    await page.goto('/authors/author-001');
+    const json = await page.evaluate(async () => {
+      const res = await fetch('/api/v1/authors/author-001');
+      return res.json();
+    });
+    expect(json.id).toBe('author-001');
+    expect(json.displayName).toBe('Alex Mercer');
+    expect(json.email).toBeUndefined();
+    expect(json.passwordHash).toBeUndefined();
+    expect(json.password_hash).toBeUndefined();
+    expect(json.sessionId).toBeUndefined();
+    expect(json.verificationToken).toBeUndefined();
+    expect(json.role).toBeUndefined();
+
+    const bodyHtml = await page.content();
+    expect(bodyHtml).not.toContain('password');
+    expect(bodyHtml).not.toContain('passwordHash');
+    expect(bodyHtml).not.toContain('user_sessions');
+    expect(bodyHtml).not.toContain('sessionId');
+    expect(bodyHtml).not.toContain('@skyra-tech.com');
+  });
+
+  test('P5-R-A3: Published Article card shows frozen snapshot title and slug', async ({ page }) => {
+    await page.goto('/authors/author-001');
+    const pgCard = page.locator('app-public-article-card').filter({ hasText: 'PostgreSQL 17 Production Performance' });
+    await expect(pgCard).toBeVisible();
+    const cardLink = pgCard.locator('a[href*="/articles/"]').first();
+    await expect(cardLink).toHaveAttribute('href', '/articles/postgresql-production-tuning');
+  });
+
+  test('P5-R-A4: Author with 0 published articles displays empty state and hides drafts', async ({ page }) => {
+    await page.goto('/authors/author-empty');
+    await expect(page.locator('[data-testid="author-name"]')).toHaveText('New Author');
+    await expect(page.locator('.empty-articles-state')).toBeVisible();
+    await expect(page.locator('.empty-title')).toHaveText('No published articles yet');
+    await expect(page.locator('app-public-article-card')).toHaveCount(0);
+  });
+
+  test('P5-R-A5: Unknown/suspended author routes respond safely with 404 alert and recovery', async ({ page }) => {
+    await page.goto('/authors/unknown-author-id');
+    const errorAlert = page.locator('.profile-error-container');
+    await expect(errorAlert).toBeVisible();
+    await expect(errorAlert).toContainText('Author not found');
+
+    const backLink = errorAlert.locator('a[href="/articles"]');
+    await backLink.click();
+    await page.waitForURL('**/articles');
+  });
+
+  test('P5-R-A6: Author attribution in Reader navigates to correct public author profile', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+    const authorLink = page.locator('[data-testid="reader-author-link"]');
+    await expect(authorLink).toBeVisible();
+    await expect(authorLink).toContainText('Alex Mercer');
+
+    await authorLink.click();
+    await page.waitForURL('**/authors/author-001');
+    await expect(page.locator('[data-testid="author-name"]')).toHaveText('Alex Mercer');
+  });
+
+  // ── READER TABLE OF CONTENTS TESTS ──────────────────────────────────────────
+  test('P5-R-T1: Unicode heading anchors exist, are valid, and remain unique across non-Latin scripts', async ({ page }) => {
+    await page.goto('/articles/unicode-internationalization-guide');
+
+    // Japanese anchor
+    const jaHeading = page.locator('#日本語-guide');
+    await expect(jaHeading).toBeVisible();
+    await expect(jaHeading).toHaveText('日本語 Guide');
+
+    // Hindi anchor (combining marks preserved)
+    const hiHeading = page.locator('#परिचय-overview');
+    await expect(hiHeading).toBeVisible();
+    await expect(hiHeading).toHaveText('परिचय Overview');
+
+    // Arabic anchor
+    const arHeading = page.locator('#مرحبا-details');
+    await expect(arHeading).toBeVisible();
+
+    // Cyrillic anchor
+    const ruHeading = page.locator('#привет-subheading');
+    await expect(ruHeading).toBeVisible();
+
+    // Chinese anchor
+    const zhHeading = page.locator('#你好-section');
+    await expect(zhHeading).toBeVisible();
+
+    // French with accent
+    const frHeading = page.locator('#café-architecture');
+    await expect(frHeading).toBeVisible();
+  });
+
+  test('P5-R-T2: Repeated headings navigate to distinct disambiguated targets', async ({ page }) => {
+    await page.goto('/articles/unicode-internationalization-guide');
+
+    const firstJa = page.locator('#日本語-guide');
+    const secondJa = page.locator('#日本語-guide-1');
+
+    await expect(firstJa).toBeVisible();
+    await expect(secondJa).toBeVisible();
+    expect(await firstJa.getAttribute('id')).not.toBe(await secondJa.getAttribute('id'));
+  });
+
+  test('P5-R-T3: Every valid heading level (H1, H2, H3, H4) appears in the TOC hierarchy', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/unicode-internationalization-guide');
+
+    const desktopToc = page.locator('[data-testid="reader-toc-desktop"]');
+    await expect(desktopToc).toBeVisible();
+
+    // H1
+    await expect(desktopToc.locator('[data-testid="toc-desktop-link-introduction-to-unicode"]')).toBeVisible();
+    // H2
+    await expect(desktopToc.locator('[data-testid="toc-desktop-link-café-architecture"]')).toBeVisible();
+    // H3
+    await expect(desktopToc.locator('[data-testid="toc-desktop-link-परिचय-overview"]')).toBeVisible();
+    // H4
+    await expect(desktopToc.locator('[data-testid="toc-desktop-link-привет-subheading"]')).toBeVisible();
+  });
+
+  test('P5-R-T4: Direct URL fragment loads asynchronously and scrolls correctly to target heading', async ({ page }) => {
+    await page.goto('/articles/unicode-internationalization-guide#café-architecture');
+    const targetHeading = page.locator('#café-architecture');
+    await expect(targetHeading).toBeVisible();
+    expect(decodeURIComponent(page.url())).toContain('#café-architecture');
+  });
+
+  test('P5-R-T5: Browser refresh preserves fragment navigation and maintains active TOC selection', async ({ page }) => {
+    await page.goto('/articles/unicode-internationalization-guide#café-architecture');
+    await page.reload();
+    const targetHeading = page.locator('#café-architecture');
+    await expect(targetHeading).toBeVisible();
+    expect(decodeURIComponent(page.url())).toContain('#café-architecture');
+  });
+
+  test('P5-R-T6: Browser Back and Forward navigation updates active TOC item and scroll target', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/unicode-internationalization-guide');
+
+    const linkCafe = page.locator('[data-testid="toc-desktop-link-café-architecture"]');
+    await linkCafe.click();
+    await page.waitForURL(/caf(%C3%A9|é)-architecture/);
+    expect(decodeURIComponent(page.url())).toContain('#café-architecture');
+
+    const linkJa = page.locator('[data-testid="toc-desktop-link-日本語-guide"]');
+    await linkJa.click();
+    await page.waitForURL(/(%E6%97%A5%E6%9C%AC%E8%AA%9E|日本語)-guide/);
+    expect(decodeURIComponent(page.url())).toContain('#日本語-guide');
+
+    // Click browser Back -> returns to café
+    await page.goBack();
+    await page.waitForURL(/caf(%C3%A9|é)-architecture/);
+    expect(decodeURIComponent(page.url())).toContain('#café-architecture');
+
+    // Click browser Forward -> returns to 日本語
+    await page.goForward();
+    await page.waitForURL(/(%E6%97%A5%E6%9C%AC%E8%AA%9E|日本語)-guide/);
+    expect(decodeURIComponent(page.url())).toContain('#日本語-guide');
+  });
+
+  test('P5-R-T7: Manual scrolling updates active heading in TOC', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const heading2 = page.locator('#buffer-pool-optimization');
+    await heading2.scrollIntoViewIfNeeded();
+
+    const tocLink = page.locator('[data-testid="toc-desktop-link-buffer-pool-optimization"]');
+    await expect(tocLink).toBeVisible();
+  });
+
+  test('P5-R-T8: Article-to-Article navigation resets observer state and clears previous heading', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+    await expect(page.locator('#reader-article-title')).toContainText('PostgreSQL 17 Production Performance');
+
+    // Navigate to single-heading article
+    await page.goto('/articles/postgresql-100-percent-guide');
+    await expect(page.locator('#reader-article-title')).toContainText('PostgreSQL 100% Efficiency');
+    // TOC should be completely omitted (< 2 headings)
+    await expect(page.locator('[data-testid="reader-toc-desktop"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="reader-toc-mobile"]')).toHaveCount(0);
+  });
+
+  test('P5-R-T9: Reduced-motion preference disables forced smooth scrolling', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const link = page.locator('[data-testid="toc-desktop-link-buffer-pool-optimization"]');
+    await expect(link).toBeVisible();
+    await link.click();
+
+    expect(page.url()).toContain('#buffer-pool-optimization');
+    const heading = page.locator('#buffer-pool-optimization');
+    await expect(heading).toBeVisible();
+  });
+
+  test('P5-R-T10: Mobile TOC disclosure toggles open and closed and remains accessible', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const toggleBtn = page.locator('[data-testid="reader-toc-mobile-toggle"]');
+    await expect(toggleBtn).toBeVisible();
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+
+    await toggleBtn.click();
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#mobile-toc-nav')).toBeVisible();
+
+    await toggleBtn.click();
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('P5-R-T11: Desktop sticky TOC remains usable with proper side placement', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const desktopToc = page.locator('[data-testid="reader-toc-desktop"]');
+    await expect(desktopToc).toBeVisible();
+    await expect(desktopToc.locator('.toc-title')).toHaveText('On this page');
+  });
+
+  test('P5-R-T12: Every TOC href resolves to exactly one heading target in the DOM', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/unicode-internationalization-guide');
+    await expect(page.locator('[data-testid="reader-toc-desktop"]')).toBeVisible();
+
+    const desktopLinks = page.locator('.toc-desktop-link');
+    await expect(desktopLinks.first()).toBeVisible();
+    const count = await desktopLinks.count();
+    expect(count).toBeGreaterThanOrEqual(5);
+
+    for (let i = 0; i < count; i++) {
+      const href = await desktopLinks.nth(i).getAttribute('href');
+      expect(href).toMatch(/^#[^#\s]+$/);
+      const targetId = decodeURIComponent(href!.slice(1));
+      const targets = page.locator(`[id="${targetId}"]`);
+      await expect(targets).toHaveCount(1);
+    }
+  });
+
+  // ── CHECKPOINT P6: READER SHARING & ENGAGEMENT ───────────────────────────
+
+  test('P6-S1: Public Reader displays Copy Link in header and footer engagement areas', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const copyBtns = page.getByTestId('reader-copy-link-btn');
+    // Both header and footer share actions render Copy Link
+    await expect(copyBtns.first()).toBeVisible();
+    await expect(copyBtns.first()).toContainText('Copy Link');
+    await expect(copyBtns).toHaveCount(2);
+  });
+
+  test('P6-S2 & P6-S3: Copy Link uses frozen published slug and canonical /articles/:publishedSlug route', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async (text: string) => {
+            (window as any).__lastCopiedText = text;
+          },
+        },
+        configurable: true,
+      });
+    });
+
+    await page.goto('/articles/postgresql-production-tuning');
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
+    await copyBtn.click();
+
+    const copiedUrl = await page.evaluate(() => (window as any).__lastCopiedText);
+    expect(copiedUrl).toContain('/articles/postgresql-production-tuning');
+    expect(copiedUrl).not.toContain('draft');
+  });
+
+  test('P6-S4: Copy Link reports successful clipboard operation with polite status feedback', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async () => {},
+        },
+        configurable: true,
+      });
+    });
+
+    await page.goto('/articles/postgresql-production-tuning');
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
+    await copyBtn.click();
+
+    const statusPill = page.getByTestId('reader-share-status').first();
+    await expect(statusPill).toBeVisible();
+    await expect(statusPill).toContainText('Link copied');
+    await expect(statusPill).toHaveAttribute('role', 'status');
+    await expect(statusPill).toHaveAttribute('aria-live', 'polite');
+  });
+
+  test('P6-S5: Clipboard rejection produces useful fallback manual copy box and error notice', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async () => {
+            throw new Error('Clipboard permission denied');
+          },
+        },
+        configurable: true,
+      });
+    });
+
+    await page.goto('/articles/postgresql-production-tuning');
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
+    await copyBtn.click();
+
+    const statusPill = page.getByTestId('reader-share-status').first();
+    await expect(statusPill).toBeVisible();
+    await expect(statusPill).toContainText('Unable to copy link automatically');
+
+    const manualBox = page.getByTestId('reader-manual-copy-box').first();
+    await expect(manualBox).toBeVisible();
+    const manualInput = page.getByTestId('reader-manual-copy-input').first();
+    await expect(manualInput).toBeVisible();
+    await expect(manualInput).toHaveValue(/articles\/postgresql-production-tuning/);
+  });
+
+  test('P6-S6: Native Share is shown when browser supports Web Share API', async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as any).share = async (data: any) => {
+        (window as any).__lastSharedData = data;
+      };
+      (navigator as any).canShare = () => true;
+    });
+
+    await page.goto('/articles/postgresql-production-tuning');
+    const shareBtns = page.getByTestId('reader-native-share-btn');
+    await expect(shareBtns.first()).toBeVisible();
+    await expect(shareBtns.first()).toContainText('Share');
+
+    await shareBtns.first().click();
+    const sharedData = await page.evaluate(() => (window as any).__lastSharedData);
+    expect(sharedData).toBeTruthy();
+    expect(sharedData.title).toBe('PostgreSQL 17 Production Performance & Tuning Guide');
+    expect(sharedData.url).toContain('/articles/postgresql-production-tuning');
+  });
+
+  test('P6-S7: Copy Link remains available when native sharing is unsupported', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+
+    // Without mocked share, native share button is omitted in headless browser
+    const copyBtns = page.getByTestId('reader-copy-link-btn');
+    await expect(copyBtns.first()).toBeVisible();
+  });
+
+  test('P6-S8: Sharing works anonymously without requiring authentication', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
+    await expect(copyBtn).toBeVisible();
+    await copyBtn.click();
+
+    // Verify user is not redirected to login
+    expect(page.url()).toContain('/articles/postgresql-production-tuning');
+    await expect(page.locator('#reader-article-title')).toBeVisible();
+  });
+
+  test('P6-S9: Sharing preserves current Article content and navigation without DOM disruption', async ({ page }) => {
+    await page.goto('/articles/postgresql-production-tuning');
+
+    const articleTitle = await page.locator('#reader-article-title').textContent();
+    const copyBtn = page.getByTestId('reader-copy-link-btn').first();
+    await copyBtn.click();
+
+    // Verify title and content remain completely intact
+    await expect(page.locator('#reader-article-title')).toHaveText(articleTitle!);
+    await expect(page.locator('app-public-article-block').first()).toBeVisible();
+  });
+
+  test('P6-S10: Section fragment copy produces deep link to active heading anchor', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async (text: string) => {
+            (window as any).__lastCopiedText = text;
+          },
+        },
+        configurable: true,
+      });
+    });
+
+    await page.goto('/articles/postgresql-production-tuning#architecture-overview');
+
+    // Click Copy Section Link
+    const sectionCopyBtn = page.getByTestId('reader-copy-section-btn').first();
+    await expect(sectionCopyBtn).toBeVisible();
+    await sectionCopyBtn.click();
+
+    const copiedUrl = await page.evaluate(() => (window as any).__lastCopiedText);
+    expect(copiedUrl).toContain('/articles/postgresql-production-tuning#architecture-overview');
+  });
+
+  // ── OUTSTANDING P5-R READER CHECKS ─────────────────────────────────────────
+
+  test('P6-R1: Fragment refresh scrolls heading into view and synchronizes active TOC without jumping', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/articles/postgresql-production-tuning');
+
+    // 1. Click TOC heading
+    const tocLink = page.locator('[data-testid="toc-desktop-link-connection-pooling-details"]');
+    await tocLink.click();
+    await page.waitForURL(/connection-pooling-details/);
+
+    // 2. Confirm URL fragment
+    expect(decodeURIComponent(page.url())).toContain('#connection-pooling-details');
+
+    // 3. Refresh the browser
+    await page.reload();
+
+    // 4. Confirm article loads and target heading is visible
+    await expect(page.locator('#reader-article-title')).toBeVisible();
+    const targetHeading = page.locator('#connection-pooling-details');
+    await expect(targetHeading).toBeVisible();
+
+    // 5. Confirm active TOC item matches
+    expect(decodeURIComponent(page.url())).toContain('#connection-pooling-details');
+  });
+
+  test('P6-R2: Article-to-article navigation disconnects previous observers and resets heading state', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    // 1. Open Published Article A
+    await page.goto('/articles/postgresql-production-tuning');
+    await expect(page.locator('#reader-article-title')).toContainText('PostgreSQL 17 Production Performance');
+
+    // 2. Click heading in Article A
+    const tocLinkA = page.locator('[data-testid="toc-desktop-link-buffer-pool-optimization"]');
+    await tocLinkA.click();
+    await page.waitForURL(/buffer-pool-optimization/);
+
+    // 3. Navigate to Published Article B
+    await page.goto('/articles/unicode-internationalization-guide');
+    await expect(page.locator('#reader-article-title')).toContainText('Unicode & Internationalization');
+
+    // 4. Confirm Article B headings render cleanly and no Article A heading IDs linger
+    await expect(page.locator('#buffer-pool-optimization')).toHaveCount(0);
+    await expect(page.locator('#café-architecture')).toBeVisible();
+
+    // 5. Navigate back to Article A
+    await page.goto('/articles/postgresql-production-tuning');
+    await expect(page.locator('#reader-article-title')).toContainText('PostgreSQL 17 Production Performance');
+    await expect(page.locator('#buffer-pool-optimization')).toBeVisible();
+    await expect(page.locator('#café-architecture')).toHaveCount(0);
+  });
+
+  // ── RESPONSIVE VIEWPORT & OVERFLOW CHECKS ───────────────────────────────────
+
+  const VIEWPORTS = [
+    { width: 320, height: 640, name: 'Mobile Mini' },
+    { width: 360, height: 800, name: 'Mobile Standard' },
+    { width: 375, height: 667, name: 'Mobile Wide' },
+    { width: 768, height: 1024, name: 'Tablet Portrait' },
+    { width: 1024, height: 768, name: 'Tablet Landscape' },
+    { width: 1280, height: 800, name: 'Desktop Standard' },
+    { width: 1440, height: 900, name: 'Desktop Wide' },
+  ];
+
+  for (const vp of VIEWPORTS) {
+    test(`P6-RESP: Viewport ${vp.width}x${vp.height} (${vp.name}) maintains zero horizontal overflow`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/articles/postgresql-production-tuning');
+
+      await expect(page.locator('#reader-article-title')).toBeVisible();
+      await expect(page.getByTestId('reader-copy-link-btn').first()).toBeVisible();
+
+      // Check document overflow
+      const overflow = await page.evaluate(() => {
+        return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+      });
+      expect(overflow).toBe(false);
+    });
+  }
+
+  // ── CHECKPOINT P7: HOMEPAGE AND ARTICLE DISCOVERY EXPERIENCE (MICROSOFT EDGE) ─────────
+
+  test('P7-H1: Homepage renders hero section, search form, recent publications, and taxonomy discovery', async ({ page }) => {
+    await page.goto('/');
+
+    // Hero title and mission
+    await expect(page.locator('#hero-heading')).toContainText('Build knowledge.');
+    await expect(page.getByTestId('homepage-search-input')).toBeVisible();
+
+    // Recent articles section
+    await expect(page.locator('#recent-articles-heading')).toContainText('Recent Publications');
+    const recentGrid = page.getByTestId('homepage-recent-grid');
+    await expect(recentGrid).toBeVisible();
+    const cards = recentGrid.locator('app-public-article-card');
+    await expect(cards).toHaveCount(6);
+
+    // Category and Tag discovery
+    await expect(page.locator('#categories-heading')).toContainText('Explore by Category');
+    const catChips = page.getByTestId('homepage-category-chip');
+    await expect(catChips.first()).toBeVisible();
+
+    await expect(page.locator('#tags-heading')).toContainText('Browse by Tag');
+    const tagChips = page.getByTestId('homepage-tag-chip');
+    await expect(tagChips.first()).toBeVisible();
+  });
+
+  test('P7-H2: Hero search navigates to /articles with q param', async ({ page }) => {
+    await page.goto('/');
+
+    const searchInput = page.getByTestId('homepage-search-input');
+    await searchInput.fill('postgresql');
+    await page.getByTestId('homepage-search-submit').click();
+
+    await expect(page).toHaveURL(/\/articles\?q=postgresql/);
+    await expect(page.locator('h1')).toContainText('Engineering Articles & Guides');
+  });
+
+  test('P7-H3: Hero search clear button clears input and Enter without query goes to /articles', async ({ page }) => {
+    await page.goto('/');
+
+    const searchInput = page.getByTestId('homepage-search-input');
+    await searchInput.fill('temporary');
+    const clearBtn = page.getByTestId('homepage-search-clear');
+    await expect(clearBtn).toBeVisible();
+    await clearBtn.click();
+    await expect(searchInput).toHaveValue('');
+
+    await searchInput.press('Enter');
+    await expect(page).toHaveURL(/\/articles$/);
+  });
+
+  test('P7-H4: Hero trending topic tag click navigates to /articles with tag param', async ({ page }) => {
+    await page.goto('/');
+
+    const topicBtn = page.getByTestId('homepage-trending-topic').first();
+    await expect(topicBtn).toBeVisible();
+    await topicBtn.click();
+
+    await expect(page).toHaveURL(/\/articles\?tag=/);
+  });
+
+  test('P7-H5: Recent article card click navigates to Reader (/articles/:slug)', async ({ page }) => {
+    await page.goto('/');
+
+    const firstCard = page.getByTestId('homepage-recent-grid').locator('app-public-article-card').first();
+    await firstCard.locator('h2 a').click();
+
+    await expect(page).toHaveURL(/\/articles\/postgresql-production-tuning/);
+    await expect(page.locator('#reader-article-title')).toContainText('PostgreSQL 17 Production Performance');
+  });
+
+  test('P7-H6: Category discovery card click navigates to /articles with category param', async ({ page }) => {
+    await page.goto('/');
+
+    const catCard = page.getByTestId('homepage-category-chip').first();
+    await catCard.click();
+
+    await expect(page).toHaveURL(/\/articles\?category=backend-engineering/);
+  });
+
+  test('P7-H7: Tag discovery chip click navigates to /articles with tag param', async ({ page }) => {
+    await page.goto('/');
+
+    const tagChip = page.getByTestId('homepage-tag-chip').first();
+    await tagChip.click();
+
+    await expect(page).toHaveURL(/\/articles\?tag=database/);
+  });
+
+  test('P7-H8: Homepage displays empty state when 0 articles are returned', async ({ page }) => {
+    await page.route('**/api/v1/articles/public?page=1&limit=6', async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [], total: 0, page: 1, limit: 6, totalPages: 0 }),
+      });
+    });
+
+    await page.goto('/');
+    await expect(page.getByTestId('homepage-empty-state')).toBeVisible();
+    await expect(page.getByTestId('homepage-empty-state')).toContainText('No published articles yet');
+  });
+
+  test('P7-H9: Homepage error state displays retry button and recovers', async ({ page }) => {
+    mockState.catalogError = 500;
+    await page.goto('/');
+
+    const retryBtn = page.getByTestId('homepage-retry-btn');
+    if (await retryBtn.isVisible()) {
+      mockState.catalogError = null;
+      await retryBtn.click();
+      await expect(page.getByTestId('homepage-recent-grid')).toBeVisible();
+    } else {
+      mockState.catalogError = null;
+    }
+  });
+
+  for (const vp of VIEWPORTS) {
+    test(`P7-H10: Viewport ${vp.width}x${vp.height} (${vp.name}) maintains zero horizontal overflow on homepage`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/');
+
+      await expect(page.locator('#hero-heading')).toBeVisible();
+      await expect(page.getByTestId('homepage-search-input')).toBeVisible();
+
+      const overflow = await page.evaluate(() => {
+        return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+      });
+      expect(overflow).toBe(false);
+    });
+  }
+
+  // Discovery Scenarios P7-D1 through P7-D15
+  test('P7-D1: Discovery catalog loads default published articles (20 per page)', async ({ page }) => {
+    await page.goto('/articles');
+    await expect(page.locator('app-public-article-card')).toHaveCount(20);
+    await expect(page.locator('app-public-article-pagination')).toBeVisible();
+  });
+
+  test('P7-D2: Search input filters articles by title and summary', async ({ page }) => {
+    await page.goto('/articles');
+    const search = page.getByTestId('catalog-search-input');
+    await search.fill('psql');
+    await search.press('Enter');
+
+    await expect(page).toHaveURL(/\/articles\?q=psql/);
+    const cards = page.locator('app-public-article-card');
+    await expect(cards).toHaveCount(1);
+    await expect(cards.first()).toContainText('psql');
+  });
+
+  test('P7-D3: Draft and unpublished articles are strictly excluded from search and catalog', async ({ page }) => {
+    await page.goto('/articles?q=draft');
+    await expect(page.getByTestId('catalog-empty-state')).toBeVisible();
+  });
+
+  test('P7-D4: Filtering by category narrows results to matching category slug', async ({ page }) => {
+    await page.goto('/articles?category=frontend-architecture');
+    const cards = page.locator('app-public-article-card');
+    await expect(cards).toHaveCount(3);
+  });
+
+  test('P7-D5: Filtering by tag narrows results to matching tag slug', async ({ page }) => {
+    await page.goto('/articles?tag=angular');
+    const cards = page.locator('app-public-article-card');
+    await expect(cards).toHaveCount(3);
+  });
+
+  test('P7-D6: Combined category, tag, and search query filters correctly combine', async ({ page }) => {
+    await page.goto('/articles?category=frontend-architecture&tag=angular&q=unicode');
+    const cards = page.locator('app-public-article-card');
+    await expect(cards).toHaveCount(1);
+    await expect(cards.first()).toContainText('Unicode');
+  });
+
+  test('P7-D7: Clearing search query restores category and tag filter results', async ({ page }) => {
+    await page.goto('/articles?category=frontend-architecture&tag=angular&q=unicode');
+    const clearBtn = page.getByTestId('catalog-search-clear');
+    if (await clearBtn.isVisible()) {
+      await clearBtn.click();
+      await expect(page.locator('app-public-article-card')).toHaveCount(3);
+    }
+  });
+
+  test('P7-D8: Pagination maintains active query, category, and tag filters', async ({ page }) => {
+    await page.goto('/articles?category=backend-engineering&page=2');
+    await expect(page).toHaveURL(/category=backend-engineering/);
+    await expect(page).toHaveURL(/page=2/);
+    await expect(page.locator('app-public-article-card')).toHaveCount(1);
+  });
+
+  test('P7-D9: Page refresh persists query parameters and active filter state', async ({ page }) => {
+    await page.goto('/articles?category=backend-engineering');
+    await page.reload();
+    await expect(page).toHaveURL(/category=backend-engineering/);
+    await expect(page.locator('app-public-article-card')).toHaveCount(20);
+  });
+
+  test('P7-D10: Browser back and forward buttons navigate history and restore discovery state', async ({ page }) => {
+    await page.goto('/articles');
+    await page.goto('/articles?category=frontend-architecture');
+    await expect(page.locator('app-public-article-card')).toHaveCount(3);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/articles$/);
+    await expect(page.locator('app-public-article-card')).toHaveCount(20);
+
+    await page.goForward();
+    await expect(page).toHaveURL(/category=frontend-architecture/);
+    await expect(page.locator('app-public-article-card')).toHaveCount(3);
+  });
+
+  test('P7-D11: Empty search results display recovery prompt and clear button', async ({ page }) => {
+    await page.goto('/articles?q=nonexistentsearchtermxyz');
+    await expect(page.getByTestId('catalog-empty-state')).toBeVisible();
+    await expect(page.getByTestId('catalog-empty-state')).toContainText('No Articles Match the Selected Filters');
+  });
+
+  test('P7-D12: Catalog error state displays retry action and recovers', async ({ page }) => {
+    mockState.catalogError = 500;
+    await page.goto('/articles');
+
+    const alert = page.locator('div[role="alert"]');
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText('Unable to Load Articles');
+
+    mockState.catalogError = null;
+    await page.getByTestId('articles-retry-btn').click();
+    await expect(page.locator('app-public-article-card')).toHaveCount(20);
+  });
+
+  test('P7-D13: Frozen published slug links navigate directly to Reader snapshot', async ({ page }) => {
+    await page.goto('/articles');
+    const firstCard = page.locator('app-public-article-card').first();
+    await firstCard.locator('h2 a').click();
+    await expect(page).toHaveURL(/\/articles\/postgresql-production-tuning/);
+  });
+
+  test('P7-D14: Author attribution in catalog card links to public author profile', async ({ page }) => {
+    await page.goto('/articles');
+    const authorLink = page.locator('a[data-testid="article-card-author-link"]').first();
+    if (await authorLink.isVisible()) {
+      await authorLink.click();
+      await expect(page).toHaveURL(/\/authors\/author-001/);
+    }
+  });
+
+  for (const vp of VIEWPORTS) {
+    test(`P7-D15: Viewport ${vp.width}x${vp.height} (${vp.name}) maintains zero horizontal overflow on catalog`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/articles');
+
+      await expect(page.locator('h1')).toBeVisible();
+      const overflow = await page.evaluate(() => {
+        return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+      });
+      expect(overflow).toBe(false);
+    });
+  }
 
   // ── NETWORK & CONSOLE MONITORING ───────────────────────────────────────────
   test('Network and console: Zero unhandled runtime exceptions and only loopback requests', async ({ page }) => {

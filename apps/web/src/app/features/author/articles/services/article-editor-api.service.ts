@@ -151,4 +151,12 @@ export class ArticleEditorApiService {
       params: { expectedRevision },
     });
   }
+
+  /**
+   * Duplicates an owned article into a separate new draft.
+   * POST /api/v1/articles/:articleId/duplicate
+   */
+  duplicateArticle(articleId: string): Observable<EditableArticle> {
+    return this.api.post<EditableArticle>(`articles/${articleId}/duplicate`, {});
+  }
 }

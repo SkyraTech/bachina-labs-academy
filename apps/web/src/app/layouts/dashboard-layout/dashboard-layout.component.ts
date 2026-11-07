@@ -8,7 +8,7 @@ import { ToastService } from '../../shared/ui';
 interface SidebarItem {
   readonly label: string;
   readonly path: string;
-  readonly iconType: 'home' | 'file' | 'pencil' | 'shield' | 'cog';
+  readonly iconType: 'home' | 'file' | 'pencil' | 'shield' | 'cog' | 'users';
 }
 
 /**
@@ -44,6 +44,10 @@ export class DashboardLayoutComponent {
     if (role === 'ADMIN') {
       return [
         { label: 'Admin Hub', path: '/admin', iconType: 'shield' },
+        { label: 'Users', path: '/admin/users', iconType: 'users' },
+        { label: 'Articles', path: '/admin/articles', iconType: 'file' },
+        { label: 'Categories', path: '/admin/categories', iconType: 'file' },
+        { label: 'Tags', path: '/admin/tags', iconType: 'file' },
         { label: 'Account Security', path: '/account/security', iconType: 'cog' },
       ];
     }

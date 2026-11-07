@@ -1,4 +1,4 @@
-<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 sm:p-5 shadow-xs">
   @if (!state.selectedBlock()) {
     <div class="py-12 text-center text-[var(--color-text-muted)]">
       <svg class="w-12 h-12 mx-auto text-[var(--color-border-strong)] mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -21,8 +21,9 @@
 
       <div class="flex items-center gap-2">
         @if (isDirty()) {
-          <span class="text-xs px-2.5 py-0.5 rounded font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-            Unsaved Edits
+          <span class="status-pill-dirty">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <span>Unsaved Edits</span>
           </span>
         }
 
@@ -104,43 +105,25 @@
       @case ('RICH_TEXT') {
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <label for="rich-html" class="block text-xs font-semibold text-[var(--color-text)]">
-              HTML Content <span class="text-red-500">*</span>
-            </label>
+            <span class="block text-xs font-semibold text-[var(--color-text)]">
+              Formatted Article Content <span class="text-red-500">*</span>
+            </span>
             <span class="text-[10px] text-[var(--color-text-muted)] font-mono">
-              {{ richTextHtml.length }} / 60,000 chars
+              WYSIWYG Visual Editor
             </span>
           </div>
 
-          <!-- Quick Tag Inserter Toolbar -->
-          <div class="flex items-center gap-1.5 flex-wrap p-1.5 rounded-lg bg-[var(--color-workspace-bg)] border border-[var(--color-border)]">
-            <button type="button" (click)="wrapHtml('<strong>', '</strong>')" title="Bold (strong)" aria-label="Bold" class="px-2 py-1 text-xs font-bold rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">B</button>
-            <button type="button" (click)="wrapHtml('<em>', '</em>')" title="Italic (em)" aria-label="Italic" class="px-2 py-1 text-xs italic rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">I</button>
-            <button type="button" (click)="wrapHtml('<u>', '</u>')" title="Underline (u)" aria-label="Underline" class="px-2 py-1 text-xs underline rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">U</button>
-            <button type="button" (click)="wrapHtml('<s>', '</s>')" title="Strikethrough (s)" aria-label="Strikethrough" class="px-2 py-1 text-xs line-through rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">S</button>
-            <button type="button" (click)="wrapHtml('<code>', '</code>')" title="Inline code" aria-label="Inline code" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&lt;&gt;</button>
-            <button type="button" (click)="wrapHtml('<sub>', '</sub>')" title="Subscript" aria-label="Subscript" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">x<sub>2</sub></button>
-            <button type="button" (click)="wrapHtml('<sup>', '</sup>')" title="Superscript" aria-label="Superscript" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">x<sup>2</sup></button>
-            <button type="button" (click)="insertHtml('<pre><code>// code snippet</code></pre>')" title="Code block (pre code)" aria-label="Code block" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">pre</button>
-            <button type="button" (click)="insertHtml('<p></p>')" title="Paragraph (p)" aria-label="Paragraph" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&para; p</button>
-            <button type="button" (click)="insertHtml('<br>')" title="Line break (br)" aria-label="Line break" class="px-2 py-1 text-xs font-mono rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">br</button>
-            <button type="button" (click)="insertHtml('<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>')" title="Bullet list (ul)" aria-label="Bullet list" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">&bull; list</button>
-            <button type="button" (click)="insertHtml('<ol>\n  <li>First step</li>\n  <li>Second step</li>\n</ol>')" title="Numbered list (ol)" aria-label="Numbered list" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">1. list</button>
-            <button type="button" (click)="insertHtml('<blockquote>\n  <p>Quotation text</p>\n</blockquote>')" title="Blockquote" aria-label="Blockquote" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">quote</button>
-            <button type="button" (click)="insertHtml('<a href=&quot;https://example.com&quot;>Link text</a>')" title="Link (a)" aria-label="Link" class="px-2 py-1 text-xs rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)]">link</button>
-          </div>
+          <app-rich-text-visual-editor
+            [content]="richTextHtml"
+            [blockId]="state.selectedBlock()?.id ?? null"
+            [disabled]="state.isSaving()"
+            (contentChange)="onRichTextContentChange($event)"
+            (isDirtyChange)="onRichTextDirtyChange($event)"
+            (sourceValidChange)="onRichTextSourceValidChange($event)"
+          />
 
-          <textarea
-            id="rich-html"
-            [(ngModel)]="richTextHtml"
-            (ngModelChange)="markDirty()"
-            (paste)="onPaste($event)"
-            rows="8"
-            class="w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] leading-relaxed"
-            placeholder="<p>Enter educational formatted text using approved HTML elements: p, br, strong, em, u, s, a, ul, ol, li, blockquote, code, pre, sub, sup</p>"
-          ></textarea>
           <p class="text-[11px] text-[var(--color-text-muted)]">
-            Only approved tags and absolute HTTP/HTTPS links are accepted. Backend validates full document compliance on save.
+            Write visually by default or switch to HTML Source. Only approved semantic tags (p, br, strong, em, u, s, a, ul, ol, li, blockquote, code, pre, sub, sup) are accepted on save.
           </p>
         </div>
       }

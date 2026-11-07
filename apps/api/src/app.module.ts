@@ -16,6 +16,10 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
+import { AuthorsModule } from './modules/authors/authors.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { UserProfilesModule } from './modules/users/user-profiles/user-profiles.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import appConfig from './config/app.config';
 import emailConfig from './config/email.config';
 import jwtConfig from './config/jwt.config';
@@ -72,6 +76,10 @@ import jwtConfig from './config/jwt.config';
     AuditModule,   // Phase Q-2.3B — durable database audit logging foundation
     ArticlesModule, // Checkpoint A-3 / Stage 6B — author draft management
     TaxonomyModule, // Checkpoint C-1C — Category and Tag backend API foundation
+    AuthorsModule,  // Checkpoint P5 — Public Author Profiles and Published Article Discovery
+    AdminModule,    // Checkpoint P8 — Admin Hub, User Directory, Article Oversight & Platform Metrics
+    UserProfilesModule, // Checkpoint P9-B1 — User Profile identity foundation
+    CommentsModule, // Checkpoint P9-B1 — Flat comments and admin moderation
   ],
   controllers: [AppController],
   providers: [

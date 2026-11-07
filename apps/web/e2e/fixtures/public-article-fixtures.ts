@@ -62,6 +62,24 @@ export const MOCK_TAGS: PublicDiscoveredTaxonomyItem[] = [
   { id: TAG_SECURITY.id, name: TAG_SECURITY.name, slug: TAG_SECURITY.slug, articleCount: 1 },
 ];
 
+export const MOCK_AUTHORS: Record<
+  string,
+  { id: string; displayName: string; publishedArticlesCount: number; joinedAt: string }
+> = {
+  'author-001': {
+    id: 'author-001',
+    displayName: 'Alex Mercer',
+    publishedArticlesCount: 5,
+    joinedAt: '2026-01-15T10:00:00.000Z',
+  },
+  'author-empty': {
+    id: 'author-empty',
+    displayName: 'New Author',
+    publishedArticlesCount: 0,
+    joinedAt: '2026-03-01T10:00:00.000Z',
+  },
+};
+
 // Build 26 articles
 export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
   // Article 1: Complete article with headings, code, blocks, cover, multiple tags
@@ -84,6 +102,7 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_BACKEND,
     tags: [TAG_DATABASE, TAG_PERFORMANCE],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
     blocks: [
       {
         id: 'blk-001-1',
@@ -148,6 +167,7 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_BACKEND,
     tags: [TAG_DATABASE],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
     blocks: [
       {
         id: 'blk-002-1',
@@ -172,6 +192,7 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_BACKEND,
     tags: [TAG_DATABASE],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
     blocks: [],
   },
   // Article 4: Literal \ in title
@@ -187,6 +208,7 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_BACKEND,
     tags: [TAG_DATABASE],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
     blocks: [],
   },
   // Articles 5 to 21 (all matching backend-engineering, database, postgresql)
@@ -245,7 +267,89 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_FRONTEND,
     tags: [TAG_ANGULAR],
-    blocks: [],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
+    blocks: [
+      {
+        id: 'blk-023-1',
+        type: 'HEADING',
+        position: 0,
+        schemaVersion: 1,
+        content: { level: 1, text: 'Introduction to Unicode' },
+        media: null,
+      },
+      {
+        id: 'blk-023-2',
+        type: 'RICH_TEXT',
+        position: 1,
+        schemaVersion: 1,
+        content: { html: '<p>Unicode normalization and international glyph support.</p>' },
+        media: null,
+      },
+      {
+        id: 'blk-023-3',
+        type: 'HEADING',
+        position: 2,
+        schemaVersion: 1,
+        content: { level: 2, text: 'Café Architecture' },
+        media: null,
+      },
+      {
+        id: 'blk-023-4',
+        type: 'HEADING',
+        position: 3,
+        schemaVersion: 1,
+        content: { level: 2, text: '日本語 Guide' },
+        media: null,
+      },
+      {
+        id: 'blk-023-5',
+        type: 'HEADING',
+        position: 4,
+        schemaVersion: 1,
+        content: { level: 3, text: 'परिचय Overview' },
+        media: null,
+      },
+      {
+        id: 'blk-023-6',
+        type: 'HEADING',
+        position: 5,
+        schemaVersion: 1,
+        content: { level: 3, text: 'مرحبا Details' },
+        media: null,
+      },
+      {
+        id: 'blk-023-7',
+        type: 'HEADING',
+        position: 6,
+        schemaVersion: 1,
+        content: { level: 4, text: 'Привет Subheading' },
+        media: null,
+      },
+      {
+        id: 'blk-023-8',
+        type: 'HEADING',
+        position: 7,
+        schemaVersion: 1,
+        content: { level: 4, text: '你好 Section' },
+        media: null,
+      },
+      {
+        id: 'blk-023-9',
+        type: 'HEADING',
+        position: 8,
+        schemaVersion: 1,
+        content: { level: 2, text: '日本語 Guide' },
+        media: null,
+      },
+      {
+        id: 'blk-023-10',
+        type: 'HEADING',
+        position: 9,
+        schemaVersion: 1,
+        content: { level: 2, text: '🚀' },
+        media: null,
+      },
+    ],
   },
   // Article 24: Legacy article without captured taxonomy
   {
@@ -290,7 +394,89 @@ export const MOCK_ARTICLES: PublicArticleDetailResponse[] = [
     taxonomyCaptured: true,
     category: CATEGORY_FRONTEND,
     tags: [TAG_ANGULAR],
-    blocks: [],
+    author: { id: 'author-001', displayName: 'Alex Mercer' },
+    blocks: [
+      {
+        id: 'blk-023-1',
+        type: 'HEADING',
+        position: 0,
+        schemaVersion: 1,
+        content: { level: 1, text: 'Introduction to Unicode' },
+        media: null,
+      },
+      {
+        id: 'blk-023-2',
+        type: 'RICH_TEXT',
+        position: 1,
+        schemaVersion: 1,
+        content: { html: '<p>Unicode normalization and international glyph support.</p>' },
+        media: null,
+      },
+      {
+        id: 'blk-023-3',
+        type: 'HEADING',
+        position: 2,
+        schemaVersion: 1,
+        content: { level: 2, text: 'Café Architecture' },
+        media: null,
+      },
+      {
+        id: 'blk-023-4',
+        type: 'HEADING',
+        position: 3,
+        schemaVersion: 1,
+        content: { level: 2, text: '日本語 Guide' },
+        media: null,
+      },
+      {
+        id: 'blk-023-5',
+        type: 'HEADING',
+        position: 4,
+        schemaVersion: 1,
+        content: { level: 3, text: 'परिचय Overview' },
+        media: null,
+      },
+      {
+        id: 'blk-023-6',
+        type: 'HEADING',
+        position: 5,
+        schemaVersion: 1,
+        content: { level: 3, text: 'مرحبا Details' },
+        media: null,
+      },
+      {
+        id: 'blk-023-7',
+        type: 'HEADING',
+        position: 6,
+        schemaVersion: 1,
+        content: { level: 4, text: 'Привет Subheading' },
+        media: null,
+      },
+      {
+        id: 'blk-023-8',
+        type: 'HEADING',
+        position: 7,
+        schemaVersion: 1,
+        content: { level: 4, text: '你好 Section' },
+        media: null,
+      },
+      {
+        id: 'blk-023-9',
+        type: 'HEADING',
+        position: 8,
+        schemaVersion: 1,
+        content: { level: 2, text: '日本語 Guide' },
+        media: null,
+      },
+      {
+        id: 'blk-023-10',
+        type: 'HEADING',
+        position: 9,
+        schemaVersion: 1,
+        content: { level: 2, text: '🚀' },
+        media: null,
+      },
+    ],
   },
 ];
 
@@ -342,6 +528,7 @@ export function filterArticles(
     taxonomyCaptured: a.taxonomyCaptured,
     category: a.category,
     tags: a.tags,
+    author: a.author,
   }));
 
   return {
@@ -449,6 +636,31 @@ export async function setupPublicApiMock(page: Page, state: MockState): Promise<
       });
     }
 
+    // 4b. Public article comments: GET /api/v1/articles/public/:slug/comments
+    const commentsMatch = path.match(/^\/api\/v1\/articles\/public\/([^/]+)\/comments$/);
+    if (commentsMatch) {
+      const slug = decodeURIComponent(commentsMatch[1]);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [
+            {
+              id: 'mock-c-1',
+              articleSlug: slug,
+              snapshotRevision: 1,
+              authorDisplayName: 'Senior Systems Architect',
+              isArticleAuthor: false,
+              body: 'Insightful exploration of PostgreSQL concurrency models and snapshot semantics.',
+              createdAt: '2026-11-06T00:00:00.000Z',
+              updatedAt: '2026-11-06T00:00:00.000Z',
+            },
+          ],
+          meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        }),
+      });
+    }
+
     // 4. Public article detail: GET /api/v1/articles/public/:slug
     const detailMatch = path.match(/^\/api\/v1\/articles\/public\/([^/]+)$/);
     if (detailMatch) {
@@ -474,6 +686,55 @@ export async function setupPublicApiMock(page: Page, state: MockState): Promise<
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(article),
+      });
+    }
+
+    // 5. Author profile: GET /api/v1/authors/:authorId
+    const authorProfileMatch = path.match(/^\/api\/v1\/authors\/([^/]+)$/);
+    if (authorProfileMatch) {
+      const authorId = decodeURIComponent(authorProfileMatch[1]);
+      const author = MOCK_AUTHORS[authorId];
+      if (!author) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ statusCode: 404, message: 'Author not found' }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(author),
+      });
+    }
+
+    // 6. Author articles: GET /api/v1/authors/:authorId/articles
+    const authorArticlesMatch = path.match(/^\/api\/v1\/authors\/([^/]+)\/articles$/);
+    if (authorArticlesMatch) {
+      const authorId = decodeURIComponent(authorArticlesMatch[1]);
+      const author = MOCK_AUTHORS[authorId];
+      if (!author) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ statusCode: 404, message: 'Author not found' }),
+        });
+      }
+
+      const query: FixtureQueryOptions = {
+        page: url.searchParams.get('page') ? Number(url.searchParams.get('page')) : 1,
+        limit: url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : 20,
+        category: url.searchParams.get('category') || undefined,
+        tag: url.searchParams.get('tag') || undefined,
+        q: url.searchParams.get('q') || undefined,
+      };
+
+      const authorArticles = MOCK_ARTICLES.filter((a) => a.author?.id === authorId);
+      const response = filterArticles(authorArticles, query);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(response),
       });
     }
 

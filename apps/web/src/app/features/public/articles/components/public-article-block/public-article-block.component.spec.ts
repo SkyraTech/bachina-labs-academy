@@ -62,6 +62,23 @@ describe('PublicArticleBlockComponent', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('h4')?.textContent).toContain('Title Level 4');
     });
+
+    it('should generate Unicode-safe heading anchors for non-Latin scripts', () => {
+      componentRef.setInput('block', createBlock('HEADING', { text: '日本語 Guide', level: 2 }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('h2')?.getAttribute('id')).toBe('日本語-guide');
+
+      componentRef.setInput('block', createBlock('HEADING', { text: 'परिचय Overview', level: 3 }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('h3')?.getAttribute('id')).toBe('परिचय-overview');
+    });
+
+    it('should prioritize custom anchorId input when provided', () => {
+      componentRef.setInput('block', createBlock('HEADING', { text: 'Architecture Overview', level: 2 }));
+      componentRef.setInput('anchorId', 'custom-disambiguated-anchor-1');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('h2')?.getAttribute('id')).toBe('custom-disambiguated-anchor-1');
+    });
   });
 
   describe('RICH_TEXT block', () => {

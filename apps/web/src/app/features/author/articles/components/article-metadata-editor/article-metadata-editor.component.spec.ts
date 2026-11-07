@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { of } from 'rxjs';
 import { ArticleMetadataEditorComponent } from './article-metadata-editor.component';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleMediaApiService } from '../../services/article-media-api.service';
+import { TaxonomyApiService } from '../../../../../core/taxonomy/services/taxonomy-api.service';
 import { EditableArticle } from '../../models/article.models';
 import { MediaAssetDto } from '../../models/article-media.models';
 
@@ -19,6 +21,10 @@ describe('ArticleMetadataEditorComponent', () => {
     getPrivateMediaPreviewUrl: ReturnType<typeof vi.fn>;
     listMyMedia: ReturnType<typeof vi.fn>;
   };
+  let taxonomyApiMock: {
+    getCategories: ReturnType<typeof vi.fn>;
+    getTags: ReturnType<typeof vi.fn>;
+  };
 
   const mockArticle: EditableArticle = {
     id: 'art-1',
@@ -30,6 +36,8 @@ describe('ArticleMetadataEditorComponent', () => {
     status: 'DRAFT',
     typographyPreset: 'MODERN_SANS',
     coverMediaId: null,
+    categoryId: 'cat-1',
+    tagIds: ['tag-1', 'tag-2'],
     draftRevision: 1,
     publishedRevision: 0,
     currentSnapshotId: null,
@@ -52,11 +60,17 @@ describe('ArticleMetadataEditorComponent', () => {
       listMyMedia: vi.fn(),
     };
 
+    taxonomyApiMock = {
+      getCategories: vi.fn().mockReturnValue(of({ items: [], total: 0, page: 1, limit: 100 })),
+      getTags: vi.fn().mockReturnValue(of({ items: [], total: 0, page: 1, limit: 100 })),
+    };
+
     await TestBed.configureTestingModule({
       imports: [ArticleMetadataEditorComponent],
       providers: [
         { provide: ArticleEditorStateService, useValue: stateMock },
         { provide: ArticleMediaApiService, useValue: mediaApiMock },
+        { provide: TaxonomyApiService, useValue: taxonomyApiMock },
       ],
     }).compileComponents();
 
@@ -71,6 +85,8 @@ describe('ArticleMetadataEditorComponent', () => {
     expect(component.form.get('summary')?.value).toBe('Core principles of software design.');
     expect(component.form.get('typographyPreset')?.value).toBe('MODERN_SANS');
     expect(component.coverMediaId()).toBeNull();
+    expect(component.categoryId()).toBe('cat-1');
+    expect(component.tagIds()).toEqual(['tag-1', 'tag-2']);
     expect(component.isDirty()).toBe(false);
   });
 
@@ -93,6 +109,8 @@ describe('ArticleMetadataEditorComponent', () => {
       summary: 'Core principles of software design.',
       typographyPreset: 'MODERN_SANS',
       coverMediaId: null,
+      categoryId: 'cat-1',
+      tagIds: ['tag-1', 'tag-2'],
     });
     expect(component.isDirty()).toBe(false);
   });
@@ -116,6 +134,8 @@ describe('ArticleMetadataEditorComponent', () => {
       summary: null,
       typographyPreset: 'TECHNICAL_MINIMAL',
       coverMediaId: null,
+      categoryId: 'cat-1',
+      tagIds: ['tag-1', 'tag-2'],
     });
     expect(component.isDirty()).toBe(false);
   });
@@ -147,6 +167,8 @@ describe('ArticleMetadataEditorComponent', () => {
       summary: 'Core principles of software design.',
       typographyPreset: 'MODERN_SANS',
       coverMediaId: 'media-cover-123',
+      categoryId: 'cat-1',
+      tagIds: ['tag-1', 'tag-2'],
     });
   });
 
@@ -161,5 +183,109 @@ describe('ArticleMetadataEditorComponent', () => {
     expect(component.coverMediaId()).toBeNull();
     expect(component.isDirty()).toBe(true);
     expect(stateMock.markDirty).toHaveBeenCalled();
+  });
+
+  it('8. should update categoryId and mark dirty when category changes', async () => {
+    component.onCategoryChanged('cat-2');
+
+    expect(component.categoryId()).toBe('cat-2');
+    expect(component.isDirty()).toBe(true);
+    expect(stateMock.markDirty).toHaveBeenCalled();
+
+    await component.onSave();
+
+    expect(stateMock.updateMetadata).toHaveBeenCalledWith({
+      title: 'Enterprise Architecture',
+      draftSlug: 'enterprise-architecture',
+      summary: 'Core principles of software design.',
+      typographyPreset: 'MODERN_SANS',
+      coverMediaId: null,
+      categoryId: 'cat-2',
+      tagIds: ['tag-1', 'tag-2'],
+    });
+  });
+
+  it('9. should update tagIds and mark dirty when tags change', async () => {
+    component.onTagsChanged(['tag-1', 'tag-3']);
+
+    expect(component.tagIds()).toEqual(['tag-1', 'tag-3']);
+    expect(component.isDirty()).toBe(true);
+    expect(stateMock.markDirty).toHaveBeenCalled();
+
+    await component.onSave();
+
+    expect(stateMock.updateMetadata).toHaveBeenCalledWith({
+      title: 'Enterprise Architecture',
+      draftSlug: 'enterprise-architecture',
+      summary: 'Core principles of software design.',
+      typographyPreset: 'MODERN_SANS',
+      coverMediaId: null,
+      categoryId: 'cat-1',
+      tagIds: ['tag-1', 'tag-3'],
+    });
+  });
+
+  it('10. should clear categoryId with actual JavaScript null and clear all tags with empty array', async () => {
+    component.onCategoryChanged(null);
+    component.onTagsChanged([]);
+
+    expect(component.categoryId()).toBeNull();
+    expect(component.tagIds()).toEqual([]);
+    expect(component.isDirty()).toBe(true);
+
+    await component.onSave();
+
+    expect(stateMock.updateMetadata).toHaveBeenCalledWith({
+      title: 'Enterprise Architecture',
+      draftSlug: 'enterprise-architecture',
+      summary: 'Core principles of software design.',
+      typographyPreset: 'MODERN_SANS',
+      coverMediaId: null,
+      categoryId: null,
+      tagIds: [],
+    });
+    expect(component.isDirty()).toBe(false);
+  });
+
+  it('11. should preserve unsaved dirty state and field values if updateMetadata fails', async () => {
+    stateMock.updateMetadata.mockResolvedValue(false);
+
+    component.onCategoryChanged('cat-modified');
+    component.onTagsChanged(['tag-99']);
+
+    expect(component.isDirty()).toBe(true);
+
+    await component.onSave();
+
+    expect(stateMock.updateMetadata).toHaveBeenCalled();
+    expect(component.isDirty()).toBe(true);
+    expect(component.categoryId()).toBe('cat-modified');
+    expect(component.tagIds()).toEqual(['tag-99']);
+  });
+
+  it('12. should preserve categoryId and tagIds when saving unrelated metadata edits while controls are disabled', async () => {
+    // 1. Initial article has categoryId: 'cat-1' and tagIds: ['tag-1', 'tag-2']
+    expect(component.categoryId()).toBe('cat-1');
+    expect(component.tagIds()).toEqual(['tag-1', 'tag-2']);
+
+    // 2. Author only edits summary in the form
+    component.form.get('summary')?.setValue('Updated summary without touching taxonomy');
+    component.form.get('summary')?.markAsDirty();
+
+    // 3. Save metadata
+    await component.onSave();
+
+    // 4. Assert that categoryId and tagIds were preserved bit-for-bit
+    expect(stateMock.updateMetadata).toHaveBeenCalledWith({
+      title: 'Enterprise Architecture',
+      draftSlug: 'enterprise-architecture',
+      summary: 'Updated summary without touching taxonomy',
+      typographyPreset: 'MODERN_SANS',
+      coverMediaId: null,
+      categoryId: 'cat-1',
+      tagIds: ['tag-1', 'tag-2'],
+    });
+    expect(component.categoryId()).toBe('cat-1');
+    expect(component.tagIds()).toEqual(['tag-1', 'tag-2']);
   });
 });

@@ -1,5 +1,5 @@
-<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 sm:p-5 shadow-sm">
-  <div class="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-4">
+<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-3 sm:p-3.5 shadow-xs">
+  <div class="flex items-center justify-between pb-2.5 border-b border-[var(--color-border)] mb-3">
     <div>
       <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--color-text)]">
         Content Blocks
@@ -73,7 +73,7 @@
           (click)="state.selectBlock(block.id)"
           (keydown.enter)="state.selectBlock(block.id)"
           (keydown.space)="state.selectBlock(block.id)"
-          class="group relative flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+          class="group relative flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
           [class.border-[var(--color-brand)]]="state.selectedBlockId() === block.id"
           [class.bg-[var(--color-brand-surface)]]="state.selectedBlockId() === block.id"
           [class.border-[var(--color-border)]]="state.selectedBlockId() !== block.id"

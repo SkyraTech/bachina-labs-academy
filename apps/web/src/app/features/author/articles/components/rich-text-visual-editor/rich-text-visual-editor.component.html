@@ -1,0 +1,483 @@
+<div class="rich-text-visual-editor rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-xs">
+  <!-- Mode Switcher and Status Bar -->
+  <div class="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+    <!-- Visual vs Source Tabs -->
+    <div class="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]" role="tablist" aria-label="Editor modes">
+      <button
+        type="button"
+        role="tab"
+        id="tab-visual"
+        [attr.aria-selected]="mode() === 'visual'"
+        (click)="setMode('visual')"
+        data-testid="mode-visual-btn"
+        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+        [class.bg-[var(--color-brand)]]="mode() === 'visual'"
+        [class.text-white]="mode() === 'visual'"
+        [class.text-[var(--color-text-muted)]]="mode() !== 'visual'"
+        [class.hover:text-[var(--color-text)]]="mode() !== 'visual'"
+      >
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Visual
+        </span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        id="tab-source"
+        [attr.aria-selected]="mode() === 'source'"
+        (click)="setMode('source')"
+        data-testid="mode-source-btn"
+        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+        [class.bg-[var(--color-brand)]]="mode() === 'source'"
+        [class.text-white]="mode() === 'source'"
+        [class.text-[var(--color-text-muted)]]="mode() !== 'source'"
+        [class.hover:text-[var(--color-text)]]="mode() !== 'source'"
+      >
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
+          HTML Source
+        </span>
+      </button>
+    </div>
+
+    <!-- Character Count and Warning -->
+    <div class="flex items-center gap-3">
+      @if (sourceError()) {
+        <span class="text-xs text-red-500 font-medium flex items-center gap-1" data-testid="source-error-badge">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Invalid Source
+        </span>
+      }
+      <span class="text-[11px] font-mono text-[var(--color-text-muted)]">
+        {{ sourceHtml().length }} / 60,000 chars
+      </span>
+    </div>
+  </div>
+
+  <!-- Formatting Toolbar (Visual Mode Only) -->
+  @if (mode() === 'visual') {
+    <div
+      class="flex items-center gap-1 px-2.5 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex-wrap overflow-x-auto"
+      role="toolbar"
+      aria-label="Formatting controls"
+    >
+      <!-- History -->
+      <div class="flex items-center gap-0.5">
+        <button
+          type="button"
+          (click)="undo()"
+          [disabled]="!canUndo() || disabled()"
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+          data-testid="toolbar-undo-btn"
+          class="p-1.5 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)] disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v6h6" />
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          (click)="redo()"
+          [disabled]="!canRedo() || disabled()"
+          title="Redo (Ctrl+Y)"
+          aria-label="Redo"
+          data-testid="toolbar-redo-btn"
+          class="p-1.5 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text)] disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6" />
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="h-4 w-px bg-[var(--color-border)] mx-1"></div>
+
+      <!-- Inline Styles -->
+      <div class="flex items-center gap-0.5">
+        <button
+          type="button"
+          (click)="toggleBold()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isBold()"
+          title="Bold (Ctrl+B)"
+          aria-label="Bold"
+          data-testid="toolbar-bold-btn"
+          class="px-2 py-1 text-xs font-bold rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isBold()"
+          [class.text-white]="isBold()"
+          [class.text-[var(--color-text)]]="!isBold()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isBold()"
+        >
+          B
+        </button>
+        <button
+          type="button"
+          (click)="toggleItalic()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isItalic()"
+          title="Italic (Ctrl+I)"
+          aria-label="Italic"
+          data-testid="toolbar-italic-btn"
+          class="px-2 py-1 text-xs italic font-serif rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isItalic()"
+          [class.text-white]="isItalic()"
+          [class.text-[var(--color-text)]]="!isItalic()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isItalic()"
+        >
+          I
+        </button>
+        <button
+          type="button"
+          (click)="toggleUnderline()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isUnderline()"
+          title="Underline (Ctrl+U)"
+          aria-label="Underline"
+          data-testid="toolbar-underline-btn"
+          class="px-2 py-1 text-xs underline rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isUnderline()"
+          [class.text-white]="isUnderline()"
+          [class.text-[var(--color-text)]]="!isUnderline()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isUnderline()"
+        >
+          U
+        </button>
+        <button
+          type="button"
+          (click)="toggleStrike()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isStrike()"
+          title="Strikethrough"
+          aria-label="Strikethrough"
+          data-testid="toolbar-strike-btn"
+          class="px-2 py-1 text-xs line-through rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isStrike()"
+          [class.text-white]="isStrike()"
+          [class.text-[var(--color-text)]]="!isStrike()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isStrike()"
+        >
+          S
+        </button>
+        <button
+          type="button"
+          (click)="toggleCode()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isCode()"
+          title="Inline Code"
+          aria-label="Inline Code"
+          data-testid="toolbar-code-btn"
+          class="px-2 py-1 text-xs font-mono rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isCode()"
+          [class.text-white]="isCode()"
+          [class.text-[var(--color-text)]]="!isCode()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isCode()"
+        >
+          &lt;&gt;
+        </button>
+        <button
+          type="button"
+          (click)="toggleSubscript()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isSubscript()"
+          title="Subscript"
+          aria-label="Subscript"
+          data-testid="toolbar-sub-btn"
+          class="px-2 py-1 text-xs rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isSubscript()"
+          [class.text-white]="isSubscript()"
+          [class.text-[var(--color-text)]]="!isSubscript()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isSubscript()"
+        >
+          x<sub>2</sub>
+        </button>
+        <button
+          type="button"
+          (click)="toggleSuperscript()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isSuperscript()"
+          title="Superscript"
+          aria-label="Superscript"
+          data-testid="toolbar-sup-btn"
+          class="px-2 py-1 text-xs rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isSuperscript()"
+          [class.text-white]="isSuperscript()"
+          [class.text-[var(--color-text)]]="!isSuperscript()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isSuperscript()"
+        >
+          x<sup>2</sup>
+        </button>
+      </div>
+
+      <div class="h-4 w-px bg-[var(--color-border)] mx-1"></div>
+
+      <!-- Blocks and Structure -->
+      <div class="flex items-center gap-0.5">
+        <button
+          type="button"
+          (click)="toggleBulletList()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isBulletList()"
+          title="Bullet List"
+          aria-label="Bullet List"
+          data-testid="toolbar-bullet-list-btn"
+          class="p-1.5 rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isBulletList()"
+          [class.text-white]="isBulletList()"
+          [class.text-[var(--color-text)]]="!isBulletList()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isBulletList()"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          (click)="toggleOrderedList()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isOrderedList()"
+          title="Numbered List"
+          aria-label="Numbered List"
+          data-testid="toolbar-ordered-list-btn"
+          class="p-1.5 rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isOrderedList()"
+          [class.text-white]="isOrderedList()"
+          [class.text-[var(--color-text)]]="!isOrderedList()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isOrderedList()"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="10" y1="6" x2="21" y2="6"/>
+            <line x1="10" y1="12" x2="21" y2="12"/>
+            <line x1="10" y1="18" x2="21" y2="18"/>
+            <path d="M4 6h1v4"/>
+            <path d="M4 10h2"/>
+            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          (click)="toggleBlockquote()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isBlockquote()"
+          title="Blockquote"
+          aria-label="Blockquote"
+          data-testid="toolbar-blockquote-btn"
+          class="p-1.5 rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isBlockquote()"
+          [class.text-white]="isBlockquote()"
+          [class.text-[var(--color-text)]]="!isBlockquote()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isBlockquote()"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/>
+            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          (click)="toggleCodeBlock()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isCodeBlock()"
+          title="Code Block (pre code)"
+          aria-label="Code Block"
+          data-testid="toolbar-codeblock-btn"
+          class="px-2 py-1 text-xs font-mono rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isCodeBlock()"
+          [class.text-white]="isCodeBlock()"
+          [class.text-[var(--color-text)]]="!isCodeBlock()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isCodeBlock()"
+        >
+          pre
+        </button>
+      </div>
+
+      <div class="h-4 w-px bg-[var(--color-border)] mx-1"></div>
+
+      <!-- Links -->
+      <div class="flex items-center gap-0.5">
+        <button
+          type="button"
+          (click)="openLinkDialog()"
+          [disabled]="disabled()"
+          [attr.aria-pressed]="isLink()"
+          title="Insert/Edit Link"
+          aria-label="Insert or edit link"
+          data-testid="toolbar-link-btn"
+          class="p-1.5 rounded transition-colors"
+          [class.bg-[var(--color-brand)]]="isLink()"
+          [class.text-white]="isLink()"
+          [class.text-[var(--color-text)]]="!isLink()"
+          [class.hover:bg-[var(--color-surface-hover)]]="!isLink()"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Link Insertion Popover Dialog -->
+  @if (isLinkDialogOpen()) {
+    <div class="p-3 bg-[var(--color-surface)] border-b border-[var(--color-border)] shadow-inner space-y-2.5" data-testid="link-dialog">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-[var(--color-text)]">
+          {{ isLink() ? 'Edit Link' : 'Insert Link' }}
+        </span>
+        <button
+          type="button"
+          (click)="closeLinkDialog()"
+          class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-xs"
+          aria-label="Close link dialog"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label for="link-url-input" class="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+            URL (http:// or https://) <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="link-url-input"
+            type="url"
+            [ngModel]="linkUrlInput()"
+            (ngModelChange)="linkUrlInput.set($event)"
+            placeholder="https://example.com/guide"
+            data-testid="link-url-input"
+            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+          />
+        </div>
+        <div>
+          <label for="link-title-input" class="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+            Title (Optional, max 255 chars)
+          </label>
+          <input
+            id="link-title-input"
+            type="text"
+            [ngModel]="linkTitleInput()"
+            (ngModelChange)="linkTitleInput.set($event)"
+            placeholder="Helpful tooltip text"
+            maxlength="255"
+            data-testid="link-title-input"
+            class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+          />
+        </div>
+      </div>
+
+      @if (linkError()) {
+        <p class="text-[11px] text-red-500 font-medium" data-testid="link-error-msg">{{ linkError() }}</p>
+      }
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        @if (isLink()) {
+          <button
+            type="button"
+            (click)="removeLink()"
+            data-testid="link-remove-btn"
+            class="px-2.5 py-1 text-xs text-red-500 hover:bg-red-500/10 rounded font-medium mr-auto"
+          >
+            Remove Link
+          </button>
+        }
+        <button
+          type="button"
+          (click)="closeLinkDialog()"
+          class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          (click)="applyLink()"
+          data-testid="link-apply-btn"
+          class="px-3 py-1 text-xs rounded bg-[var(--color-brand)] text-white font-medium hover:bg-[var(--color-brand-hover)] transition-colors"
+        >
+          Apply
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Visual Mode Canvas -->
+  <div
+    class="visual-editor-viewport"
+    [class.hidden]="mode() !== 'visual'"
+  >
+    <div
+      #editorContainer
+      class="visual-editor-container"
+      data-testid="tiptap-editor-surface"
+    ></div>
+  </div>
+
+  <!-- HTML Source Mode Area -->
+  @if (mode() === 'source') {
+    <div class="p-3 space-y-2 bg-[var(--color-workspace-bg)]" data-testid="source-mode-container">
+      @if (legacyNotice()) {
+        <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2" data-testid="legacy-compat-notice">
+          <svg class="w-4 h-4 shrink-0 mt-0.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div>
+            <p class="font-semibold">Compatibility Notice: Legacy Markup Preserved</p>
+            <p class="mt-0.5 leading-relaxed">{{ legacyNotice() }}</p>
+          </div>
+        </div>
+      }
+
+      @if (sourceError()) {
+        <div class="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs flex items-start gap-2" data-testid="source-error-banner">
+          <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div>
+            <p class="font-semibold">HTML Validation Error</p>
+            <p class="mt-0.5 leading-relaxed">{{ sourceError() }}</p>
+            <p class="mt-1 text-[11px] opacity-80">Fix the error above to return to Visual mode or save the block.</p>
+          </div>
+        </div>
+      }
+
+      <textarea
+        id="raw-source-textarea"
+        [ngModel]="sourceHtml()"
+        (ngModelChange)="onSourceChange($event)"
+        [disabled]="disabled()"
+        rows="12"
+        data-testid="source-html-textarea"
+        class="w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] leading-relaxed"
+        placeholder="<p>Enter HTML using whitelisted tags: p, br, strong, em, u, s, a, ul, ol, li, blockquote, code, pre, sub, sup</p>"
+      ></textarea>
+      <p class="text-[11px] text-[var(--color-text-muted)]">
+        Direct HTML source mode. Changes are validated against the backend schema before returning to Visual mode or saving.
+      </p>
+    </div>
+  }
+</div>
+

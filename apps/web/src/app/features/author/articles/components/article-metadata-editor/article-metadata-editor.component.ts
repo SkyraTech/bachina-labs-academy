@@ -18,11 +18,19 @@ import { TypographyPreset } from '../../models/article.models';
 import { MediaAssetDto } from '../../models/article-media.models';
 import { generateSlug } from '../article-create/article-create.component';
 import { ArticleMediaPickerComponent } from '../article-media-picker/article-media-picker.component';
+import { ArticleCategorySelectorComponent } from '../article-category-selector/article-category-selector.component';
+import { ArticleTagSelectorComponent } from '../article-tag-selector/article-tag-selector.component';
 
 @Component({
   selector: 'app-article-metadata-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ArticleMediaPickerComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ArticleMediaPickerComponent,
+    ArticleCategorySelectorComponent,
+    ArticleTagSelectorComponent,
+  ],
   templateUrl: './article-metadata-editor.component.html',
   styleUrl: './article-metadata-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +42,8 @@ export class ArticleMetadataEditorComponent {
 
   readonly isDirty = signal(false);
   readonly coverMediaId = signal<string | null>(null);
+  readonly categoryId = signal<string | null>(null);
+  readonly tagIds = signal<string[]>([]);
   readonly isPickerOpen = signal(false);
 
   readonly presets: { value: TypographyPreset; label: string; hint: string }[] = [
@@ -72,6 +82,8 @@ export class ArticleMetadataEditorComponent {
           { emitEvent: false },
         );
         this.coverMediaId.set(art.coverMediaId);
+        this.categoryId.set(art.categoryId ?? null);
+        this.tagIds.set(art.tagIds ?? []);
       }
     });
 
@@ -80,17 +92,35 @@ export class ArticleMetadataEditorComponent {
     });
   }
 
+  onCategoryChanged(newCategoryId: string | null): void {
+    this.categoryId.set(newCategoryId);
+    this.recalculateDirty();
+  }
+
+  onTagsChanged(newTagIds: string[]): void {
+    this.tagIds.set(newTagIds);
+    this.recalculateDirty();
+  }
+
   private recalculateDirty(): void {
     const art = this.state.article();
     if (!art) return;
 
     const currentVal = this.form.value;
+    const artTags = art.tagIds ?? [];
+    const currentTags = this.tagIds();
+    const tagsEqual =
+      artTags.length === currentTags.length &&
+      artTags.every((id) => currentTags.includes(id));
+
     const dirty =
       currentVal.title !== art.title ||
       currentVal.draftSlug !== art.draftSlug ||
       (currentVal.summary || '') !== (art.summary || '') ||
       currentVal.typographyPreset !== art.typographyPreset ||
-      this.coverMediaId() !== art.coverMediaId;
+      this.coverMediaId() !== art.coverMediaId ||
+      this.categoryId() !== (art.categoryId ?? null) ||
+      !tagsEqual;
 
     this.isDirty.set(dirty);
     if (dirty) {
@@ -143,6 +173,8 @@ export class ArticleMetadataEditorComponent {
       summary: val.summary?.trim() || null,
       typographyPreset: val.typographyPreset,
       coverMediaId: this.coverMediaId(),
+      categoryId: this.categoryId(),
+      tagIds: this.tagIds(),
     });
 
     if (success) {

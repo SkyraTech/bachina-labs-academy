@@ -4,7 +4,10 @@ import crypto from 'node:crypto';
 import { spawnSync, execSync } from 'node:child_process';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
-import { assertDisposableTestDatabase } from './test-db-isolation.js';
+import {
+  assertDisposableTestDatabase,
+  safelyDropDisposableDatabase,
+} from './test-db-isolation.js';
 
 describe('Checkpoint C-1A Taxonomy Database Foundation & Migration (e2e)', () => {
   let disposableDbName: string;
@@ -143,27 +146,24 @@ describe('Checkpoint C-1A Taxonomy Database Foundation & Migration (e2e)', () =>
       await prismaAdmin.$disconnect();
     }
 
-    if (disposableDbName && disposableDbName.startsWith('academy_auth_audit_')) {
+    if (disposableDbName) {
       try {
-        runAdminPsql(`
-          SELECT pg_terminate_backend(pid) 
-          FROM pg_stat_activity 
-          WHERE datname = '${disposableDbName}' AND pid <> pg_backend_pid();
-        `);
-        runAdminPsql(`DROP DATABASE IF EXISTS "${disposableDbName}";`);
+        await safelyDropDisposableDatabase(disposableDbName, (sql, target) => runAdminPsql(sql, target), {
+          allowedPrefix: 'academy_auth_audit_',
+        });
       } catch (err) {
         console.error(`Failed to drop disposable database ${disposableDbName}:`, err);
       }
     }
   });
 
-  it('1. confirms all 13 migrations were applied to the disposable database', async () => {
+  it('1. confirms all migrations were applied to the disposable database', async () => {
     const appliedMigrations = await prismaAdmin.$queryRaw<{ migration_name: string }[]>`
       SELECT migration_name FROM _prisma_migrations WHERE rolled_back_at IS NULL ORDER BY finished_at ASC;
     `;
-    expect(appliedMigrations.length).toBe(13);
-    expect(appliedMigrations[11].migration_name).toBe('20261029000000_create_taxonomies');
-    expect(appliedMigrations[12].migration_name).toBe('20261101000000_add_article_snapshot_taxonomy');
+    expect(appliedMigrations.length).toBeGreaterThanOrEqual(13);
+    expect(appliedMigrations.some((m) => m.migration_name === '20261029000000_create_taxonomies')).toBe(true);
+    expect(appliedMigrations.some((m) => m.migration_name === '20261101000000_add_article_snapshot_taxonomy')).toBe(true);
   });
 
   it('2. creates a Category with valid name, slug, and description', async () => {

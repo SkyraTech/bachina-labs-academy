@@ -7,6 +7,7 @@ import {
   MinLength,
   MaxLength,
   Matches,
+  IsUUID,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -84,4 +85,12 @@ export class PublicArticlesQueryDto {
     message: 'q must not contain control characters',
   })
   q?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter articles by author UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'authorId must be a valid UUIDv4' })
+  authorId?: string;
 }

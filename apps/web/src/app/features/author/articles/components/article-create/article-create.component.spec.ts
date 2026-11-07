@@ -3,6 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ArticleCreateComponent, generateSlug } from './article-create.component';
 import { ArticleEditorApiService } from '../../services/article-editor-api.service';
+import { TaxonomyApiService } from '../../../../../core/taxonomy/services/taxonomy-api.service';
 import { ToastService } from '../../../../../shared/ui';
 import { EditableArticle } from '../../models/article.models';
 
@@ -10,6 +11,10 @@ describe('ArticleCreateComponent', () => {
   let component: ArticleCreateComponent;
   let fixture: ComponentFixture<ArticleCreateComponent>;
   let apiMock: { createDraft: ReturnType<typeof vi.fn> };
+  let taxonomyApiMock: {
+    getCategories: ReturnType<typeof vi.fn>;
+    getTags: ReturnType<typeof vi.fn>;
+  };
   let router: Router;
   let toastMock: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
@@ -23,6 +28,8 @@ describe('ArticleCreateComponent', () => {
     status: 'DRAFT',
     typographyPreset: 'MODERN_SANS',
     coverMediaId: null,
+    categoryId: null,
+    tagIds: [],
     draftRevision: 1,
     publishedRevision: 0,
     currentSnapshotId: null,
@@ -36,6 +43,10 @@ describe('ArticleCreateComponent', () => {
     apiMock = {
       createDraft: vi.fn().mockReturnValue(of(createdArticle)),
     };
+    taxonomyApiMock = {
+      getCategories: vi.fn().mockReturnValue(of({ items: [], total: 0, page: 1, limit: 100 })),
+      getTags: vi.fn().mockReturnValue(of({ items: [], total: 0, page: 1, limit: 100 })),
+    };
     toastMock = {
       success: vi.fn(),
       error: vi.fn(),
@@ -46,6 +57,7 @@ describe('ArticleCreateComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ArticleEditorApiService, useValue: apiMock },
+        { provide: TaxonomyApiService, useValue: taxonomyApiMock },
         { provide: ToastService, useValue: toastMock },
       ],
     }).compileComponents();
@@ -62,6 +74,8 @@ describe('ArticleCreateComponent', () => {
     expect(component.form).toBeDefined();
     expect(component.form.valid).toBe(false);
     expect(component.form.get('typographyPreset')?.value).toBe('MODERN_SANS');
+    expect(component.categoryId()).toBeNull();
+    expect(component.tagIds()).toEqual([]);
   });
 
   it('2. should validate slug generator utility correctly', () => {
@@ -104,6 +118,8 @@ describe('ArticleCreateComponent', () => {
       draftSlug: 'distributed-sql-patterns',
       summary: 'Architectural overview of distributed databases.',
       typographyPreset: 'MODERN_SANS',
+      categoryId: null,
+      tagIds: [],
     });
     expect(toastMock.success).toHaveBeenCalledWith('Draft article created successfully.');
     expect(router.navigate).toHaveBeenCalledWith(['/author/articles', 'art-new-123', 'edit']);
@@ -139,5 +155,27 @@ describe('ArticleCreateComponent', () => {
         typographyPreset: 'TECHNICAL_MINIMAL',
       }),
     );
+  });
+
+  it('8. should pass selected category and tags when creating draft', async () => {
+    component.form.patchValue({
+      title: 'Distributed SQL Patterns',
+      draftSlug: 'distributed-sql-patterns',
+      summary: 'Architectural overview of distributed databases.',
+      typographyPreset: 'MODERN_SANS',
+    });
+    component.categoryId.set('cat-arch');
+    component.tagIds.set(['tag-db', 'tag-scale']);
+
+    await component.onSubmit();
+
+    expect(apiMock.createDraft).toHaveBeenCalledWith({
+      title: 'Distributed SQL Patterns',
+      draftSlug: 'distributed-sql-patterns',
+      summary: 'Architectural overview of distributed databases.',
+      typographyPreset: 'MODERN_SANS',
+      categoryId: 'cat-arch',
+      tagIds: ['tag-db', 'tag-scale'],
+    });
   });
 });

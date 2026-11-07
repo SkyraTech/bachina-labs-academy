@@ -1,0 +1,129 @@
+.rich-text-visual-editor {
+  transition: border-color 0.15s ease-in-out;
+}
+
+.visual-editor-viewport {
+  background-color: var(--color-surface);
+  min-height: 160px;
+}
+
+/* Tiptap / ProseMirror editor styling */
+:host ::ng-deep .tiptap-content-canvas {
+  outline: none;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+:host ::ng-deep .tiptap-content-canvas p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .tiptap-content-canvas p:first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .tiptap-content-canvas p:last-child {
+  margin-bottom: 0;
+}
+
+:host ::ng-deep .tiptap-content-canvas strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+:host ::ng-deep .tiptap-content-canvas em {
+  font-style: italic;
+}
+
+:host ::ng-deep .tiptap-content-canvas u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:host ::ng-deep .tiptap-content-canvas s {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+:host ::ng-deep .tiptap-content-canvas a {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+:host ::ng-deep .tiptap-content-canvas a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:host ::ng-deep .tiptap-content-canvas ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .tiptap-content-canvas ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .tiptap-content-canvas li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+:host ::ng-deep .tiptap-content-canvas li p {
+  margin: 0;
+  display: inline-block;
+}
+
+:host ::ng-deep .tiptap-content-canvas blockquote {
+  border-left: 3px solid var(--color-brand);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+:host ::ng-deep .tiptap-content-canvas code {
+  background-color: var(--color-workspace-bg);
+  border: 1px solid var(--color-border);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  color: var(--color-brand);
+}
+
+:host ::ng-deep .tiptap-content-canvas pre {
+  background-color: var(--color-workspace-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .tiptap-content-canvas pre code {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-text);
+  font-size: 0.85em;
+  display: block;
+}
+
+:host ::ng-deep .tiptap-content-canvas sub {
+  vertical-align: sub;
+  font-size: smaller;
+}
+
+:host ::ng-deep .tiptap-content-canvas sup {
+  vertical-align: super;
+  font-size: smaller;
+}
+

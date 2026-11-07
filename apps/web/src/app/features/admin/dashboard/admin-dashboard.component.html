@@ -1,0 +1,208 @@
+<div class="admin-dashboard-container">
+  <app-page-header
+    title="Platform Administration"
+    description="Authoritative platform metrics, user directory, article oversight, and taxonomy governance."
+  >
+    <div class="header-actions">
+      <button
+        type="button"
+        class="refresh-btn"
+        (click)="loadMetrics()"
+        [disabled]="loading()"
+        aria-label="Refresh platform metrics"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </app-page-header>
+
+  <!-- Error State with Retry -->
+  @if (errorMessage(); as error) {
+    <div class="error-banner" role="alert">
+      <div class="error-content">
+        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="retry-btn" (click)="loadMetrics()">Retry</button>
+    </div>
+  }
+
+  <!-- Loading Skeleton -->
+  @if (loading()) {
+    <div class="metrics-grid skeleton-grid" aria-busy="true" aria-label="Loading metrics">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="skeleton-card">
+          <div class="space-y-4">
+            <app-loading-skeleton height="1.5rem" width="60%"></app-loading-skeleton>
+            <app-loading-skeleton height="3rem" width="40%"></app-loading-skeleton>
+            <app-loading-skeleton height="2rem" width="100%"></app-loading-skeleton>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (metrics(); as m) {
+    <!-- Authoritative Metrics Grid -->
+    <div class="metrics-grid">
+      <!-- Users Metric Card -->
+      <section class="metric-card" aria-labelledby="card-users-title">
+        <div class="card-header">
+          <div class="card-icon users-icon">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div>
+            <h2 id="card-users-title" class="card-title">User Accounts</h2>
+            <p class="card-subtitle">Registered platform members</p>
+          </div>
+        </div>
+
+        <div class="primary-metric">
+          <span class="metric-value" data-testid="metric-total-users">{{ m.users.total }}</span>
+          <span class="metric-label">Total Users</span>
+        </div>
+
+        <div class="breakdown-grid">
+          <div class="breakdown-item">
+            <span class="breakdown-label">Verified</span>
+            <span class="breakdown-value text-emerald-600 dark:text-emerald-400" data-testid="metric-verified-users">{{ m.users.verified }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Unverified</span>
+            <span class="breakdown-value text-amber-600 dark:text-amber-400" data-testid="metric-unverified-users">{{ m.users.unverified }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Authors</span>
+            <span class="breakdown-value" data-testid="metric-authors">{{ m.users.byRole.author }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Admins</span>
+            <span class="breakdown-value" data-testid="metric-admins">{{ m.users.byRole.admin }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Active</span>
+            <span class="breakdown-value" data-testid="metric-active-users">{{ m.users.byStatus.active }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Suspended</span>
+            <span class="breakdown-value text-rose-600 dark:text-rose-400" data-testid="metric-suspended-users">{{ m.users.byStatus.suspended }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Disabled</span>
+            <span class="breakdown-value text-slate-500" data-testid="metric-disabled-users">{{ m.users.byStatus.disabled }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <a routerLink="/admin/users" class="card-action-link" id="link-users-directory">
+            <span>Manage User Directory</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- Articles Metric Card -->
+      <section class="metric-card" aria-labelledby="card-articles-title">
+        <div class="card-header">
+          <div class="card-icon articles-icon">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 id="card-articles-title" class="card-title">Articles & Publications</h2>
+            <p class="card-subtitle">Platform editorial oversight</p>
+          </div>
+        </div>
+
+        <div class="primary-metric">
+          <span class="metric-value" data-testid="metric-total-articles">{{ m.articles.total }}</span>
+          <span class="metric-label">Total Articles</span>
+        </div>
+
+        <div class="breakdown-grid">
+          <div class="breakdown-item">
+            <span class="breakdown-label">Published</span>
+            <span class="breakdown-value text-emerald-600 dark:text-emerald-400" data-testid="metric-published-articles">{{ m.articles.published }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Draft</span>
+            <span class="breakdown-value text-blue-600 dark:text-blue-400" data-testid="metric-draft-articles">{{ m.articles.draft }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Archived</span>
+            <span class="breakdown-value text-slate-500" data-testid="metric-archived-articles">{{ m.articles.archived }}</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Snapshots</span>
+            <span class="breakdown-value" data-testid="metric-snapshots">{{ m.articles.totalPublishedSnapshots }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <a routerLink="/admin/articles" class="card-action-link" id="link-articles-directory">
+            <span>Browse Article Oversight</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- Taxonomy Metric Card -->
+      <section class="metric-card" aria-labelledby="card-taxonomy-title">
+        <div class="card-header">
+          <div class="card-icon taxonomy-icon">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+          </div>
+          <div>
+            <h2 id="card-taxonomy-title" class="card-title">Taxonomy</h2>
+            <p class="card-subtitle">Categories & content tags</p>
+          </div>
+        </div>
+
+        <div class="primary-metric">
+          <span class="metric-value" data-testid="metric-total-categories">{{ m.taxonomy.totalCategories }}</span>
+          <span class="metric-label">Categories</span>
+        </div>
+
+        <div class="breakdown-grid">
+          <div class="breakdown-item">
+            <span class="breakdown-label">Total Tags</span>
+            <span class="breakdown-value" data-testid="metric-total-tags">{{ m.taxonomy.totalTags }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer flex flex-col gap-2">
+          <a routerLink="/admin/categories" class="card-action-link" id="link-admin-categories">
+            <span>Manage Categories</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a routerLink="/admin/tags" class="card-action-link" id="link-admin-tags">
+            <span>Manage Tags</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a routerLink="/admin/comments" class="card-action-link" id="link-admin-comments">
+            <span>Comment Moderation</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+      </section>
+    </div>
+  }
+</div>

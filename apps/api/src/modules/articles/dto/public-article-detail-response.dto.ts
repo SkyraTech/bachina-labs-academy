@@ -4,6 +4,7 @@ import { PublicMediaResponseDto } from './public-media-response.dto.js';
 import {
   PublicTaxonomyCategoryDto,
   PublicTaxonomyTagDto,
+  PublicAuthorSummaryDto,
 } from './public-article-list-response.dto.js';
 
 export class PublicArticleBlockDto {
@@ -115,6 +116,12 @@ export class PublicArticleDetailResponseDto {
     type: [PublicTaxonomyTagDto],
   })
   tags!: PublicTaxonomyTagDto[];
+
+  @ApiProperty({
+    description: 'Public author attribution',
+    type: PublicAuthorSummaryDto,
+  })
+  author!: PublicAuthorSummaryDto;
 
   @ApiProperty({
     description: 'Ordered array of immutable content blocks',

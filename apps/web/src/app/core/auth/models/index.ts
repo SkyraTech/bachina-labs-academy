@@ -8,3 +8,4 @@ export * from './resend-verification-request.model';
 export * from './resend-verification-response.model';
 export * from './current-user.model';
 export * from './session.model';
+export * from './user-profile.model';

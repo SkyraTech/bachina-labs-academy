@@ -16,6 +16,7 @@ describe('ArticleEditorStateService', () => {
     deleteBlock: ReturnType<typeof vi.fn>;
     reorderBlocks: ReturnType<typeof vi.fn>;
     publishArticle: ReturnType<typeof vi.fn>;
+    duplicateArticle: ReturnType<typeof vi.fn>;
   };
   let toastMock: {
     success: ReturnType<typeof vi.fn>;
@@ -73,6 +74,7 @@ describe('ArticleEditorStateService', () => {
       deleteBlock: vi.fn(),
       reorderBlocks: vi.fn(),
       publishArticle: vi.fn(),
+      duplicateArticle: vi.fn(),
     };
     toastMock = {
       success: vi.fn(),
@@ -277,5 +279,167 @@ describe('ArticleEditorStateService', () => {
     expect(success).toBe(false);
     expect(apiMock.publishArticle).not.toHaveBeenCalled();
     expect(toastMock.error).toHaveBeenCalledWith('Please save your pending changes before publishing.');
+  });
+
+  it('11. should treat selecting currently active block as a strict no-op', async () => {
+    await service.loadArticle('art-100');
+    expect(service.selectedBlockId()).toBe('block-1');
+
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-1');
+
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.pendingBlockId()).toBeNull();
+    expect(service.selectedBlockId()).toBe('block-1');
+  });
+
+  it('12. should perform clean block switch immediately when current block is not dirty', async () => {
+    await service.loadArticle('art-100');
+    expect(service.selectedBlockId()).toBe('block-1');
+    expect(service.isBlockDirty()).toBe(false);
+
+    service.selectBlock('block-2');
+
+    expect(service.selectedBlockId()).toBe('block-2');
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.pendingBlockId()).toBeNull();
+  });
+
+  it('13. should prompt unsaved changes dialog and freeze destination when dirty block switch is requested', async () => {
+    await service.loadArticle('art-100');
+    service.isBlockDirty.set(true);
+
+    service.selectBlock('block-2');
+
+    expect(service.showUnsavedSwitchDialog()).toBe(true);
+    expect(service.pendingBlockId()).toBe('block-2');
+    expect(service.selectedBlockId()).toBe('block-1'); // Still on block-1
+
+    // Rapid selection of another block freezes initial destination
+    service.selectBlock('block-3');
+    expect(service.pendingBlockId()).toBe('block-2');
+  });
+
+  it('14. should dismiss dialog and retain current block when choosing Keep Editing', async () => {
+    await service.loadArticle('art-100');
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-2');
+
+    service.dismissUnsavedSwitch();
+
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.pendingBlockId()).toBeNull();
+    expect(service.selectedBlockId()).toBe('block-1');
+    expect(service.isBlockDirty()).toBe(true);
+  });
+
+  it('15. should discard local edits and complete switch when choosing Discard and Switch', async () => {
+    await service.loadArticle('art-100');
+    const discardSpy = vi.fn();
+    service.registerBlockEditorHandler({
+      isValid: () => true,
+      save: async () => true,
+      discard: discardSpy,
+    });
+
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-2');
+
+    service.discardAndSwitch();
+
+    expect(discardSpy).toHaveBeenCalledTimes(1);
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.pendingBlockId()).toBeNull();
+    expect(service.selectedBlockId()).toBe('block-2');
+    expect(service.isBlockDirty()).toBe(false);
+  });
+
+  it('16. should save valid edits and switch upon confirmed success in Save and Switch', async () => {
+    await service.loadArticle('art-100');
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    service.registerBlockEditorHandler({
+      isValid: () => true,
+      save: saveSpy,
+      discard: vi.fn(),
+    });
+
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-2');
+
+    await service.saveAndSwitch();
+
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.pendingBlockId()).toBeNull();
+    expect(service.selectedBlockId()).toBe('block-2');
+    expect(service.isBlockDirty()).toBe(false);
+  });
+
+  it('17. should prevent switch and display validation feedback in Save and Switch when block is invalid', async () => {
+    await service.loadArticle('art-100');
+    const saveSpy = vi.fn().mockResolvedValue(true);
+    service.registerBlockEditorHandler({
+      isValid: () => false,
+      save: saveSpy,
+      discard: vi.fn(),
+    });
+
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-2');
+
+    await service.saveAndSwitch();
+
+    expect(saveSpy).not.toHaveBeenCalled();
+    expect(toastMock.error).toHaveBeenCalledWith(expect.stringContaining('Please fix validation errors'));
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.selectedBlockId()).toBe('block-1');
+  });
+
+  it('18. should retain current block and preserve unsaved edits if save fails in Save and Switch', async () => {
+    await service.loadArticle('art-100');
+    const saveSpy = vi.fn().mockResolvedValue(false);
+    service.registerBlockEditorHandler({
+      isValid: () => true,
+      save: saveSpy,
+      discard: vi.fn(),
+    });
+
+    service.isBlockDirty.set(true);
+    service.selectBlock('block-2');
+
+    await service.saveAndSwitch();
+
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(service.showUnsavedSwitchDialog()).toBe(false);
+    expect(service.selectedBlockId()).toBe('block-1'); // Did not switch
+  });
+
+  it('19. should duplicate article when clean', async () => {
+    await service.loadArticle('art-100');
+
+    const duplicatedArticle = {
+      ...mockArticle,
+      id: 'art-dup-200',
+      title: 'PostgreSQL Distributed Architecture (Copy)',
+      draftSlug: 'postgresql-distributed-architecture-copy',
+    };
+    apiMock.duplicateArticle.mockReturnValue(of(duplicatedArticle));
+
+    const result = await service.duplicateArticle();
+
+    expect(result).toEqual(duplicatedArticle);
+    expect(apiMock.duplicateArticle).toHaveBeenCalledWith('art-100');
+    expect(toastMock.success).toHaveBeenCalledWith('Article draft duplicated successfully.');
+  });
+
+  it('20. should reject duplication when unsaved changes exist', async () => {
+    await service.loadArticle('art-100');
+    service.markDirty();
+
+    const result = await service.duplicateArticle();
+
+    expect(result).toBeNull();
+    expect(apiMock.duplicateArticle).not.toHaveBeenCalled();
+    expect(toastMock.error).toHaveBeenCalledWith('Please save your pending changes before duplicating.');
   });
 });

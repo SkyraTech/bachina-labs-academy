@@ -55,6 +55,12 @@
           {{ article().summary }}
         </p>
       }
+
+      @if (article().author) {
+        <div class="mt-2 text-xs text-[var(--color-text-muted)]">
+          By <a [routerLink]="['/authors', article().author!.id]" class="font-semibold text-[var(--color-text)] hover:text-[var(--color-brand)] hover:underline" [attr.aria-label]="'Author: ' + article().author!.displayName">{{ article().author!.displayName }}</a>
+        </div>
+      }
     </header>
 
     @if (article().taxonomyCaptured && (article().category || (article().tags?.length ?? 0) > 0)) {

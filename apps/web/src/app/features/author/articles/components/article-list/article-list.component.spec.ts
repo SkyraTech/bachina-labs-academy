@@ -1,17 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ArticleListComponent } from './article-list.component';
 import { ArticleEditorApiService } from '../../services/article-editor-api.service';
-import { ToastService } from '../../../../../shared/ui';
+import { AcademyDialogService, ToastService } from '../../../../../shared/ui';
 import { EditableArticle } from '../../models/article.models';
 
 describe('ArticleListComponent', () => {
   let component: ArticleListComponent;
   let fixture: ComponentFixture<ArticleListComponent>;
+  let router: Router;
   let apiMock: {
     listMyArticles: ReturnType<typeof vi.fn>;
+    duplicateArticle: ReturnType<typeof vi.fn>;
+  };
+  let dialogMock: {
+    confirm: ReturnType<typeof vi.fn>;
   };
   let toastMock: {
     error: ReturnType<typeof vi.fn>;
@@ -68,6 +73,17 @@ describe('ArticleListComponent', () => {
           totalPages: 1,
         }),
       ),
+      duplicateArticle: vi.fn().mockReturnValue(
+        of({
+          ...mockArticles[0],
+          id: 'dup-999',
+          title: 'Architectural Patterns in Modern Angular (Copy)',
+        }),
+      ),
+    };
+
+    dialogMock = {
+      confirm: vi.fn().mockResolvedValue(true),
     };
 
     toastMock = {
@@ -80,9 +96,13 @@ describe('ArticleListComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ArticleEditorApiService, useValue: apiMock },
+        { provide: AcademyDialogService, useValue: dialogMock },
         { provide: ToastService, useValue: toastMock },
       ],
     }).compileComponents();
+
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     fixture = TestBed.createComponent(ArticleListComponent);
     component = fixture.componentInstance;
@@ -144,5 +164,28 @@ describe('ArticleListComponent', () => {
     expect(component.getStatusVariant('DRAFT')).toBe('neutral');
     expect(component.getStatusVariant('ARCHIVED')).toBe('error');
     expect(component.getStatusVariant('UNKNOWN')).toBe('neutral');
+  });
+
+  it('6. should confirm before duplicating and navigate to new draft edit route', async () => {
+    fixture.detectChanges();
+
+    await component.onDuplicate(mockArticles[0]);
+
+    expect(dialogMock.confirm).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Duplicate Article',
+    }));
+    expect(apiMock.duplicateArticle).toHaveBeenCalledWith(mockArticles[0].id);
+    expect(toastMock.success).toHaveBeenCalledWith('Article duplicated successfully.');
+    expect(router.navigate).toHaveBeenCalledWith(['/author/articles', 'dup-999', 'edit']);
+  });
+
+  it('7. should abort duplication if confirmation cancelled', async () => {
+    fixture.detectChanges();
+    dialogMock.confirm.mockResolvedValue(false);
+
+    await component.onDuplicate(mockArticles[0]);
+
+    expect(apiMock.duplicateArticle).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

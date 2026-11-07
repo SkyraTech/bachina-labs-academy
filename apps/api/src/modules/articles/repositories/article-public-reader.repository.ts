@@ -4,6 +4,7 @@ import { PrismaService } from '../../../database/prisma.service.js';
 
 export interface PublishedArticleSummaryRow {
   articleId: string;
+  authorId: string;
   articlePublishedSlug: string;
   articlePublishedRevision: number;
   articleDraftRevision: number;
@@ -120,6 +121,7 @@ export class ArticlePublicReaderRepository {
     categorySlug?: string,
     tagSlug?: string,
     searchTerm?: string,
+    authorId?: string,
   ): Promise<PublishedArticleSummaryRow[]> {
     const whereClauses: Prisma.Sql[] = [
       Prisma.sql`a.status = 'PUBLISHED'`,
@@ -130,6 +132,10 @@ export class ArticlePublicReaderRepository {
       Prisma.sql`a.published_revision = s.snapshot_revision`,
       Prisma.sql`a.published_slug = s.published_slug`,
     ];
+
+    if (authorId) {
+      whereClauses.push(Prisma.sql`a.author_id = ${authorId}::uuid`);
+    }
 
     if (categorySlug || tagSlug) {
       whereClauses.push(VALID_CAPTURED_TAXONOMY_SQL);
@@ -168,6 +174,7 @@ export class ArticlePublicReaderRepository {
     return this.prisma.$queryRaw<PublishedArticleSummaryRow[]>`
       SELECT 
         a.id AS "articleId",
+        a.author_id AS "authorId",
         a.published_slug AS "articlePublishedSlug",
         a.published_revision AS "articlePublishedRevision",
         a.draft_revision AS "articleDraftRevision",
@@ -199,6 +206,7 @@ export class ArticlePublicReaderRepository {
     categorySlug?: string,
     tagSlug?: string,
     searchTerm?: string,
+    authorId?: string,
   ): Promise<number> {
     const whereClauses: Prisma.Sql[] = [
       Prisma.sql`a.status = 'PUBLISHED'`,
@@ -209,6 +217,10 @@ export class ArticlePublicReaderRepository {
       Prisma.sql`a.published_revision = s.snapshot_revision`,
       Prisma.sql`a.published_slug = s.published_slug`,
     ];
+
+    if (authorId) {
+      whereClauses.push(Prisma.sql`a.author_id = ${authorId}::uuid`);
+    }
 
     if (categorySlug || tagSlug) {
       whereClauses.push(VALID_CAPTURED_TAXONOMY_SQL);
@@ -374,6 +386,7 @@ export class ArticlePublicReaderRepository {
     const rows = await this.prisma.$queryRaw<PublishedArticleDetailRow[]>`
       SELECT 
         a.id AS "articleId",
+        a.author_id AS "authorId",
         a.published_slug AS "articlePublishedSlug",
         a.published_revision AS "articlePublishedRevision",
         a.draft_revision AS "articleDraftRevision",

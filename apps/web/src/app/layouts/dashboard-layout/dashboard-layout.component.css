@@ -12,6 +12,7 @@
   display: flex;
   background-color: var(--color-workspace-bg, #15191d);
   color: var(--color-text);
+  overflow-x: clip;
 }
 
 .dashboard-sidebar {
@@ -139,10 +140,11 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow-x: clip;
 }
 
 .dashboard-topbar {
-  height: 72px;
+  height: 64px;
   border-bottom: 1px solid var(--color-border);
   background: rgba(21, 25, 29, 0.88);
   backdrop-filter: blur(16px);
@@ -150,10 +152,17 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  padding: 0 1.5rem;
+  padding: 0 0.875rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .dashboard-topbar {
+    padding: 0 1.25rem;
+  }
 }
 
 :host-context([data-theme="light"]) .dashboard-topbar {
@@ -191,10 +200,64 @@
   background: var(--color-surface-hover);
 }
 
+.signout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 8px;
+  color: #b91c1c;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+
+.signout-btn:hover:not(:disabled) {
+  color: #991b1b;
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.signout-btn:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+.signout-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:host-context([data-theme="dark"]) .signout-btn {
+  color: #fca5a5;
+  background-color: rgba(69, 10, 10, 0.55);
+  border-color: rgba(185, 28, 28, 0.6);
+}
+
+:host-context([data-theme="dark"]) .signout-btn:hover:not(:disabled) {
+  color: #fecaca;
+  background-color: rgba(69, 10, 10, 0.8);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
 .dashboard-content {
   flex: 1 1 auto;
-  max-width: 1240px;
   width: 100%;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
+  min-width: 0;
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .dashboard-content {
+    padding: 1.5rem 1.25rem 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-content {
+    padding: 1.5rem 1.5rem 3rem;
+  }
 }

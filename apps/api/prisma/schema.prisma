@@ -138,6 +138,9 @@ model User {
   auditLogs               AuditLog[]
   uploadedMedia           MediaAsset[]             @relation("UploadedMedia")
   authoredArticles        Article[]                @relation("AuthoredArticles")
+  profile                 UserProfile?             @relation("UserProfileRelation")
+  authoredComments        ArticleComment[]         @relation("UserAuthoredComments")
+  moderatedComments       ArticleComment[]         @relation("AdminModeratedComments")
 
   @@map("users")
 }
@@ -379,6 +382,7 @@ model Article {
   blocks     ArticleBlock[]    @relation("ArticleDraftBlocks")
   snapshots  ArticleSnapshot[] @relation("ArticleHistoricalSnapshots")
   tags       ArticleTag[]      @relation("ArticleTags")
+  comments   ArticleComment[]  @relation("ArticleComments")
 
   @@index([authorId, createdAt(sort: Desc)], map: "articles_author_id_created_at_idx")
   @@index([status, publishedAt(sort: Desc)], map: "articles_status_published_at_idx")
@@ -434,6 +438,7 @@ model ArticleSnapshot {
 
   article Article @relation("ArticleHistoricalSnapshots", fields: [articleId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   snapshotMedia ArticleSnapshotMedia[] @relation("SnapshotMediaReferences")
+  comments ArticleComment[] @relation("SnapshotComments")
 
   @@unique([articleId, snapshotRevision], map: "article_snapshots_article_id_snapshot_revision_key")
   @@unique([id, articleId], map: "article_snapshots_id_article_id_key")
@@ -533,3 +538,55 @@ model ArticleTag {
 //
 // Phase 6 — MCP:
 //   McpClientGrant
+
+// ── Community: User Profiles & Article Comments ───────────────────────────────
+
+enum CommentStatus {
+  VISIBLE
+  REMOVED
+}
+
+enum ModerationReason {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  INAPPROPRIATE
+  OFF_TOPIC
+  POLICY_VIOLATION
+}
+
+model UserProfile {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @unique(map: "user_profiles_user_id_key") @map("user_id") @db.Uuid
+  displayName String   @map("display_name") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation("UserProfileRelation", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("user_profiles")
+}
+
+model ArticleComment {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId       String            @map("article_id") @db.Uuid
+  snapshotId      String            @map("snapshot_id") @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  body            String            @db.VarChar(2000)
+  status          CommentStatus     @default(VISIBLE) @map("status")
+  removedAt       DateTime?         @map("removed_at") @db.Timestamptz(3)
+  removedByUserId String?           @map("removed_by_user_id") @db.Uuid
+  removalReason   ModerationReason? @map("removal_reason")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  article       Article         @relation("ArticleComments", fields: [articleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  snapshot      ArticleSnapshot @relation("SnapshotComments", fields: [snapshotId, articleId], references: [id, articleId], onDelete: Restrict, onUpdate: NoAction)
+  author        User            @relation("UserAuthoredComments", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  removedByUser User?           @relation("AdminModeratedComments", fields: [removedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([articleId, status, createdAt(sort: Desc)], map: "idx_article_comments_article_status_created")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_article_comments_user_created")
+  @@index([status, removedAt], map: "idx_article_comments_status_removed_at")
+  @@map("article_comments")
+}

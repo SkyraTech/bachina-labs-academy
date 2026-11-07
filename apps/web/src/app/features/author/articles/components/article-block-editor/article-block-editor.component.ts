@@ -4,27 +4,31 @@ import {
   inject,
   signal,
   effect,
+  OnInit,
+  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleMediaApiService } from '../../services/article-media-api.service';
-import { ArticleBlock } from '../../models/article.models';
+import { ArticleBlock, SaveState } from '../../models/article.models';
 import { MediaAssetDto } from '../../models/article-media.models';
 import { ArticleMediaPickerComponent } from '../article-media-picker/article-media-picker.component';
+import { RichTextVisualEditorComponent } from '../rich-text-visual-editor/rich-text-visual-editor.component';
 
 @Component({
   selector: 'app-article-block-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, ArticleMediaPickerComponent],
+  imports: [CommonModule, FormsModule, ArticleMediaPickerComponent, RichTextVisualEditorComponent],
   templateUrl: './article-block-editor.component.html',
   styleUrl: './article-block-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ArticleBlockEditorComponent {
+export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
   readonly state = inject(ArticleEditorStateService);
   private readonly mediaApi = inject(ArticleMediaApiService);
   readonly isDirty = signal(false);
+  readonly isSourceValid = signal(true);
   readonly imageMediaId = signal<string | null>(null);
   readonly isPickerOpen = signal(false);
 
@@ -67,6 +71,22 @@ export class ArticleBlockEditorComponent {
         this.isDirty.set(false);
       }
     });
+
+    effect(() => {
+      this.state?.isBlockDirty?.set(this.isDirty());
+    });
+  }
+
+  ngOnInit(): void {
+    this.state?.registerBlockEditorHandler?.({
+      isValid: () => this.isValid(),
+      save: () => this.onSave(),
+      discard: () => this.onCancel(),
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.state?.unregisterBlockEditorHandler?.();
   }
 
   private populateBuffer(block: ArticleBlock): void {
@@ -153,7 +173,26 @@ export class ArticleBlockEditorComponent {
     if (block) {
       this.populateBuffer(block);
       this.isDirty.set(false);
+      this.isSourceValid.set(true);
+      this.state?.isBlockDirty?.set(false);
+      if (typeof this.state?.saveState === 'function' && this.state.saveState() === 'DIRTY') {
+        (this.state.saveState as { set(v: SaveState): void })?.set?.('SAVED');
+      }
     }
+  }
+
+  onRichTextContentChange(html: string): void {
+    this.richTextHtml = html;
+  }
+
+  onRichTextDirtyChange(isDirty: boolean): void {
+    if (isDirty) {
+      this.markDirty();
+    }
+  }
+
+  onRichTextSourceValidChange(isValid: boolean): void {
+    this.isSourceValid.set(isValid);
   }
 
   isValid(): boolean {
@@ -169,6 +208,7 @@ export class ArticleBlockEditorComponent {
         );
       case 'RICH_TEXT':
         return (
+          this.isSourceValid() &&
           this.richTextHtml.trim().length > 0 &&
           this.richTextHtml.length <= 60000
         );
@@ -230,9 +270,9 @@ export class ArticleBlockEditorComponent {
     }
   }
 
-  async onSave(): Promise<void> {
+  async onSave(): Promise<boolean> {
     const block = this.state.selectedBlock();
-    if (!block || !this.isValid()) return;
+    if (!block || !this.isValid()) return false;
 
     let payload: Record<string, unknown> = {};
 
@@ -298,7 +338,9 @@ export class ArticleBlockEditorComponent {
     const success = await this.state.updateBlock(block.id, payload, targetMediaAssetId);
     if (success) {
       this.isDirty.set(false);
+      return true;
     }
+    return false;
   }
 
   normalizeHtml(raw: string): string {

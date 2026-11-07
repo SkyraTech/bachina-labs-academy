@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   Article,
   ArticleBlock,
@@ -302,5 +302,121 @@ export class ArticlesRepository {
         data: tagIds.map((tagId) => ({ articleId, tagId })),
       });
     }
+  }
+
+  /**
+   * Checks whether a given draftSlug is already in use by the author.
+   */
+  async checkDraftSlugExists(
+    draftSlug: string,
+    authorId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const client = tx ?? this.prisma;
+    const existing = await client.article.findFirst({
+      where: { draftSlug, authorId },
+      select: { id: true },
+    });
+    return !!existing;
+  }
+
+  /**
+   * Atomically duplicates an article, its blocks, and its tags into a separate draft.
+   * Serializes on the author's user row to guarantee race-free unique slug assignment.
+   */
+  async duplicateArticle(
+    sourceArticleId: string,
+    authorId: string,
+    newTitle: string,
+    newDraftSlug: string,
+  ): Promise<ArticleWithBlocks & ArticleWithTags> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Transaction-scoped lock on author row to serialize concurrent draft creation and slug generation
+      await tx.$queryRaw`
+        SELECT "id" FROM "users" WHERE "id" = ${authorId}::uuid FOR UPDATE;
+      `;
+
+      // 2. Fetch source article strictly scoped to author
+      const source = await tx.article.findFirst({
+        where: { id: sourceArticleId, authorId },
+        include: {
+          blocks: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+          tags: { select: { tagId: true } },
+        },
+      });
+
+      if (!source) {
+        throw new NotFoundException('Source article not found.');
+      }
+
+      // 3. Guarantee slug uniqueness within the author's namespace inside the locked transaction
+      let uniqueSlug = newDraftSlug;
+      const rawBase = newDraftSlug.replace(/-\d+$/, '');
+      let counter = 2;
+      while (
+        await tx.article.findFirst({
+          where: { draftSlug: uniqueSlug, authorId },
+          select: { id: true },
+        })
+      ) {
+        const suffix = `-${counter}`;
+        const maxBaseLength = 280 - suffix.length;
+        const safeBase = rawBase.slice(0, Math.max(1, maxBaseLength));
+        uniqueSlug = `${safeBase}${suffix}`;
+        counter++;
+      }
+
+      // 4. Create new independent draft article
+      const newArticle = await tx.article.create({
+        data: {
+          authorId,
+          title: newTitle,
+          draftSlug: uniqueSlug,
+          summary: source.summary,
+          typographyPreset: source.typographyPreset,
+          coverMediaId: source.coverMediaId,
+          categoryId: source.categoryId,
+          status: 'DRAFT',
+          draftRevision: 1,
+          publishedRevision: 0,
+          publishedSlug: null,
+          currentSnapshotId: null,
+          publishedAt: null,
+          tags:
+            source.tags.length > 0
+              ? {
+                  create: source.tags.map((t) => ({ tagId: t.tagId })),
+                }
+              : undefined,
+        },
+      });
+
+      if (source.blocks.length > 0) {
+        await tx.articleBlock.createMany({
+          data: source.blocks.map((b) => ({
+            articleId: newArticle.id,
+            type: b.type,
+            position: b.position,
+            content: b.content as Prisma.InputJsonValue,
+            mediaAssetId: b.mediaAssetId,
+            schemaVersion: b.schemaVersion ?? 1,
+          })),
+        });
+      }
+
+      const result = await tx.article.findFirstOrThrow({
+        where: { id: newArticle.id, authorId },
+        include: {
+          category: true,
+          blocks: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+          tags: {
+            include: { tag: true },
+            orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
+          },
+        },
+      });
+
+      return result;
+    });
   }
 }

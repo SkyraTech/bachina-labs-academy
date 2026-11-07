@@ -1,0 +1,120 @@
+<div class="author-profile-page">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="profile-skeleton" aria-busy="true" aria-label="Loading author profile">
+      <div class="skeleton-avatar"></div>
+      <div class="skeleton-info">
+        <div class="skeleton-line skeleton-title"></div>
+        <div class="skeleton-line skeleton-meta"></div>
+      </div>
+    </div>
+  }
+
+  <!-- Error / 404 State -->
+  @if (!loading() && error()) {
+    <div class="profile-error-container" role="alert">
+      <div class="error-card">
+        <svg class="error-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <h1 class="error-title">Author Profile Unavailable</h1>
+        <p class="error-message">{{ error() }}</p>
+        <div class="error-actions">
+          <a routerLink="/articles" class="btn btn-primary">
+            Explore All Articles
+          </a>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Profile Content -->
+  @if (!loading() && !error() && profile(); as author) {
+    <!-- Author Identity Header -->
+    <header class="author-header">
+      <div class="author-header-content">
+        <div class="author-avatar" aria-hidden="true">
+          <span class="avatar-initials">{{ author.displayName.slice(0, 2).toUpperCase() }}</span>
+        </div>
+        <div class="author-details">
+          <div class="author-role-badge">Verified Author</div>
+          <h1 class="author-name" data-testid="author-name">{{ author.displayName }}</h1>
+          <div class="author-stats">
+            <span class="stat-item" data-testid="author-articles-count">
+              <svg class="stat-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+              <strong>{{ author.publishedArticlesCount }}</strong> {{ author.publishedArticlesCount === 1 ? 'Article' : 'Articles' }} Published
+            </span>
+            <span class="stat-separator" aria-hidden="true">·</span>
+            <span class="stat-item" data-testid="author-joined-date">
+              <svg class="stat-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Joined {{ author.joinedAt | date:'MMMM yyyy' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Published Articles Section -->
+    <section class="author-articles-section" aria-labelledby="articles-heading">
+      <div class="section-header">
+        <h2 id="articles-heading" class="section-title">Published Articles</h2>
+        <span class="articles-count-label">{{ total() }} {{ total() === 1 ? 'article' : 'articles' }}</span>
+      </div>
+
+      <!-- Articles Loading -->
+      @if (articlesLoading()) {
+        <div class="articles-loading-grid" aria-busy="true">
+          <div class="article-skeleton-card"></div>
+          <div class="article-skeleton-card"></div>
+          <div class="article-skeleton-card"></div>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!articlesLoading() && articles().length === 0) {
+        <div class="empty-articles-state">
+          <svg class="empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <p class="empty-title">No published articles yet</p>
+          <p class="empty-description">This author hasn't published any articles to the academy yet.</p>
+        </div>
+      }
+
+      <!-- Article Grid -->
+      @if (!articlesLoading() && articles().length > 0) {
+        <div class="articles-grid" data-testid="author-articles-grid">
+          @for (article of articles(); track article.id) {
+            <app-public-article-card [article]="article" />
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="pagination-wrapper">
+            <app-public-article-pagination
+              [page]="page()"
+              [totalPages]="totalPages()"
+              [total]="total()"
+              (pageChange)="onPageChange($event)"
+            />
+          </div>
+        }
+      }
+    </section>
+  }
+</div>
+

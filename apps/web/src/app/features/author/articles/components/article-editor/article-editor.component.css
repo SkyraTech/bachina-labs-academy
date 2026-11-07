@@ -2,3 +2,124 @@
 :host {
   display: block;
 }
+
+.editor-shell {
+  width: 100%;
+  min-height: calc(100vh - 120px);
+}
+
+.editor-topbar-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .editor-topbar-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.editor-workspace-container {
+  width: 100%;
+  padding: 1.25rem 0 2rem;
+}
+
+.editor-workspace-layout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .editor-workspace-layout {
+    grid-template-columns: 220px minmax(0, 1fr) 280px;
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .editor-workspace-layout {
+    grid-template-columns: 230px minmax(0, 1fr) 290px;
+    gap: 1.25rem;
+  }
+}
+
+.editor-outline-col {
+  min-width: 0;
+}
+
+.editor-canvas-col {
+  min-width: 0;
+}
+
+.editor-settings-col {
+  min-width: 0;
+}
+
+/* ── Semantic Save Status Pills ────────────────────────────────────────────── */
+.save-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* SAVED (Emerald) */
+.save-status-saved {
+  background-color: #d1fae5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+:host-context([data-theme="dark"]) .save-status-saved {
+  background-color: #062e1e;
+  color: #6ee7b7;
+  border-color: #047857;
+}
+
+/* DIRTY / Unsaved (Amber) — High Contrast WCAG AA >= 4.5:1 */
+.save-status-dirty {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+:host-context([data-theme="dark"]) .save-status-dirty {
+  background-color: #291e0a;
+  color: #fde68a;
+  border-color: #78350f;
+}
+
+/* SAVING (Brand / Blue-Orange) */
+.save-status-saving {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+:host-context([data-theme="dark"]) .save-status-saving {
+  background-color: #3a1506;
+  color: #fdba74;
+  border-color: #9a3412;
+}
+
+/* CONFLICT / ERROR (Red) */
+.save-status-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+:host-context([data-theme="dark"]) .save-status-error {
+  background-color: #3b0d0c;
+  color: #fca5a5;
+  border-color: #991b1b;
+}

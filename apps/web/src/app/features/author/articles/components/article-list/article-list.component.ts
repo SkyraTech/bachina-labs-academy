@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { PageHeaderComponent } from '../../../../../shared/ui/page-header/page-header.component';
 import {
   StatusBadgeComponent,
@@ -10,7 +11,7 @@ import { EmptyStateComponent } from '../../../../../shared/ui/feedback/empty-sta
 import { LoadingSkeletonComponent } from '../../../../../shared/ui/loading/loading-skeleton.component';
 import { ArticleEditorApiService } from '../../services/article-editor-api.service';
 import { EditableArticle } from '../../models/article.models';
-import { ToastService } from '../../../../../shared/ui';
+import { AcademyDialogService, ToastService } from '../../../../../shared/ui';
 
 @Component({
   selector: 'app-article-list',
@@ -30,10 +31,13 @@ import { ToastService } from '../../../../../shared/ui';
 export class ArticleListComponent implements OnInit {
   private readonly api = inject(ArticleEditorApiService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(AcademyDialogService);
+  private readonly router = inject(Router);
 
   readonly articles = signal<EditableArticle[]>([]);
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
+  readonly duplicatingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadArticles();
@@ -55,6 +59,29 @@ export class ArticleListComponent implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  async onDuplicate(article: EditableArticle): Promise<void> {
+    const confirmed = await this.dialog.confirm({
+      title: 'Duplicate Article',
+      message: `Create an independent draft copy of "${article.title}"? All content blocks and taxonomy tags will be cloned.`,
+      confirmLabel: 'Duplicate Article',
+      cancelLabel: 'Cancel',
+    });
+
+    if (!confirmed) return;
+
+    this.duplicatingId.set(article.id);
+    try {
+      const duplicated = await firstValueFrom(this.api.duplicateArticle(article.id));
+      this.toast.success('Article duplicated successfully.');
+      await this.router.navigate(['/author/articles', duplicated.id, 'edit']);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate article.';
+      this.toast.error(msg);
+    } finally {
+      this.duplicatingId.set(null);
+    }
   }
 
   getStatusVariant(status: string): StatusVariant {

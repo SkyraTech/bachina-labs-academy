@@ -22,6 +22,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "keys:generate": "node scripts/generate-jwt-keys.js",
+    "cleanup:moderated-comments": "node scripts/cleanup-moderated-comments.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
