@@ -11,3 +11,12 @@
 .article-blocks-container {
   min-width: 0;
 }
+
+@media (min-width: 1024px) {
+  .reader-layout-with-toc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 3rem;
+    align-items: stretch;
+  }
+}

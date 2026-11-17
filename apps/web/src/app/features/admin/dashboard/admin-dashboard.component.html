@@ -1,6 +1,7 @@
 <div class="admin-dashboard-container">
   <app-page-header
     title="Platform Administration"
+    eyebrow="System Governance"
     description="Authoritative platform metrics, user directory, article oversight, and taxonomy governance."
   >
     <div class="header-actions">
@@ -14,7 +15,7 @@
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
-        <span>Refresh</span>
+        <span>Refresh Metrics</span>
       </button>
     </div>
   </app-page-header>
@@ -23,7 +24,7 @@
   @if (errorMessage(); as error) {
     <div class="error-banner" role="alert">
       <div class="error-content">
-        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="w-5 h-5 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <p>{{ error }}</p>
@@ -64,7 +65,7 @@
 
         <div class="primary-metric">
           <span class="metric-value" data-testid="metric-total-users">{{ m.users.total }}</span>
-          <span class="metric-label">Total Users</span>
+          <span class="metric-label">Total Registered Users</span>
         </div>
 
         <div class="breakdown-grid">
@@ -86,7 +87,7 @@
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Active</span>
-            <span class="breakdown-value" data-testid="metric-active-users">{{ m.users.byStatus.active }}</span>
+            <span class="breakdown-value text-emerald-600 dark:text-emerald-400" data-testid="metric-active-users">{{ m.users.byStatus.active }}</span>
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Suspended</span>
@@ -134,7 +135,7 @@
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Draft</span>
-            <span class="breakdown-value text-blue-600 dark:text-blue-400" data-testid="metric-draft-articles">{{ m.articles.draft }}</span>
+            <span class="breakdown-value text-amber-600 dark:text-amber-400" data-testid="metric-draft-articles">{{ m.articles.draft }}</span>
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Archived</span>
@@ -142,7 +143,7 @@
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Snapshots</span>
-            <span class="breakdown-value" data-testid="metric-snapshots">{{ m.articles.totalPublishedSnapshots }}</span>
+            <span class="breakdown-value text-[var(--color-brand)]" data-testid="metric-snapshots">{{ m.articles.totalPublishedSnapshots }}</span>
           </div>
         </div>
 
@@ -165,20 +166,20 @@
             </svg>
           </div>
           <div>
-            <h2 id="card-taxonomy-title" class="card-title">Taxonomy</h2>
-            <p class="card-subtitle">Categories & content tags</p>
+            <h2 id="card-taxonomy-title" class="card-title">Taxonomy & Governance</h2>
+            <p class="card-subtitle">Categories, tags & discussion moderation</p>
           </div>
         </div>
 
         <div class="primary-metric">
           <span class="metric-value" data-testid="metric-total-categories">{{ m.taxonomy.totalCategories }}</span>
-          <span class="metric-label">Categories</span>
+          <span class="metric-label">Taxonomy Categories</span>
         </div>
 
         <div class="breakdown-grid">
           <div class="breakdown-item">
             <span class="breakdown-label">Total Tags</span>
-            <span class="breakdown-value" data-testid="metric-total-tags">{{ m.taxonomy.totalTags }}</span>
+            <span class="breakdown-value text-[var(--color-brand)]" data-testid="metric-total-tags">{{ m.taxonomy.totalTags }}</span>
           </div>
         </div>
 
@@ -195,14 +196,87 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </a>
-          <a routerLink="/admin/comments" class="card-action-link" id="link-admin-comments">
-            <span>Comment Moderation</span>
+          <a routerLink="/admin/comments" class="card-action-link highlight-action" id="link-admin-comments">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>Comment Moderation</span>
+            </span>
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </a>
         </div>
       </section>
+    </div>
+
+    <!-- Administrative Quick Navigation Section -->
+    <div class="mt-8 pt-6 border-t border-[var(--color-border)]">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">
+        Administrative Management Portals
+      </h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <a
+          routerLink="/admin/users"
+          class="flex items-center gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-semibold text-[var(--color-text)] transition-colors group"
+        >
+          <div class="w-7 h-7 rounded-lg bg-[var(--color-brand-surface)] text-[var(--color-brand)] flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <span class="truncate">User Directory</span>
+        </a>
+
+        <a
+          routerLink="/admin/articles"
+          class="flex items-center gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-semibold text-[var(--color-text)] transition-colors group"
+        >
+          <div class="w-7 h-7 rounded-lg bg-[var(--color-brand-surface)] text-[var(--color-brand)] flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <span class="truncate">Article Oversight</span>
+        </a>
+
+        <a
+          routerLink="/admin/comments"
+          class="flex items-center gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-semibold text-[var(--color-text)] transition-colors group"
+        >
+          <div class="w-7 h-7 rounded-lg bg-[var(--color-brand-surface)] text-[var(--color-brand)] flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <span class="truncate">Comments</span>
+        </a>
+
+        <a
+          routerLink="/admin/categories"
+          class="flex items-center gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-semibold text-[var(--color-text)] transition-colors group"
+        >
+          <div class="w-7 h-7 rounded-lg bg-[var(--color-brand-surface)] text-[var(--color-brand)] flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+          </div>
+          <span class="truncate">Categories</span>
+        </a>
+
+        <a
+          routerLink="/admin/tags"
+          class="flex items-center gap-2 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-sm font-semibold text-[var(--color-text)] transition-colors group"
+        >
+          <div class="w-7 h-7 rounded-lg bg-[var(--color-brand-surface)] text-[var(--color-brand)] flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+          </div>
+          <span class="truncate">Tags</span>
+        </a>
+      </div>
     </div>
   }
 </div>

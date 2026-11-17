@@ -41,4 +41,12 @@ describe('PublicLayoutComponent', () => {
     const mobileNav = fixture.nativeElement.querySelector('nav[aria-label="Mobile Navigation"]');
     expect(mobileNav).toBeTruthy();
   });
+
+  it('should keep desktop nav at lg breakpoint and tablet/mobile drawer toggle at lg:hidden', () => {
+    const desktopNav = fixture.nativeElement.querySelector('nav[aria-label="Main Navigation"]') as HTMLElement;
+    const toggleButton = fixture.nativeElement.querySelector('button[aria-label="Toggle navigation menu"]') as HTMLElement;
+    expect(desktopNav.classList.contains('lg:flex')).toBe(true);
+    expect(desktopNav.classList.contains('md:flex')).toBe(false);
+    expect(toggleButton.classList.contains('lg:hidden')).toBe(true);
+  });
 });

@@ -43,7 +43,7 @@ export class ResendVerificationComponent implements OnInit {
       name: 'email',
       label: 'Email address',
       type: 'email',
-      placeholder: 'author@skyra-tech.com',
+      placeholder: 'you@example.com',
       autocomplete: 'email',
       validation: {
         required: true,

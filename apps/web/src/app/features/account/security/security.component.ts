@@ -2,6 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  TemplateRef,
+  ViewChild,
   inject,
   signal,
 } from '@angular/core';
@@ -56,7 +58,10 @@ export class SecurityComponent implements OnInit {
   readonly revokingSessionId = signal<string | null>(null);
   readonly loggingOutAll = signal<boolean>(false);
 
-  readonly tableColumns: readonly TableColumnConfig<DisplaySession>[] = [
+  @ViewChild('deviceCell', { static: true })
+  deviceCell?: TemplateRef<{ $implicit: unknown; row: DisplaySession }>;
+
+  tableColumns: readonly TableColumnConfig<DisplaySession>[] = [
     {
       field: 'deviceLabel',
       header: 'Device & Browser',
@@ -92,7 +97,7 @@ export class SecurityComponent implements OnInit {
   readonly tableActions: readonly TableActionConfig<DisplaySession>[] = [
     {
       id: 'revoke-session',
-      label: 'Revoke',
+      label: (row: DisplaySession) => (row.isCurrent ? 'Sign Out' : 'Revoke'),
       variant: 'danger',
       isDisabled: (row) => this.revokingSessionId() === row.id || this.loggingOutAll(),
       execute: (row) => this.confirmRevokeSession(row),
@@ -100,6 +105,17 @@ export class SecurityComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    if (this.deviceCell) {
+      this.tableColumns = [
+        {
+          field: 'deviceLabel',
+          header: 'Device & Browser',
+          sortable: false,
+          cellTemplate: this.deviceCell,
+        },
+        ...this.tableColumns.slice(1),
+      ];
+    }
     this.loadSessions();
   }
 

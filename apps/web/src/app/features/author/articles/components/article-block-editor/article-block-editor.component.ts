@@ -63,12 +63,26 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
   imageCaption = '';
   imageAltText = '';
 
+  private loadedBlockId: string | null = null;
+  private editGeneration = 0;
+
   constructor() {
     effect(() => {
       const block = this.state.selectedBlock();
-      if (block) {
+      if (!block) {
+        this.loadedBlockId = null;
+        return;
+      }
+
+      const isSameBlock = block.id === this.loadedBlockId;
+      if (!isSameBlock) {
+        this.loadedBlockId = block.id;
         this.populateBuffer(block);
         this.isDirty.set(false);
+        this.isSourceValid.set(true);
+      } else if (!this.isDirty()) {
+        // Synchronize baseline only when no newer local edits are pending
+        this.populateBuffer(block);
       }
     });
 
@@ -164,6 +178,7 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
   }
 
   markDirty(): void {
+    this.editGeneration++;
     this.isDirty.set(true);
     this.state.markDirty();
   }
@@ -171,6 +186,7 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
   onCancel(): void {
     const block = this.state.selectedBlock();
     if (block) {
+      this.editGeneration++;
       this.populateBuffer(block);
       this.isDirty.set(false);
       this.isSourceValid.set(true);
@@ -182,6 +198,7 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
   }
 
   onRichTextContentChange(html: string): void {
+    this.editGeneration++;
     this.richTextHtml = html;
   }
 
@@ -334,10 +351,17 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
         break;
     }
 
+    const saveGeneration = this.editGeneration;
     const targetMediaAssetId = block.type === 'IMAGE' ? this.imageMediaId() : block.mediaAssetId;
     const success = await this.state.updateBlock(block.id, payload, targetMediaAssetId);
     if (success) {
-      this.isDirty.set(false);
+      if (this.editGeneration === saveGeneration) {
+        this.isDirty.set(false);
+      } else {
+        // Preserve newer edits made during the in-flight save and retain dirty save-state
+        this.isDirty.set(true);
+        this.state.markDirty();
+      }
       return true;
     }
     return false;

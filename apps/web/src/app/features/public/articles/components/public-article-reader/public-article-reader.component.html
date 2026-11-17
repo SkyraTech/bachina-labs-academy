@@ -262,7 +262,7 @@
       </div>
 
       <!-- Interactive Content Area with Responsive Table of Contents -->
-      <div [class.lg:grid]="tableOfContents().length >= 2" [class.lg:grid-cols-[minmax(0,1fr)_260px]] [class.lg:gap-12]="tableOfContents().length >= 2" class="items-start">
+      <div [class.reader-layout-with-toc]="tableOfContents().length >= 2">
         <!-- Main Article Content Column -->
         <div class="article-content-column min-w-0">
           @if (tableOfContents().length >= 2) {
@@ -300,7 +300,7 @@
 
         <!-- Desktop Sticky Sidebar (lg+) -->
         @if (tableOfContents().length >= 2) {
-          <div class="hidden lg:block">
+          <div class="hidden lg:block h-full">
             <app-reader-table-of-contents
               mode="desktop"
               [tocItems]="tableOfContents()"

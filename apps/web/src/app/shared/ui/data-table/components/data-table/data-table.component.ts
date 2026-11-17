@@ -293,6 +293,13 @@ export class DataTableComponent<T extends Record<string, unknown> = Record<strin
   }
 
   /**
+   * Helper to resolve dynamic or static action label
+   */
+  getActionLabel(action: TableActionConfig<T>, row: T): string {
+    return typeof action.label === 'function' ? action.label(row) : action.label;
+  }
+
+  /**
    * Helper to check if row action is visible
    */
   isActionVisible(action: TableActionConfig<T>, row: T): boolean {

@@ -27,7 +27,7 @@
     </div>
   } @else if (state.article()) {
     <!-- Top Workspace Bar -->
-    <header class="sticky top-0 z-20 bg-[var(--color-surface)]/95 backdrop-blur-md border-b border-[var(--color-border)] py-2.5 px-3 sm:px-4">
+    <header class="editor-sticky-header sticky z-20 bg-[var(--color-surface)]/95 backdrop-blur-md border-b border-[var(--color-border)] py-2.5 px-3 sm:px-4">
       <div class="editor-topbar-inner">
         <!-- Left: Back & Title -->
         <div class="flex items-center gap-3 min-w-0">
@@ -150,13 +150,13 @@
       </div>
     }
 
-    <!-- Mobile Navigation Tabs (visible only on small screens < 1024px) -->
-    <div class="lg:hidden w-full mt-3">
+    <!-- Mobile Navigation Tabs (visible only on small screens < 768px) -->
+    <div class="md:hidden w-full mt-3">
       <div class="grid grid-cols-3 gap-1 p-1 bg-[var(--color-workspace-bg)] border border-[var(--color-border)] rounded-xl text-center text-xs font-semibold">
         <button
           type="button"
           (click)="mobileTab.set('outline')"
-          class="py-1.5 rounded-lg transition-colors cursor-pointer"
+          class="py-2 min-h-[38px] rounded-lg transition-colors cursor-pointer"
           [class.bg-[var(--color-surface)]]="mobileTab() === 'outline'"
           [class.text-[var(--color-brand)]]="mobileTab() === 'outline'"
           [class.text-[var(--color-text-muted)]]="mobileTab() !== 'outline'"
@@ -166,7 +166,7 @@
         <button
           type="button"
           (click)="mobileTab.set('content')"
-          class="py-1.5 rounded-lg transition-colors cursor-pointer"
+          class="py-2 min-h-[38px] rounded-lg transition-colors cursor-pointer"
           [class.bg-[var(--color-surface)]]="mobileTab() === 'content'"
           [class.text-[var(--color-brand)]]="mobileTab() === 'content'"
           [class.text-[var(--color-text-muted)]]="mobileTab() !== 'content'"
@@ -176,7 +176,7 @@
         <button
           type="button"
           (click)="mobileTab.set('settings')"
-          class="py-1.5 rounded-lg transition-colors cursor-pointer"
+          class="py-2 min-h-[38px] rounded-lg transition-colors cursor-pointer"
           [class.bg-[var(--color-surface)]]="mobileTab() === 'settings'"
           [class.text-[var(--color-brand)]]="mobileTab() === 'settings'"
           [class.text-[var(--color-text-muted)]]="mobileTab() !== 'settings'"
@@ -194,13 +194,12 @@
           <app-article-preview></app-article-preview>
         </div>
       } @else {
-        <!-- Desktop 3-Panel Flexible Grid Layout -->
+        <!-- Responsive Studio Workspace Grid -->
         <div class="editor-workspace-layout">
           <!-- Left Column: Block Navigator / Outline -->
           <aside
-            class="editor-outline-col space-y-4"
+            class="editor-outline-col space-y-4 md:block"
             [class.hidden]="mobileTab() !== 'outline'"
-            [class.lg:block]="true"
             aria-label="Article Outline"
           >
             <app-article-block-list></app-article-block-list>
@@ -208,19 +207,17 @@
 
           <!-- Center Column: Dominant Block Content Editor -->
           <section
-            class="editor-canvas-col space-y-5"
+            class="editor-canvas-col space-y-5 md:block"
             [class.hidden]="mobileTab() !== 'content'"
-            [class.lg:block]="true"
             aria-label="Block Content Canvas"
           >
             <app-article-block-editor></app-article-block-editor>
           </section>
 
-          <!-- Right Column: Settings and Publication Controls -->
+          <!-- Settings and Publication Controls (2-col below Editor on 768–1279px, Right Rail >= 1280px) -->
           <aside
-            class="editor-settings-col space-y-5"
+            class="editor-settings-col md:grid md:grid-cols-2 md:gap-4 xl:flex xl:flex-col xl:gap-5"
             [class.hidden]="mobileTab() !== 'settings'"
-            [class.lg:block]="true"
             aria-label="Article Settings and Publication"
           >
             <app-article-publication-controls></app-article-publication-controls>

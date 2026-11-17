@@ -23,6 +23,7 @@ describe('ArticleCommentsComponent', () => {
   let mockAuthState: {
     currentUser: ReturnType<typeof vi.fn>;
     isAuthenticated: ReturnType<typeof vi.fn>;
+    ensureHydrated: ReturnType<typeof vi.fn>;
   };
 
   const sampleComment: PublicCommentResponse = {
@@ -60,6 +61,7 @@ describe('ArticleCommentsComponent', () => {
     mockAuthState = {
       currentUser: vi.fn().mockReturnValue(mockUser),
       isAuthenticated: vi.fn().mockReturnValue(true),
+      ensureHydrated: vi.fn().mockReturnValue(of(true)),
     };
 
     await TestBed.configureTestingModule({
@@ -78,10 +80,15 @@ describe('ArticleCommentsComponent', () => {
   });
 
   it('loads comments on init', () => {
+    expect(mockAuthState.ensureHydrated).toHaveBeenCalled();
     expect(mockCommentsApi.getPublicComments).toHaveBeenCalledWith('test-article', 1, 20);
     expect(component.comments().length).toBe(1);
     expect(component.totalCount()).toBe(1);
     expect(component.loading()).toBe(false);
+  });
+
+  it('requests session hydration on init', () => {
+    expect(mockAuthState.ensureHydrated).toHaveBeenCalled();
   });
 
   it('submits a new comment and prepends it to the list', () => {

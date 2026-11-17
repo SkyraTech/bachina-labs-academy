@@ -1,8 +1,8 @@
 <div class="rich-text-visual-editor rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-xs">
   <!-- Mode Switcher and Status Bar -->
-  <div class="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+  <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
     <!-- Visual vs Source Tabs -->
-    <div class="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]" role="tablist" aria-label="Editor modes">
+    <div class="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] shrink-0" role="tablist" aria-label="Editor modes">
       <button
         type="button"
         role="tab"
@@ -10,14 +10,14 @@
         [attr.aria-selected]="mode() === 'visual'"
         (click)="setMode('visual')"
         data-testid="mode-visual-btn"
-        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer"
         [class.bg-[var(--color-brand)]]="mode() === 'visual'"
         [class.text-white]="mode() === 'visual'"
         [class.text-[var(--color-text-muted)]]="mode() !== 'visual'"
         [class.hover:text-[var(--color-text)]]="mode() !== 'visual'"
       >
         <span class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
@@ -32,14 +32,14 @@
         [attr.aria-selected]="mode() === 'source'"
         (click)="setMode('source')"
         data-testid="mode-source-btn"
-        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer"
         [class.bg-[var(--color-brand)]]="mode() === 'source'"
         [class.text-white]="mode() === 'source'"
         [class.text-[var(--color-text-muted)]]="mode() !== 'source'"
         [class.hover:text-[var(--color-text)]]="mode() !== 'source'"
       >
         <span class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6" />
             <polyline points="8 6 2 12 8 18" />
           </svg>
@@ -297,16 +297,20 @@
           (click)="toggleCodeBlock()"
           [disabled]="disabled()"
           [attr.aria-pressed]="isCodeBlock()"
-          title="Code Block (pre code)"
+          title="Code Block"
           aria-label="Code Block"
           data-testid="toolbar-codeblock-btn"
-          class="px-2 py-1 text-xs font-mono rounded transition-colors"
+          class="p-1.5 rounded transition-colors"
           [class.bg-[var(--color-brand)]]="isCodeBlock()"
           [class.text-white]="isCodeBlock()"
           [class.text-[var(--color-text)]]="!isCodeBlock()"
           [class.hover:bg-[var(--color-surface-hover)]]="!isCodeBlock()"
         >
-          pre
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M10 9l-3 3 3 3" />
+            <path d="M14 15l3-3-3-3" />
+          </svg>
         </button>
       </div>
 

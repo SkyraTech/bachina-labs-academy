@@ -22,3 +22,7 @@
   color: #fde68a;
   border-color: #78350f;
 }
+
+:host-context([data-theme="dark"]) textarea {
+  color-scheme: dark;
+}

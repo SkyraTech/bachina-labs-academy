@@ -9,6 +9,7 @@ import {
   input,
   output,
   signal,
+  viewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -65,6 +66,7 @@ export class DynamicFormComponent implements OnInit {
   formGroup!: FormGroup;
   readonly submitting = signal<boolean>(false);
   readonly formValue = signal<Record<string, unknown>>({});
+  readonly fieldComponents = viewChildren(FormFieldComponent);
 
   /** Normalized list of sections for rendering */
   readonly normalizedSections = computed<readonly FormSectionConfig[]>(() => {
@@ -158,6 +160,10 @@ export class DynamicFormComponent implements OnInit {
 
     if (this.formGroup.invalid) {
       this.formGroup.markAllAsTouched();
+      Object.values(this.formGroup.controls).forEach((ctrl) => {
+        ctrl.updateValueAndValidity({ emitEvent: true });
+      });
+      this.fieldComponents().forEach((c) => c.refreshValidity());
       this.focusFirstInvalidField();
       return;
     }

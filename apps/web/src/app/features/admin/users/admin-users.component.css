@@ -115,6 +115,11 @@
   border: none;
 }
 .table-container { overflow-x: auto; border-radius: 0.5rem; }
+.mobile-users-cards { display: none; }
+@media (max-width: 639px) {
+  .desktop-table-container { display: none; }
+  .mobile-users-cards { display: flex; flex-direction: column; }
+}
 .users-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
 .users-table th, .users-table td {
   padding: 0.75rem 1rem;
@@ -142,6 +147,13 @@
 .badge-active { background: rgba(16, 185, 129, 0.12); color: #059669; }
 .badge-suspended { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
 .badge-disabled { background: rgba(100, 116, 139, 0.12); color: #64748b; }
+:host-context([data-theme='dark']) .badge-admin { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
+:host-context([data-theme='dark']) .badge-author { background: rgba(14, 165, 233, 0.25); color: #7dd3fc; }
+:host-context([data-theme='dark']) .badge-active { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+:host-context([data-theme='dark']) .badge-suspended { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+:host-context([data-theme='dark']) .badge-disabled { background: rgba(100, 116, 139, 0.25); color: #cbd5e1; }
+:host-context([data-theme='dark']) .verified-pill { color: #34d399; }
+:host-context([data-theme='dark']) .unverified-pill { color: #fbbf24; }
 .verified-pill, .unverified-pill {
   display: inline-flex;
   align-items: center;

@@ -1,6 +1,8 @@
-import { Component, ChangeDetectionStrategy, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { ThemeSelectorComponent } from '../../shared/ui/theme-selector/theme-selector.component';
 import { AuthStateService } from '../../core';
 import { ToastService } from '../../shared/ui';
@@ -8,7 +10,7 @@ import { ToastService } from '../../shared/ui';
 interface SidebarItem {
   readonly label: string;
   readonly path: string;
-  readonly iconType: 'home' | 'file' | 'pencil' | 'shield' | 'cog' | 'users';
+  readonly iconType: 'home' | 'file' | 'pencil' | 'shield' | 'cog' | 'users' | 'chat' | 'tag';
 }
 
 /**
@@ -26,9 +28,26 @@ export class DashboardLayoutComponent {
   private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly mobileDrawerOpen = signal(false);
   protected readonly signingOut = signal(false);
+  protected readonly isStudioEditRoute = signal(this.matchesStudioEditRoute(this.router.url));
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((e) => {
+        this.isStudioEditRoute.set(this.matchesStudioEditRoute(e.urlAfterRedirects || e.url));
+      });
+  }
+
+  private matchesStudioEditRoute(url: string): boolean {
+    return /^\/author\/articles\/[^/]+\/edit(?:[?#]|$)/.test(url || '');
+  }
 
   readonly currentUser = this.authState.currentUser;
   readonly userEmail = computed(() => this.currentUser()?.email ?? '');
@@ -37,6 +56,9 @@ export class DashboardLayoutComponent {
     return (email.charAt(0) || 'U').toUpperCase();
   });
   readonly userRole = computed(() => this.currentUser()?.role ?? '');
+  readonly workspaceBadge = computed(() => {
+    return this.userRole() === 'ADMIN' ? 'Admin Workspace' : 'Studio Workspace';
+  });
 
   protected readonly sidebarItems = computed<readonly SidebarItem[]>(() => {
     const role = this.userRole();
@@ -46,8 +68,9 @@ export class DashboardLayoutComponent {
         { label: 'Admin Hub', path: '/admin', iconType: 'shield' },
         { label: 'Users', path: '/admin/users', iconType: 'users' },
         { label: 'Articles', path: '/admin/articles', iconType: 'file' },
-        { label: 'Categories', path: '/admin/categories', iconType: 'file' },
-        { label: 'Tags', path: '/admin/tags', iconType: 'file' },
+        { label: 'Comments', path: '/admin/comments', iconType: 'chat' },
+        { label: 'Categories', path: '/admin/categories', iconType: 'tag' },
+        { label: 'Tags', path: '/admin/tags', iconType: 'tag' },
         { label: 'Account Security', path: '/account/security', iconType: 'cog' },
       ];
     }

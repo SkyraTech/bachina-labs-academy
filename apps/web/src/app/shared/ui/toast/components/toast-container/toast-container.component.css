@@ -1,6 +1,6 @@
 .toast-viewport {
   position: fixed;
-  top: 1.25rem;
+  top: calc(var(--dashboard-topbar-height, 64px) + 1rem);
   right: 1.25rem;
   z-index: 1100;
   display: flex;
@@ -13,7 +13,7 @@
 
 @media (max-width: 640px) {
   .toast-viewport {
-    top: 0.75rem;
+    top: 4.5rem;
     left: 0.75rem;
     right: 0.75rem;
     max-width: calc(100vw - 1.5rem);
@@ -91,9 +91,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -105,4 +107,9 @@
 .toast-dismiss-btn:hover {
   background-color: var(--color-surface-hover);
   color: var(--color-text);
+}
+
+.toast-dismiss-btn:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 1px;
 }

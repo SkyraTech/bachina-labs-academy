@@ -1,6 +1,7 @@
 <div class="admin-users-container">
   <app-page-header
     title="User Directory"
+    eyebrow="Access Governance"
     description="Inspect and search registered platform accounts, authentication roles, and email verification states."
   >
     <div class="header-actions">
@@ -85,7 +86,7 @@
   @if (errorMessage(); as error) {
     <div class="error-banner" role="alert">
       <div class="error-content">
-        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="w-5 h-5 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <p>{{ error }}</p>
@@ -118,8 +119,8 @@
       }
     </div>
   } @else {
-    <!-- Table View -->
-    <div class="table-container">
+    <!-- Desktop Table View (min-width: 640px) -->
+    <div class="table-container desktop-table-container">
       <table class="users-table" aria-label="User Accounts Directory">
         <thead>
           <tr>
@@ -136,8 +137,8 @@
             <tr class="table-row" [attr.data-user-id]="user.id">
               <td>
                 <div class="user-cell">
-                  <span class="user-email" data-testid="user-email">{{ user.email }}</span>
-                  <span class="user-id-subtle">{{ user.id }}</span>
+                  <span class="user-email truncate max-w-[280px]" data-testid="user-email" [title]="user.email">{{ user.email }}</span>
+                  <span class="user-id-subtle" [title]="user.id">id: {{ user.id.slice(0, 8) }}…</span>
                 </div>
               </td>
               <td>
@@ -197,6 +198,68 @@
           }
         </tbody>
       </table>
+    </div>
+
+    <!-- Mobile Stacked Card View (< 640px) -->
+    <div class="mobile-users-cards space-y-3">
+      @for (user of users(); track user.id) {
+        <div class="mobile-user-card p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="min-w-0 flex-1">
+              <span class="block font-semibold text-sm text-[var(--color-text)] truncate" [title]="user.email">
+                {{ user.email }}
+              </span>
+              <span class="text-[11px] font-mono text-[var(--color-text-muted)]">
+                id: {{ user.id.slice(0, 8) }}…
+              </span>
+            </div>
+            <button
+              type="button"
+              class="view-btn shrink-0"
+              (click)="viewUser(user)"
+              aria-label="View user details"
+            >
+              Inspect
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-[var(--color-border)] text-xs">
+            <span
+              class="role-badge"
+              [ngClass]="{
+                'badge-admin': user.role === 'ADMIN',
+                'badge-author': user.role === 'AUTHOR'
+              }"
+            >
+              {{ user.role }}
+            </span>
+
+            <span
+              class="status-badge"
+              [ngClass]="{
+                'badge-active': user.status === 'ACTIVE',
+                'badge-suspended': user.status === 'SUSPENDED',
+                'badge-disabled': user.status === 'DISABLED'
+              }"
+            >
+              {{ user.status }}
+            </span>
+
+            @if (user.isEmailVerified) {
+              <span class="verified-pill">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Verified</span>
+              </span>
+            } @else {
+              <span class="unverified-pill">Unverified</span>
+            }
+
+            <span class="date-text ml-auto">{{ user.createdAt | date: 'shortDate' }}</span>
+          </div>
+        </div>
+      }
     </div>
 
     <!-- Pagination Controls -->
@@ -260,11 +323,11 @@
         <div class="modal-body">
           <div class="detail-row">
             <span class="detail-label">Account ID</span>
-            <span class="detail-value font-mono text-xs" data-testid="modal-user-id">{{ selected.id }}</span>
+            <span class="detail-value font-mono text-xs break-all" data-testid="modal-user-id">{{ selected.id }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Email Address</span>
-            <span class="detail-value font-medium" data-testid="modal-user-email">{{ selected.email }}</span>
+            <span class="detail-value font-medium break-all" data-testid="modal-user-email">{{ selected.email }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Platform Role</span>

@@ -8,6 +8,19 @@
   min-height: calc(100vh - 120px);
 }
 
+.editor-sticky-header {
+  top: var(--dashboard-topbar-height, 64px);
+}
+
+:host ::ng-deep .editor-workspace-container button,
+:host ::ng-deep .editor-workspace-container a,
+:host ::ng-deep .editor-workspace-container input,
+:host ::ng-deep .editor-workspace-container textarea,
+:host ::ng-deep .editor-workspace-container select,
+:host ::ng-deep .editor-workspace-container [tabindex] {
+  scroll-margin-top: calc(var(--dashboard-topbar-height, 64px) + 8.5rem);
+}
+
 .editor-topbar-inner {
   width: 100%;
   display: flex;
@@ -31,23 +44,9 @@
 .editor-workspace-layout {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
-}
-
-@media (min-width: 1024px) {
-  .editor-workspace-layout {
-    grid-template-columns: 220px minmax(0, 1fr) 280px;
-    gap: 1rem;
-  }
-}
-
-@media (min-width: 1400px) {
-  .editor-workspace-layout {
-    grid-template-columns: 230px minmax(0, 1fr) 290px;
-    gap: 1.25rem;
-  }
 }
 
 .editor-outline-col {
@@ -60,6 +59,55 @@
 
 .editor-settings-col {
   min-width: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .editor-workspace-layout {
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .editor-settings-col {
+    grid-column: 1 / -1;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .editor-workspace-layout {
+    grid-template-columns: 255px minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .editor-workspace-layout {
+    grid-template-columns: 255px minmax(0, 1fr) 295px;
+    gap: 1.25rem;
+  }
+
+  .editor-outline-col {
+    position: sticky;
+    top: calc(var(--dashboard-topbar-height, 64px) + 5rem);
+    max-height: calc(100vh - var(--dashboard-topbar-height, 64px) - 6.5rem);
+    overflow-y: auto;
+  }
+
+  .editor-canvas-col {
+    position: sticky;
+    top: calc(var(--dashboard-topbar-height, 64px) + 5rem);
+  }
+}
+
+@media (min-width: 1440px) {
+  .editor-workspace-layout {
+    grid-template-columns: 260px minmax(500px, 1fr) 300px;
+    gap: 1.25rem;
+  }
+}
+
+:host-context([data-theme="dark"]) .editor-outline-col {
+  color-scheme: dark;
 }
 
 /* ── Semantic Save Status Pills ────────────────────────────────────────────── */

@@ -277,6 +277,30 @@ describe('PublicArticleBlockComponent', () => {
       expect(compiled.querySelector('script')).toBeNull();
       expect(compiled.querySelector('code')?.textContent).toBe('<script>alert("not-executed")</script>');
     });
+
+    it('should copy code snippet to clipboard when clicking copy button', () => {
+      const codeSnippet = 'const x = 42;';
+      componentRef.setInput(
+        'block',
+        createBlock('CODE', {
+          code: codeSnippet,
+          language: 'typescript',
+        }),
+      );
+      fixture.detectChanges();
+
+      const copyBtn = fixture.nativeElement.querySelector('button[aria-label="Copy code to clipboard"]');
+      expect(copyBtn).toBeTruthy();
+      expect(copyBtn.textContent).toContain('Copy');
+
+      const writeSpy = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, {
+        clipboard: { writeText: writeSpy },
+      });
+
+      copyBtn.click();
+      expect(writeSpy).toHaveBeenCalledWith(codeSnippet);
+    });
   });
 
   describe('QUOTE block', () => {

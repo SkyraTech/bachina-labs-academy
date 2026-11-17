@@ -12,14 +12,15 @@
   padding: 3px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-border);
   backdrop-filter: blur(12px);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
 :host-context([data-theme="light"]) .theme-pill-track {
   background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.08);
+  border-color: var(--color-border);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -28,8 +29,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 9999px;
   border: none;
   background: transparent;
@@ -48,10 +49,14 @@
 }
 
 .theme-btn.active {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  background: var(--btn-primary-bg, #c2410c);
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.4);
+}
+
+.theme-btn:focus-visible {
+  outline: 2px solid var(--color-brand-focus, #fb923c);
+  outline-offset: -1px;
 }
 
 .theme-icon {

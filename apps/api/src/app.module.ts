@@ -58,7 +58,11 @@ import jwtConfig from './config/jwt.config';
       throttlers: [
         {
           ttl: 60_000, // 60 seconds window (in ms for @nestjs/throttler v6)
-          limit: 10,   // max 10 requests per IP per window
+          limit: process.env['THROTTLE_LIMIT']
+            ? parseInt(process.env['THROTTLE_LIMIT'], 10)
+            : process.env['NODE_ENV'] === 'development'
+              ? 1000
+              : 10,
         },
       ],
     }),

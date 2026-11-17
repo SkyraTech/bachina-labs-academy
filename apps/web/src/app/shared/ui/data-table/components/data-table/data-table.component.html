@@ -176,9 +176,9 @@
                           [class.btn-secondary]="action.variant === 'secondary' || !action.variant"
                           [class.btn-danger]="action.variant === 'danger'"
                           [class.btn-ghost]="action.variant === 'ghost'"
-                          [attr.aria-label]="action.label"
+                          [attr.aria-label]="getActionLabel(action, row)"
                         >
-                          {{ action.label }}
+                          {{ getActionLabel(action, row) }}
                         </button>
                       }
                     }

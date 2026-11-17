@@ -179,4 +179,19 @@ describe('ArticlePreviewComponent', () => {
     const caption = el.querySelector('figcaption');
     expect(caption?.textContent).toContain('Figure 1 - Tracing Flow');
   });
+
+  it('8. should show synchronized preview banner when published article has no unpublished draft changes', () => {
+    stateMock.article.mockReturnValue({
+      ...previewArticle,
+      status: 'PUBLISHED',
+      draftRevision: 4,
+      publishedRevision: 4,
+    });
+    const syncFixture = TestBed.createComponent(ArticlePreviewComponent);
+    syncFixture.detectChanges();
+
+    const text = (syncFixture.nativeElement as HTMLElement).textContent || '';
+    expect(text).toContain('Synchronized Preview');
+    expect(text).toContain('Matches the currently published public article');
+  });
 });

@@ -6,6 +6,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --color-brand: var(--color-brand);
   --color-brand-hover: var(--color-brand-hover);
@@ -44,10 +46,12 @@
    ============================================================ */
 :root,
 [data-theme='light'] {
-  --color-brand: #f97316;               /* Supporting brand orange */
-  --color-brand-hover: #ea580c;
-  --color-brand-deep: #ea580c;          /* Primary brand orange */
-  --color-brand-deep-hover: #c2410c;
+  color-scheme: light;
+
+  --color-brand: #c2410c;               /* WCAG AA compliant primary brand orange (5.18:1 on white) */
+  --color-brand-hover: #9a3412;
+  --color-brand-deep: #c2410c;          /* Primary brand orange */
+  --color-brand-deep-hover: #9a3412;
   --color-brand-surface: #fff0e5;       /* Subtle orange surface #FFF0E5 */
   --color-brand-muted: #fed7aa;
   --color-brand-selection: #fff0e5;
@@ -64,33 +68,33 @@
   --color-surface-active: #ece4d8;
   --color-editorial-dark: #15191d;
 
-  --color-text: #151515;                /* Target: Primary text #151515 */
-  --color-text-secondary: #57534e;      /* Target: Secondary text #57534E */
-  --color-text-muted: #78716c;
+  --color-text: #151515;                /* Target: Primary text #151515 (18.26:1 on white) */
+  --color-text-secondary: #57534e;      /* Target: Secondary text #57534E (7.63:1 on white) */
+  --color-text-muted: #716a62;          /* Target: Muted text #716A62 (5.33:1 on white) */
   --color-text-disabled: #a8a29e;
   --color-text-on-brand: #ffffff;
 
   --color-border: #e7ded3;              /* Target: Borders #E7DED3 */
   --color-border-strong: #d5c8b8;
-  --color-border-focus: #ea580c;
+  --color-border-focus: #c2410c;
 
-  /* Button Design System Tokens — Client Approved Unified Vibrant Orange (#EA580C) */
-  --btn-primary-bg: #ea580c;
-  --btn-primary-hover: #c2410c;
-  --btn-primary-pressed: #9a3412;
+  /* Button Design System Tokens — WCAG AA High Contrast Deep Terracotta (#C2410C) */
+  --btn-primary-bg: #c2410c;
+  --btn-primary-hover: #9a3412;
+  --btn-primary-pressed: #7c2d12;
   --btn-primary-text: #ffffff;
-  --btn-primary-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
-  --btn-primary-shadow-hover: 0 8px 20px rgba(194, 65, 12, 0.45);
+  --btn-primary-shadow: 0 4px 14px rgba(194, 65, 12, 0.35);
+  --btn-primary-shadow-hover: 0 8px 20px rgba(154, 52, 18, 0.45);
 
-  --btn-primary-vibrant: #ea580c;
-  --btn-primary-vibrant-hover: #c2410c;
-  --btn-primary-vibrant-pressed: #9a3412;
+  --btn-primary-vibrant: #c2410c;
+  --btn-primary-vibrant-hover: #9a3412;
+  --btn-primary-vibrant-pressed: #7c2d12;
 
-  --btn-primary-standard: #ea580c;
-  --btn-primary-standard-hover: #c2410c;
-  --btn-primary-standard-pressed: #9a3412;
+  --btn-primary-standard: #c2410c;
+  --btn-primary-standard-hover: #9a3412;
+  --btn-primary-standard-pressed: #7c2d12;
 
-  --btn-destructive-bg: #dc2626;         /* Accessible red for destructive actions */
+  --btn-destructive-bg: #dc2626;         /* Accessible red for destructive actions (4.83:1 on white) */
   --btn-destructive-hover: #b91c1c;      /* Destructive hover */
   --btn-destructive-pressed: #991b1b;    /* Destructive pressed */
 
@@ -104,10 +108,12 @@
 
 /* ============================================================
    Branding Tokens — Dark Theme
-   Bachina Labs Academy — Deep Charcoal Premium Editorial
+   Bachina Labs Academy — Warm Charcoal Neutral Editorial
    ============================================================ */
 [data-theme='dark'] {
-  --color-brand: #fb923c;               /* Brand orange for icons/accents #FB923C */
+  color-scheme: dark;
+
+  --color-brand: #fb923c;               /* Brand orange for icons/accents #FB923C (7.70:1 on #181A1E) */
   --color-brand-hover: #f97316;
   --color-brand-deep: #ea580c;
   --color-brand-deep-hover: #c2410c;
@@ -119,40 +125,40 @@
   --color-coral-surface: rgba(240, 120, 104, 0.15);
   --color-coral-border: rgba(240, 120, 104, 0.3);
 
-  --color-bg: #111416;                  /* Target: Page background #111416 */
-  --color-workspace-bg: #15191d;        /* Target: Workspace background #15191D */
-  --color-surface: #1d2226;             /* Target: Primary dark surface #1D2226 */
-  --color-surface-elevated: #272d32;    /* Target: Elevated dark surface #272D32 */
-  --color-surface-hover: #262c32;
-  --color-surface-active: #2f363d;
+  --color-bg: #101113;                  /* Target: Page background warm charcoal #101113 */
+  --color-workspace-bg: #141618;        /* Target: Workspace background #141618 */
+  --color-surface: #181a1e;             /* Target: Harmonized warm charcoal dark surface #181A1E */
+  --color-surface-elevated: #21242a;    /* Target: Elevated warm dark surface #21242A */
+  --color-surface-hover: #252830;
+  --color-surface-active: #2d3139;
 
-  --color-editorial-dark: #0d1012;      /* Target: Dark editorial section #0D1012 */
+  --color-editorial-dark: #0c0d0e;      /* Target: Dark editorial section #0C0D0E */
 
-  --color-text: #f8f5f0;                /* Target: Primary text #F8F5F0 */
-  --color-text-secondary: #b0b8c0;      /* Target: Secondary text #B0B8C0 */
-  --color-text-muted: #727e8a;
-  --color-text-disabled: #4e5760;
+  --color-text: #f5f2eb;                /* Target: Primary text #F5F2EB (15.58:1 on #181A1E) */
+  --color-text-secondary: #b8b3ab;      /* Target: Warm secondary text #B8B3AB (8.36:1 on #181A1E) */
+  --color-text-muted: #948f87;          /* Target: Warm muted text #948F87 (5.42:1 on #181A1E) */
+  --color-text-disabled: #615c55;
   --color-text-on-brand: #ffffff;
 
-  --color-border: #353d43;              /* Target: Borders #353D43 */
-  --color-border-strong: #48535b;
+  --color-border: #2a2e36;              /* Target: Harmonized dark borders #2A2E36 */
+  --color-border-strong: #3a3f4a;
   --color-border-focus: #fb923c;
 
-  /* Button Design System Tokens — Dark Theme Unified Vibrant Orange */
-  --btn-primary-bg: #ea580c;
-  --btn-primary-hover: #c2410c;
-  --btn-primary-pressed: #9a3412;
+  /* Button Design System Tokens — Dark Theme High Contrast */
+  --btn-primary-bg: #c2410c;
+  --btn-primary-hover: #9a3412;
+  --btn-primary-pressed: #7c2d12;
   --btn-primary-text: #ffffff;
-  --btn-primary-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
-  --btn-primary-shadow-hover: 0 8px 20px rgba(194, 65, 12, 0.45);
+  --btn-primary-shadow: 0 4px 14px rgba(194, 65, 12, 0.35);
+  --btn-primary-shadow-hover: 0 8px 20px rgba(154, 52, 18, 0.45);
 
-  --btn-primary-vibrant: #ea580c;
-  --btn-primary-vibrant-hover: #c2410c;
-  --btn-primary-vibrant-pressed: #9a3412;
+  --btn-primary-vibrant: #c2410c;
+  --btn-primary-vibrant-hover: #9a3412;
+  --btn-primary-vibrant-pressed: #7c2d12;
 
-  --btn-primary-standard: #ea580c;
-  --btn-primary-standard-hover: #c2410c;
-  --btn-primary-standard-pressed: #9a3412;
+  --btn-primary-standard: #c2410c;
+  --btn-primary-standard-hover: #9a3412;
+  --btn-primary-standard-pressed: #7c2d12;
 
   --btn-destructive-bg: #dc2626;
   --btn-destructive-hover: #b91c1c;
@@ -306,5 +312,34 @@ body {
   background-color: var(--color-surface-hover);
   border-color: var(--color-text-secondary);
 }
+
+/* ============================================================
+   Autofill & System Controls Accessibility
+   Preserves theme surface & text colors during browser autofill
+   ============================================================ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  caret-color: var(--color-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ============================================================
+   Native Scrollbars Synchronization
+   ============================================================ */
+* {
+  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-width: thin;
+}
+
 
 

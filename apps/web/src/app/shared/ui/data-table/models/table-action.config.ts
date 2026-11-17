@@ -5,7 +5,7 @@ export type TableActionVariant = 'brand' | 'secondary' | 'danger' | 'ghost';
  */
 export interface TableActionConfig<T = unknown> {
   readonly id: string;
-  readonly label: string;
+  readonly label: string | ((row: T) => string);
   readonly icon?: string;
   readonly variant?: TableActionVariant;
   readonly isVisible?: (row: T) => boolean;

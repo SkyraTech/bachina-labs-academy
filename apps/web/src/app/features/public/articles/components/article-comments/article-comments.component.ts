@@ -52,6 +52,7 @@ export class ArticleCommentsComponent implements OnInit {
   readonly currentReturnUrl = computed(() => this.router.url);
 
   ngOnInit(): void {
+    this.authState.ensureHydrated().subscribe();
     this.loadComments(1);
   }
 

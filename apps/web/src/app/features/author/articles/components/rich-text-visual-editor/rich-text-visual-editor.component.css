@@ -122,6 +122,11 @@
   font-size: smaller;
 }
 
+:host-context([data-theme="dark"]) .visual-editor-viewport,
+:host-context([data-theme="dark"]) textarea {
+  color-scheme: dark;
+}
+
 :host ::ng-deep .tiptap-content-canvas sup {
   vertical-align: super;
   font-size: smaller;

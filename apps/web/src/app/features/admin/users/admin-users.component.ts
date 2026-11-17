@@ -106,11 +106,12 @@ export class AdminUsersComponent implements OnInit {
         q: this.searchQuery().trim() || undefined,
       })
       .subscribe({
-        next: (res: PaginatedAdminUsersResponse) => {
-          this.users.set(res.data);
-          this.total.set(res.total);
-          this.page.set(res.page);
-          this.limit.set(res.limit);
+        next: (res: any) => {
+          const rawItems = res.items || res.data || [];
+          this.users.set(rawItems);
+          this.total.set(res.total ?? rawItems.length);
+          this.page.set(res.page ?? 1);
+          this.limit.set(res.limit ?? 20);
           this.totalPages.set(res.totalPages || 1);
           this.loading.set(false);
         },

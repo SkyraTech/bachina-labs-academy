@@ -82,6 +82,7 @@ describe('DashboardLayoutComponent', () => {
     expect(labels).toContain('Admin Hub');
     expect(labels).toContain('Users');
     expect(labels).toContain('Articles');
+    expect(labels).toContain('Comments');
     expect(labels).toContain('Categories');
     expect(labels).toContain('Tags');
     expect(labels).toContain('Account Security');
@@ -98,5 +99,44 @@ describe('DashboardLayoutComponent', () => {
     expect(authStateMock.logout).toHaveBeenCalledTimes(1);
     expect(toastMock.success).toHaveBeenCalledWith('You have been signed out.');
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('should define shared topbar height variable and sticky header hierarchy without overflow', () => {
+    const shell = fixture.nativeElement.querySelector('.dashboard-shell') as HTMLElement;
+    const topbar = fixture.nativeElement.querySelector('header.dashboard-topbar') as HTMLElement;
+    expect(shell).toBeTruthy();
+    expect(topbar).toBeTruthy();
+
+    const shellStyles = getComputedStyle(shell);
+    const topbarStyles = getComputedStyle(topbar);
+    expect(shellStyles.getPropertyValue('--dashboard-topbar-height').trim()).toBe('64px');
+    expect(topbarStyles.position).toBe('sticky');
+    expect(topbarStyles.zIndex).toBe('30');
+  });
+
+  it('should open mobile drawer on toggle click and close on Escape', () => {
+    const toggleBtn = fixture.nativeElement.querySelector('button[aria-label="Toggle workspace menu"]') as HTMLButtonElement;
+    expect(toggleBtn).toBeTruthy();
+
+    toggleBtn.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Close menu"]')).toBeTruthy();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Close menu"]')).toBeNull();
+  });
+
+  it('should include Return to Public Site inside mobile drawer and activate compact studio class on edit routes', () => {
+    const toggleBtn = fixture.nativeElement.querySelector('button[aria-label="Toggle workspace menu"]') as HTMLButtonElement;
+    toggleBtn.click();
+    fixture.detectChanges();
+
+    const drawerText = (fixture.nativeElement.querySelector('.drawer-responsive-panel') as HTMLElement)?.textContent;
+    expect(drawerText).toContain('Return to Public Site');
+
+    expect(component['matchesStudioEditRoute']('/author/articles/art-123/edit')).toBe(true);
+    expect(component['matchesStudioEditRoute']('/author/articles')).toBe(false);
+    expect(component['matchesStudioEditRoute']('/admin')).toBe(false);
   });
 });

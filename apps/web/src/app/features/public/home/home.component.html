@@ -1,6 +1,6 @@
-<div class="homepage-container flex flex-col gap-16 lg:gap-24 py-4 sm:py-8">
+<div class="homepage-container flex flex-col gap-16 lg:gap-24 px-4 sm:px-0 py-4 sm:py-8">
   <!-- 1. Hero Section -->
-  <section class="text-center max-w-4xl mx-auto flex flex-col items-center gap-6" aria-labelledby="hero-heading">
+  <section class="w-full min-w-0 text-center max-w-4xl mx-auto flex flex-col items-center gap-6" aria-labelledby="hero-heading">
     <!-- Eyebrow Badge -->
     <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-brand)]/10 border border-[var(--color-brand)]/30 text-[var(--color-brand)] text-xs font-bold tracking-wider uppercase backdrop-blur-md">
       <span class="w-2 h-2 rounded-full bg-[var(--color-brand)] animate-pulse"></span>
@@ -89,7 +89,7 @@
   </section>
 
   <!-- 2. Recent Articles Section (Replacing Fake Featured Articles per Schema Audit) -->
-  <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="recent-articles-heading">
+  <section class="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-6" aria-labelledby="recent-articles-heading">
     <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
       <div>
         <div class="flex items-center gap-2">
@@ -174,7 +174,7 @@
 
   <!-- 3. Category Discovery Section -->
   @if (categories().length > 0) {
-    <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="categories-heading">
+    <section class="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-6" aria-labelledby="categories-heading">
       <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
         <div>
           <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Knowledge Taxonomy</span>
@@ -218,7 +218,7 @@
 
   <!-- 4. Tag Discovery Section -->
   @if (tags().length > 0) {
-    <section class="max-w-6xl mx-auto w-full flex flex-col gap-6" aria-labelledby="tags-heading">
+    <section class="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-6" aria-labelledby="tags-heading">
       <div class="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-[var(--color-border)]">
         <div>
           <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Specialized Topics</span>
@@ -252,7 +252,7 @@
   }
 
   <!-- 5. Platform Capabilities & Author Invitation -->
-  <section class="max-w-6xl mx-auto w-full flex flex-col gap-10" aria-labelledby="features-heading">
+  <section class="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-10" aria-labelledby="features-heading">
     <div class="text-center max-w-xl mx-auto flex flex-col gap-2">
       <span class="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Platform Capabilities</span>
       <h2 id="features-heading" class="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] m-0">
@@ -272,7 +272,7 @@
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
           Draft, refine and structure useful technical guides in a dedicated author workspace with intuitive editorial tools.
         </p>
-        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+        <div class="flex flex-wrap items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Author Studio</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Draft Workspace</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Editorial Flow</span>
@@ -290,7 +290,7 @@
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
           Discover practical insights across modern software disciplines, from systems architecture and data engineering to cloud platforms.
         </p>
-        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+        <div class="flex flex-wrap items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Architecture</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Systems Design</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Cloud Platforms</span>
@@ -308,7 +308,7 @@
         <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed m-0 flex-1">
           Document engineering lessons, share technical blueprints, and grow alongside a focused community of developers.
         </p>
-        <div class="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
+        <div class="flex flex-wrap items-center gap-1.5 pt-3 border-t border-[var(--color-border)]">
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Engineering Craft</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Author Community</span>
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-[var(--color-brand)]/10 text-[var(--color-brand)] border border-[var(--color-brand)]/20">Knowledge Base</span>

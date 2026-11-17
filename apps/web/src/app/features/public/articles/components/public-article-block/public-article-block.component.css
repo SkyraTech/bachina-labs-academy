@@ -1,10 +1,32 @@
 /* Public Article Block Component Styles */
 :host {
   display: block;
+  min-width: 0;
 }
 
 .public-article-block {
   min-width: 0;
+  max-width: 100%;
+}
+
+/* Wrap long inline code tokens cleanly without distorting fenced pre code blocks */
+:host ::ng-deep .prose code,
+.public-article-block :not(pre) > code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+:host ::ng-deep .prose pre,
+.public-article-block pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .prose pre code,
+.public-article-block pre code {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .tab-size-2 {

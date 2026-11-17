@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PublicArticleBlock, slugifyHeading } from '../../models/public-article.models';
 
@@ -26,6 +26,43 @@ import { PublicArticleBlock, slugifyHeading } from '../../models/public-article.
 export class PublicArticleBlockComponent {
   readonly block = input.required<PublicArticleBlock>();
   readonly anchorId = input<string>();
+  readonly copiedCode = signal(false);
+
+  copyCode(code: unknown): void {
+    if (typeof code !== 'string') return;
+    const markCopied = () => {
+      this.copiedCode.set(true);
+      setTimeout(() => this.copiedCode.set(false), 2000);
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(markCopied).catch(() => {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = code;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          markCopied();
+        } catch {}
+      });
+    } else {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = code;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        markCopied();
+      } catch {}
+    }
+  }
 
   resolveHeadingId(text: unknown): string {
     const custom = this.anchorId();
@@ -95,14 +132,14 @@ export class PublicArticleBlockComponent {
   getCalloutVariantClasses(variant: unknown): string {
     switch (variant) {
       case 'WARNING':
-        return 'callout-warning bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200';
+        return 'callout-warning bg-amber-500/10 border-amber-600/30 text-amber-950 dark:bg-amber-950/25 dark:border-amber-500/40 dark:text-amber-200';
       case 'TIP':
-        return 'callout-tip bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200';
+        return 'callout-tip bg-emerald-500/10 border-emerald-600/30 text-emerald-950 dark:bg-emerald-950/25 dark:border-emerald-500/40 dark:text-emerald-200';
       case 'NOTE':
-        return 'callout-note bg-neutral-500/10 border-neutral-500/30 text-neutral-900 dark:text-neutral-200';
+        return 'callout-note bg-neutral-500/10 border-neutral-600/30 text-neutral-950 dark:bg-neutral-900/40 dark:border-neutral-500/40 dark:text-neutral-200';
       case 'INFO':
       default:
-        return 'callout-info bg-sky-500/10 border-sky-500/30 text-sky-900 dark:text-sky-200';
+        return 'callout-info bg-sky-500/10 border-sky-600/30 text-sky-950 dark:bg-sky-950/25 dark:border-sky-500/40 dark:text-sky-200';
     }
   }
 

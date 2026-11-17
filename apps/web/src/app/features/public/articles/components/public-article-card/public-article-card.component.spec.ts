@@ -95,6 +95,22 @@ describe('PublicArticleCardComponent', () => {
     );
   });
 
+  it('should make cover container an accessible navigation link to article detail', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const coverLink = compiled.querySelector('.card-cover-container') as HTMLAnchorElement;
+    expect(coverLink).not.toBeNull();
+    expect(coverLink?.tagName).toBe('A');
+    expect(coverLink?.getAttribute('href')).toContain(
+      '/articles/scaling-postgresql-read-replicas',
+    );
+    // DEMO-05: Ensure not hidden from assistive tech and not tabindex="-1"
+    expect(coverLink.getAttribute('aria-hidden')).toBeNull();
+    expect(coverLink.getAttribute('tabindex')).toBeNull();
+    expect(coverLink.getAttribute('aria-label')).toBe(
+      'Read article: Scaling PostgreSQL with Read Replicas',
+    );
+  });
+
   it('should render category and tag links when taxonomyCaptured is true', () => {
     const articleWithTaxonomy: PublicArticleItem = {
       ...mockArticle,

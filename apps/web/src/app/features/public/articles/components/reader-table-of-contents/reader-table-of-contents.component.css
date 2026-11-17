@@ -51,9 +51,15 @@
 }
 
 /* ── Desktop Sticky Sidebar ── */
+:host {
+  display: block;
+  height: 100%;
+}
+
 .toc-desktop-sidebar {
   position: relative;
   width: 260px;
+  height: 100%;
   flex-shrink: 0;
 }
 

@@ -465,5 +465,59 @@ describe('ArticleBlockEditorComponent', () => {
       component.onCancel();
       expect(component.isSourceValid()).toBe(true);
     });
+
+    it('should clear isDirty after a successful save with no concurrent edits', async () => {
+      stateMock.updateBlock.mockResolvedValueOnce(true);
+      component.onRichTextContentChange('<p>Saved B</p>');
+      component.onRichTextDirtyChange(true);
+      expect(component.isDirty()).toBe(true);
+
+      await component.onSave();
+      expect(component.isDirty()).toBe(false);
+    });
+
+    it('should preserve isDirty and edited content when save fails', async () => {
+      stateMock.updateBlock.mockResolvedValueOnce(false);
+      component.onRichTextContentChange('<p>Unsaved Failed Edit</p>');
+      component.onRichTextDirtyChange(true);
+      expect(component.isDirty()).toBe(true);
+
+      await component.onSave();
+      expect(component.isDirty()).toBe(true);
+      expect(component.richTextHtml).toBe('<p>Unsaved Failed Edit</p>');
+    });
+
+    it('should preserve concurrent edit C and keep dirty when save B completes in-flight', async () => {
+      let resolveSave!: (value: boolean) => void;
+      stateMock.updateBlock.mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveSave = resolve;
+          }),
+      );
+
+      component.onRichTextContentChange('<p>Edit B</p>');
+      component.onRichTextDirtyChange(true);
+
+      const savePromise = component.onSave();
+
+      // Simulate author continuing to type Edit C while Save B is in-flight
+      component.onRichTextContentChange('<p>Edit B + Edit C</p>');
+      component.onRichTextDirtyChange(true);
+
+      // Server responds for B and updates selectedBlockSignal before Save resolves or during flush
+      selectedBlockSignal.set({
+        ...sampleRichBlock,
+        content: { html: '<p>Edit B</p>' },
+      });
+      TestBed.flushEffects();
+
+      resolveSave(true);
+      await savePromise;
+
+      expect(component.richTextHtml).toBe('<p>Edit B + Edit C</p>');
+      expect(component.isDirty()).toBe(true);
+      expect(stateMock.markDirty).toHaveBeenCalled();
+    });
   });
 });

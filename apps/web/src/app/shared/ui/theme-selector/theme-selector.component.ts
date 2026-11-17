@@ -1,16 +1,17 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ThemeService, ThemeMode } from '../../../core/theme/theme.service';
+import { ThemeService, ResolvedTheme } from '../../../core/theme/theme.service';
 
 interface ThemeOption {
-  readonly mode: ThemeMode;
+  readonly mode: ResolvedTheme;
   readonly label: string;
 }
 
 /**
  * Reusable ThemeSelectorComponent.
  *
- * Implements a sleek micro-segmented control styled after modern SaaS platforms (Linear, Raycast).
+ * Implements a compact, accessible 2-choice Light/Dark segmented selector.
+ * Reflects effective theme ('light' or 'dark'), supporting automatic system detection.
  */
 @Component({
   selector: 'app-theme-selector',
@@ -26,10 +27,9 @@ export class ThemeSelectorComponent {
   protected readonly options: readonly ThemeOption[] = [
     { mode: 'light', label: 'Light' },
     { mode: 'dark', label: 'Dark' },
-    { mode: 'system', label: 'System' },
   ];
 
-  protected setTheme(mode: ThemeMode): void {
+  protected setTheme(mode: ResolvedTheme): void {
     this.themeService.setTheme(mode);
   }
 }

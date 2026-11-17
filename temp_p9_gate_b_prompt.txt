@@ -1,0 +1,1487 @@
+<USER_REQUEST>
+# BACHINA LABS ACADEMY
+## CHECKPOINT P9-UI-E2E-01 GATE B — COMPLETE REAL DASHBOARD FUNCTIONAL ACCEPTANCE
+
+### MULTIPLE AUTHOR ACCOUNTS · ONE ADMIN ACCOUNT · REAL REGISTRATION · ADMIN CATEGORY AND TAG MANAGEMENT · MULTI-AUTHOR ARTICLE CREATION · COMPLETE EDITOR WORKFLOWS · REAL PUBLISHING · PROFILES · COMMENTS · ADMIN MODERATION · ACCOUNT SECURITY · GENUINE MICROSOFT EDGE · DISPOSABLE POSTGRESQL ONLY · STRICT STOP
+
+**Project:** Bachina Labs Academy  
+**Development Partner:** Skyra Tech  
+**Current Checkpoint:** P9-UI-E2E-01 Gate B — Full Dashboard-Driven Functional Acceptance  
+**Previous Checkpoint:** P9-UI-E2E-01 Gate A — Accepted with Required Test Coverage Additions  
+**Execution Mode:** Owner-authorized isolated environment setup and real browser acceptance testing  
+**Next Development Phase:** P10-B Subscriptions and Entitlements — NOT AUTHORIZED
+
+**Workspace:**
+
+`c:\Users\hp\OneDrive\Documents\My Docs\Personal Projects\BachinaLabs\BachinaLabsAcademy`
+
+### Technology baseline
+
+- Angular 22.2.2 — standalone, zoneless, OnPush.
+- NestJS 12 with Fastify.
+- Prisma 6.19.3.
+- PostgreSQL 17.4.
+- Node.js 24 with pnpm.
+- Tailwind CSS v4.
+- Tiptap 3.32.2.
+- Vitest.
+- Playwright using genuine Microsoft Edge.
+
+---
+
+# 1. PRIMARY OWNER INSTRUCTION
+
+The owner requires a complete demonstration and acceptance test of every already-implemented Bachina Labs Academy feature through the **real application interface**.
+
+Previous data-creation activities used backend services to populate Articles.
+
+That approach is not acceptable as evidence that the dashboard works.
+
+For this checkpoint:
+
+**Create users through the registration UI, create categories and tags through the Admin Dashboard, create Articles through the Author Studio, publish through the visible Publish control, submit comments through the Reader, manage profiles through Account Settings, and perform moderation through the Admin Dashboard.**
+
+Only the first ADMIN identity may be provisioned through a narrowly scoped disposable-only bootstrap because public registration must not allow ADMIN creation.
+
+### Main goals
+
+1. Create exactly one test ADMIN.
+2. Register multiple test AUTHOR accounts through the browser.
+3. Verify account registration and email verification.
+4. Test real authentication and session behavior.
+5. Create categories and tags using the ADMIN dashboard.
+6. Create multiple Articles from different AUTHOR accounts.
+7. Exercise all implemented Article editor block types.
+8. Save, reload, preview and publish Articles through the UI.
+9. Test public catalog browsing, filtering and Article reading.
+10. Test author profiles and display names.
+11. Create comments from multiple accounts.
+12. Edit and delete comments.
+13. Test ADMIN comment moderation.
+14. Test role restrictions and cross-author ownership.
+15. Test account security and session revocation.
+16. Verify persistence with read-only database queries.
+17. Test responsive layouts and accessibility.
+18. Report every tested feature with PASS, FAIL, BLOCKED or NOT IMPLEMENTED.
+
+Do not introduce new features or silently patch defects.
+
+---
+
+# 2. OWNER AUTHORIZATION FOR GATE B
+
+This checkpoint authorizes **only** the following disposable-environment activities:
+
+- Create one fresh disposable PostgreSQL database with an approved name.
+- Apply the existing 14 migrations to that database.
+- Provision exactly one trusted test ADMIN.
+- Start API and web servers connected exclusively to the disposable database.
+- Register multiple test AUTHORS using the visible registration page.
+- Create test application data through actual UI interactions.
+- Exercise UI mutations and security workflows.
+- Run browser and relevant isolated verification tests.
+- Inspect resulting database records using read-only SQL.
+- Cleanly remove the owned disposable database after testing and reporting evidence.
+
+### Not authorized
+
+- Any primary database write.
+- Any primary migration.
+- Any modification to the existing two main accounts.
+- Any modification to the three existing published Articles.
+- Database seeding of business records.
+- Direct SQL or Prisma creation of categories, tags, Articles, profiles or comments.
+- API scripts used to fabricate successful UI journeys.
+- Source code feature implementation.
+- New dependencies.
+- Unrelated file changes.
+- P10 subscriptions.
+- MCP server implementation.
+
+---
+
+# 3. PROTECTED PRIMARY DATABASE — ABSOLUTE ZERO WRITES
+
+Protected database:
+
+`127.0.0.1:5432/bachina_labs_academy`
+
+### Expected historical baseline
+
+- 13 applied migrations.
+- 13 public tables.
+- 2 Users.
+- 11 expired UserSessions.
+- 11 AuditLogs.
+- 3 published Articles.
+- 33 ArticleBlocks.
+- 3 ArticleSnapshots.
+- 3 categories.
+- 6 tags.
+- 10 ArticleTag relationships.
+
+### Mandatory
+
+Verify the database identity and baseline with read-only queries.
+
+### Forbidden
+
+- Registration or login against primary.
+- Article creation or editing against primary.
+- Category/tag changes against primary.
+- Comment mutations against primary.
+- Profile mutations against primary.
+- Session writes against primary.
+- Migrations against primary.
+- Test data insertion against primary.
+- Cleanup against primary.
+
+### Important
+
+The existing accounts must remain unchanged:
+
+- `hello@skyra-tech.com` — AUTHOR.
+- `admin@skyra-tech.com` — ADMIN.
+
+The three existing published Articles must remain untouched.
+
+---
+
+# 4. FRESH DISPOSABLE DATABASE
+
+Create one fresh test database matching:
+
+`^academy_e2e_suite_[a-f0-9]{16}$`
+
+Example format:
+
+`academy_e2e_suite_0123456789abcdef`
+
+Generate a fresh unique name rather than reusing this example.
+
+### Connection requirements
+
+- Host exactly `127.0.0.1`.
+- Port exactly `5432`.
+- Database name matches the allowlist.
+- Database was created by this checkpoint.
+- No alternate database connection points to primary.
+- No fallback to `bachina_labs_academy`.
+
+### Required runtime verification
+
+Before any browser mutation:
+
+1. Verify the disposable database exists.
+2. Verify its exact name.
+3. Verify the backend runtime's resolved `DATABASE_URL`.
+4. Verify Prisma is connected to that disposable database.
+5. Verify all database-writing backend workers use the same target.
+6. Verify browser API traffic reaches the intended backend.
+7. Ensure the backend cannot silently fall back to primary.
+8. Stop immediately if any connection points to primary.
+
+### Critical
+
+Do not rely solely on checking an environment variable.
+
+Verify the effective database connection from the running backend process.
+
+Use fail-closed configuration.
+
+---
+
+# 5. DATABASE SCHEMA SETUP
+
+Apply exactly the existing 14 approved migrations to the disposable database.
+
+This includes:
+
+`20261106000000_create_user_profiles_and_article_comments`
+
+### Required
+
+- Use the repository's existing migrations.
+- Do not generate new migrations.
+- Do not edit migration SQL.
+- Do not change Prisma models.
+- Verify all 14 migrations are applied.
+- Verify `user_profiles` exists.
+- Verify `article_comments` exists.
+- Verify required foreign keys and check constraints.
+- Verify AuditLog constraints.
+- Verify database schema compatibility with the running API.
+
+### Important
+
+Migration 14 is authorized **only on the disposable database**.
+
+Do not apply it to the protected primary.
+
+If existing migrations fail, stop and report the precise defect.
+
+Do not modify migrations to force a pass.
+
+---
+
+# 6. ABSOLUTE BUSINESS-DATA CREATION RULE
+
+**All business records must originate from actual visible UI operations.**
+
+### Allowed
+
+- Browser clicks.
+- Browser typing.
+- Form submission.
+- Modal confirmation.
+- Drag-and-drop.
+- Rich-text editing.
+- Toolbar interactions.
+- UI-driven save.
+- UI-driven publish.
+- UI-driven profile changes.
+- UI-driven comment submission.
+- UI-driven moderation.
+
+### Not allowed as passing UI evidence
+
+- SQL INSERT statements.
+- Prisma create/update calls.
+- Backend service invocations.
+- Direct REST API scripts.
+- Direct browser `fetch()` calls to create records.
+- Hidden fixture endpoints.
+- Mocked successful mutation responses.
+- Pre-populated business test data.
+- Manual database modifications to bypass validation.
+
+### Narrow setup exception
+
+Exactly one ADMIN may be created by a secure disposable-only bootstrap because public registration must not permit ADMIN role selection.
+
+This must be recorded as an infrastructure exception.
+
+### Important distinction
+
+Read-only SQL may verify persistent data created by the UI.
+
+It must never substitute for a missing or failing UI workflow.
+
+---
+
+# 7. TEST ACCOUNT POPULATION
+
+Create **one ADMIN and at least four AUTHOR accounts**.
+
+## ADMIN — one account only
+
+Email:
+
+`admin-e2e@skyra-tech.com`
+
+Role:
+
+`ADMIN`
+
+Provision through the approved secure disposable-only bootstrap.
+
+## AUTHOR 1 — frontend contributor
+
+Email:
+
+`frontend-e2e@skyra-tech.com`
+
+Role:
+
+`AUTHOR`
+
+Create through `/register`.
+
+## AUTHOR 2 — backend contributor
+
+Email:
+
+`backend-e2e@skyra-tech.com`
+
+Role:
+
+`AUTHOR`
+
+Create through `/register`.
+
+## AUTHOR 3 — DevOps contributor
+
+Email:
+
+`devops-e2e@skyra-tech.com`
+
+Role:
+
+`AUTHOR`
+
+Create through `/register`.
+
+## AUTHOR 4 — community contributor
+
+Email:
+
+`community-e2e@skyra-tech.com`
+
+Role:
+
+`AUTHOR`
+
+Create through `/register`.
+
+### Registration rules
+
+- Use the real registration form.
+- Enter email and secure test credentials.
+- Submit.
+- Complete the supported email-verification flow.
+- Log in through the visible login form.
+- Verify the resulting role is AUTHOR.
+- Verify account status.
+- Verify email verification.
+- Verify account appears in the Admin user directory.
+
+### Email verification
+
+Use a controlled local email-capture mechanism, if already supported.
+
+Do not directly set `emailVerifiedAt` through SQL or Prisma for UI-registered accounts.
+
+If the application cannot complete the verification journey because email delivery is unavailable, mark that test BLOCKED.
+
+Do not bypass the requirement by modifying User records.
+
+### Credentials
+
+Use separate strong test passwords.
+
+Do not reuse the owner's real account passwords.
+
+Do not print secrets in logs or reports.
+
+Do not commit credentials to files.
+
+### Expected user count
+
+At least five accounts:
+
+- One ADMIN.
+- Four AUTHORS.
+
+Additional AUTHOR accounts are permitted only when justified by a specific acceptance scenario and created through the visible registration UI.
+
+Do not create additional ADMIN accounts.
+
+---
+
+# 8. TEST PERSONAS
+
+Use the accounts for distinct user journeys.
+
+| Persona | Responsibilities |
+|---|---|
+| ADMIN | Category and tag management, User directory, Article oversight, moderation |
+| Frontend AUTHOR | Angular Article creation, editing, publishing, commenting |
+| Backend AUTHOR | Backend architecture Article creation, editing, publishing |
+| DevOps AUTHOR | Docker/DevOps Article creation, editing, publishing |
+| Community AUTHOR | Commenting, profile management, ownership-denial tests |
+
+### Important
+
+The test must prove multi-user isolation.
+
+One AUTHOR must not be able to modify another AUTHOR's drafts or comments.
+
+---
+
+# 9. CATEGORY MANAGEMENT THROUGH ADMIN UI
+
+Authenticate as ADMIN.
+
+Navigate to:
+
+`/admin/categories`
+
+Create at least four categories through the visible UI.
+
+### Suggested category data
+
+1. Frontend Engineering — `frontend-engineering`.
+2. Backend Architecture — `backend-architecture`.
+3. DevOps and Cloud — `devops-and-cloud`.
+4. Software Testing — `software-testing`.
+
+### Required actions
+
+- Open Create Category dialog.
+- Enter valid category name.
+- Verify slug generation.
+- Enter description.
+- Save.
+- Confirm success notification.
+- Confirm category appears in list.
+- Edit category name or description.
+- Save and verify.
+- Test invalid input.
+- Test duplicate name/slug.
+- Test unsafe slug.
+- Test category search or filtering if implemented.
+- Test deletion where safe.
+- Test referenced-category deletion protection.
+
+### Important
+
+All category creation, editing and deletion must occur through the Admin UI.
+
+No direct SQL or API creation.
+
+---
+
+# 10. TAG MANAGEMENT THROUGH ADMIN UI
+
+Navigate to:
+
+`/admin/tags`
+
+Create at least eight tags through the visible UI.
+
+### Suggested tags
+
+- angular
+- typescript
+- nestjs
+- docker
+- nginx
+- kubernetes
+- playwright
+- software-testing
+
+### Required actions
+
+- Create tags.
+- Verify automatic slug generation.
+- Save.
+- Confirm list updates.
+- Search for tags.
+- Edit a tag.
+- Test duplicate prevention.
+- Test invalid input.
+- Test deletion.
+- Test referenced-tag deletion behavior.
+- Verify new tags appear in Article Creation.
+
+### Important
+
+Do not insert tags directly through SQL or Prisma.
+
+---
+
+# 11. MULTI-AUTHOR ARTICLE CREATION
+
+Each of the first three AUTHORS must create and publish at least one Article through the actual Article Creation page.
+
+The fourth AUTHOR should create an additional draft for editing and ownership tests.
+
+### Minimum required Article data
+
+**Article 1 — Frontend AUTHOR**
+
+Title:
+
+`Building Reliable Angular Applications with Modern Architecture`
+
+Category:
+
+Frontend Engineering
+
+Tags:
+
+angular, typescript
+
+**Article 2 — Backend AUTHOR**
+
+Title:
+
+`Designing Maintainable NestJS APIs with Modular Architecture`
+
+Category:
+
+Backend Architecture
+
+Tags:
+
+nestjs, typescript
+
+**Article 3 — DevOps AUTHOR**
+
+Title:
+
+`Containerizing Web Applications with Docker and NGINX`
+
+Category:
+
+DevOps and Cloud
+
+Tags:
+
+docker, nginx
+
+**Article 4 — Community AUTHOR**
+
+Title:
+
+`Practical Browser Testing with Microsoft Edge and Playwright`
+
+Category:
+
+Software Testing
+
+Tags:
+
+playwright, software-testing
+
+### Expected outcome
+
+- Three independently authored published Articles.
+- One additional real draft.
+- Each Article linked to the correct AUTHOR.
+- Correct category associations.
+- Correct tag associations.
+- Correct author visibility.
+- No accidental cross-user modification.
+
+### Important
+
+These are disposable acceptance Articles, not production content.
+
+The content must be original test material, not copied from protected Medium publications.
+
+---
+
+# 12. ARTICLE CREATION PAGE — REAL UI ONLY
+
+For every Article:
+
+1. Log in as the corresponding AUTHOR.
+2. Open `/author/articles/new`.
+3. Enter title.
+4. Verify suggested slug.
+5. Modify slug where applicable.
+6. Enter summary.
+7. Choose typography preset.
+8. Select category.
+9. Select multiple tags.
+10. Submit using the visible form control.
+11. Verify navigation to the Article editor.
+12. Verify the Article appears in My Articles.
+
+### Validate
+
+- Missing title.
+- Invalid title.
+- Invalid slug.
+- Duplicate slug.
+- Invalid summary where restricted.
+- Missing required metadata.
+- Correct error and success messages.
+
+### Critical
+
+Do not create Article drafts through direct API calls.
+
+---
+
+# 13. FULL ARTICLE EDITOR TESTING
+
+Exercise every implemented block type identified in the actual component.
+
+Do not assume all ten block types are implemented merely because the menu lists them.
+
+### Required block categories
+
+- HEADING.
+- RICH_TEXT.
+- CODE.
+- CALLOUT.
+- TABLE.
+- DIVIDER.
+- Other block types actually present.
+
+### Test actions
+
+1. Add a heading.
+2. Change heading level.
+3. Add rich text.
+4. Format bold.
+5. Format italic.
+6. Create a list.
+7. Add a hyperlink.
+8. Add a block quote.
+9. Add a code block.
+10. Select code language.
+11. Toggle line numbers.
+12. Add a callout.
+13. Select callout style.
+14. Add a table.
+15. Add rows and columns.
+16. Edit table cells.
+17. Add a divider.
+18. Add every other supported block type.
+19. Reorder blocks using drag-and-drop.
+20. Remove a block.
+21. Verify delete confirmation where applicable.
+22. Save through the supported UI.
+23. Verify dirty/saving/saved indicators.
+24. Reload the page.
+25. Verify all retained content.
+26. Test preview mode.
+27. Verify rendered formatting.
+
+### Important
+
+Use visible editor controls, not direct JSON updates.
+
+If a control fails, report the defect.
+
+Do not repair the content through backend shortcuts.
+
+---
+
+# 14. ARTICLE PUBLISHING
+
+For Articles 1, 2 and 3:
+
+1. Open the corresponding draft.
+2. Ensure all changes are saved.
+3. Click Publish Article.
+4. Confirm the publishing dialog.
+5. Verify success state.
+6. Verify PUBLISHED status.
+7. Verify published slug.
+8. Open public Article link.
+9. Verify content.
+10. Verify category and tags.
+11. Verify correct author identity.
+12. Verify immutable ArticleSnapshot was created.
+
+### Additional tests
+
+- Publishing with unsaved changes.
+- Publishing an empty draft.
+- Publishing with invalid metadata.
+- Published slug stability.
+- Republish after an authorized edit within disposable test data.
+- Published snapshot history.
+- Draft versus published revision behavior.
+- Publication error handling.
+
+### Important
+
+No direct Snapshot inserts or modifications.
+
+Publishing must occur through the visible UI.
+
+---
+
+# 15. MULTI-AUTHOR OWNERSHIP TESTING
+
+Verify the application enforces ownership.
+
+### Required cases
+
+- Frontend AUTHOR can edit their Article.
+- Backend AUTHOR can edit their Article.
+- DevOps AUTHOR can edit their Article.
+- Community AUTHOR can edit their own draft.
+- Backend AUTHOR cannot edit Frontend AUTHOR's draft.
+- DevOps AUTHOR cannot edit Backend AUTHOR's Article without permission.
+- Community AUTHOR cannot access another AUTHOR's private draft.
+- ADMIN sees Articles in oversight.
+- ADMIN does not gain an unapproved unpublish capability.
+
+### Negative testing
+
+Use real browser navigation to another Article's editor URL.
+
+Expected result:
+
+- Appropriate 404 or access-denied boundary.
+- No draft content leakage.
+- No unauthorized save.
+- No unintended state mutation.
+
+---
+
+# 16. PUBLIC ARTICLE CATALOGUE
+
+Use anonymous browser context.
+
+Navigate to:
+
+`/articles`
+
+### Test
+
+- All three published Articles appear.
+- Unpublished fourth draft does not appear.
+- Article cards show correct titles.
+- Category filtering.
+- Tag filtering.
+- Keyword searching.
+- Combined filters.
+- Reset filters.
+- Pagination where applicable.
+- Empty search results.
+- Invalid filters.
+- Correct public links.
+
+### Important
+
+Verify these behaviors through visible controls.
+
+---
+
+# 17. PUBLIC ARTICLE READER
+
+Open all published Articles.
+
+### Verify
+
+- Title.
+- Summary.
+- Category.
+- Tags.
+- Author.
+- Published date.
+- Content blocks.
+- Headings.
+- Table of Contents.
+- Code highlighting.
+- Code-copy control.
+- Callouts.
+- Tables.
+- Links.
+- Responsive typography.
+- Public slug.
+- Not-found behavior.
+- Public content does not leak private drafts.
+
+### Required
+
+Verify accessibility and responsiveness across all seven canonical viewport sizes.
+
+---
+
+# 18. USER PROFILE MANAGEMENT
+
+Migration 14 is available on the disposable database.
+
+Use the real Account Settings UI:
+
+`/account`
+
+### For each AUTHOR
+
+Set a distinct display name.
+
+Examples:
+
+- Frontend AUTHOR: `Frontend Engineer`.
+- Backend AUTHOR: `Backend Architect`.
+- DevOps AUTHOR: `DevOps Engineer`.
+- Community AUTHOR: `Community Contributor`.
+
+### Test
+
+- Open profile settings.
+- Enter display name.
+- Save.
+- Verify confirmation.
+- Reload.
+- Verify persistence.
+- Open public author profile.
+- Verify display name.
+- Open Article Reader.
+- Verify updated author attribution.
+- Open comments.
+- Verify commenter display name.
+
+### Validation
+
+- Empty input.
+- Too-short name.
+- Too-long name.
+- Unsupported characters.
+- Email-like values.
+- Unicode name support.
+- Unauthorized profile changes.
+- Private email non-disclosure.
+
+### Important
+
+No avatar functionality is required.
+
+Do not implement avatar upload.
+
+---
+
+# 19. COMMENTS — REAL USER INTERACTIONS
+
+Use published test Articles.
+
+### Required
+
+Multiple AUTHORS must comment on each other's Articles.
+
+Minimum scenarios:
+
+1. Frontend AUTHOR comments on Backend AUTHOR's Article.
+2. Backend AUTHOR comments on Frontend AUTHOR's Article.
+3. DevOps AUTHOR comments on Frontend AUTHOR's Article.
+4. Community AUTHOR comments on DevOps AUTHOR's Article.
+5. Article owner comments on their own Article.
+
+### Test actions
+
+- Type a comment.
+- Submit through Post Comment.
+- Verify appearance.
+- Reload.
+- Verify persistence.
+- Edit own comment.
+- Save edited comment.
+- Cancel an edit.
+- Delete own comment.
+- Confirm deletion behavior.
+- Verify comment count updates.
+- Verify public commenter display name.
+- Verify Article owner badge.
+- Verify chronology and pagination where applicable.
+
+### Validation
+
+- Empty comment.
+- More than 2,000 characters.
+- Special characters.
+- Unicode content.
+- Rapid repeated submissions.
+- Unauthorized modification.
+- Comments bound to correct ArticleSnapshot.
+
+### Important
+
+No direct API or SQL comment creation.
+
+---
+
+# 20. CROSS-USER COMMENT SECURITY
+
+Verify:
+
+- AUTHOR A can edit their own comment.
+- AUTHOR A cannot edit AUTHOR B's comment.
+- AUTHOR A cannot delete AUTHOR B's comment.
+- Unauthenticated visitor cannot post.
+- Unverified user cannot post if verification is required.
+- Suspended or disabled account cannot post.
+- Removed comment cannot be edited through ordinary UI.
+- Invalid or stale comment routes fail safely.
+- No private email leakage.
+
+### Testing mode
+
+Use actual sessions and real browser interactions.
+
+Do not fake roles through JavaScript state changes.
+
+Use distinct registered AUTHOR accounts.
+
+---
+
+# 21. ADMIN COMMENT MODERATION
+
+Log in as the test ADMIN.
+
+Navigate to:
+
+`/admin/comments`
+
+### Required
+
+- View all comments.
+- Filter Visible.
+- Filter Removed.
+- Locate a comment.
+- Open moderation dialog.
+- Select a valid reason.
+- Confirm removal.
+- Verify success notification.
+- Verify status becomes REMOVED.
+- Verify comment disappears from public Reader.
+- Verify moderation metadata.
+- Verify AuditLog entry.
+
+### Required reasons to cover
+
+- SPAM.
+- HARASSMENT.
+- HATE_SPEECH.
+- INAPPROPRIATE.
+- OFF_TOPIC.
+- POLICY_VIOLATION.
+
+Use harmless synthetic test content.
+
+### Security
+
+Confirm ordinary AUTHORS cannot access Admin moderation controls.
+
+Do not introduce nested replies or reactions.
+
+---
+
+# 22. AUTHENTICATION, VERIFICATION AND SESSIONS
+
+Test:
+
+- AUTHOR registration.
+- Duplicate registration.
+- Invalid email.
+- Invalid password.
+- Weak password rejection.
+- Email verification.
+- Invalid verification token.
+- Expired verification token where feasible.
+- Login.
+- Invalid login.
+- Logout.
+- Protected route redirection.
+- Session persistence.
+- Multiple browser sessions.
+- Session inventory.
+- Revoke another session.
+- Log out everywhere.
+- Current-session indicator.
+- Session expiry behavior.
+- ADMIN login.
+- AUTHOR rejected from ADMIN pages.
+
+### Important
+
+All tests operate on disposable accounts and sessions.
+
+Do not use existing primary credentials.
+
+---
+
+# 23. ADMIN HUB VERIFICATION
+
+With the test ADMIN account, verify:
+
+- Platform overview metrics.
+- User directory.
+- User detail view.
+- Article oversight.
+- Article metadata.
+- Category directory.
+- Tag directory.
+- Comment moderation.
+- Correct User count.
+- Correct Article count.
+- Correct published count.
+- Correct category/tag count where displayed.
+- Proper loading and empty states.
+- Proper error handling.
+- Role restrictions.
+
+### Important
+
+Do not assume ADMIN can edit another AUTHOR's Article unless this is expressly supported by the current source contract.
+
+---
+
+# 24. ACCOUNT STATUS AND NEGATIVE SECURITY TESTS
+
+Where the current Admin UI supports account-status changes, test:
+
+- ACTIVE.
+- SUSPENDED.
+- DISABLED.
+
+If the UI does not support these mutations, report that clearly.
+
+Do not change account status directly in SQL merely to produce a UI pass.
+
+For security-only scenarios requiring fixture setup, use separately classified isolated backend tests and do not misrepresent those results as UI acceptance.
+
+### Required
+
+Distinguish:
+
+- UI-tested.
+- API-tested.
+- Source-reviewed.
+- Not tested.
+- Not implemented.
+
+---
+
+# 25. RESPONSIVE TESTING
+
+Use genuine Microsoft Edge.
+
+### Canonical viewports
+
+- 320×640.
+- 360×800.
+- 375×667.
+- 768×1024.
+- 1024×768.
+- 1280×800.
+- 1440×900.
+
+### Areas
+
+- Authentication.
+- Admin overview.
+- User directory.
+- Category management.
+- Tag management.
+- Article Creation.
+- Article editor.
+- Article preview.
+- Public catalog.
+- Public Reader.
+- Profile settings.
+- Comment section.
+- Moderation.
+- Account security.
+
+### Verify
+
+- No global horizontal overflow.
+- No clipped controls.
+- Accessible focus.
+- Labels.
+- Dialog behavior.
+- Keyboard interactions.
+- Responsive navigation.
+- Readable tables.
+- Adequate touch targets.
+- Light and dark modes.
+
+Do not change CSS during acceptance testing.
+
+---
+
+# 26. FAILURE HANDLING
+
+When an application feature fails:
+
+1. Capture the exact visible behavior.
+2. Record the current route.
+3. Record persona.
+4. Record browser viewport.
+5. Capture relevant non-sensitive console or network errors.
+6. Record expected versus actual behavior.
+7. Assign severity.
+8. Continue independent scenarios where safe.
+9. Do not bypass the broken UI.
+10. Do not silently modify source code.
+
+### Defect severity
+
+- BLOCKER.
+- CRITICAL.
+- HIGH.
+- MEDIUM.
+- LOW.
+
+### Important
+
+A failed UI create operation cannot be turned into a passing scenario using a direct backend insert.
+
+---
+
+# 27. REQUIRED TEST EXECUTION MATRIX
+
+For every implemented feature, report:
+
+| Test ID | Persona | Feature | Visible UI Action | Expected Result | Actual Result | Evidence | Status |
+|---|---|---|---|---|---|---|---|
+
+### Allowed statuses
+
+- PASS.
+- FAIL.
+- BLOCKED.
+- NOT IMPLEMENTED.
+- NOT EXECUTED.
+
+### Required reporting discipline
+
+- No fabricated PASS results.
+- No claims of live UI testing based on mocked APIs.
+- No direct database inserts counted as UI success.
+- No missing failed scenarios.
+- No aggregate claims unsupported by scenario evidence.
+
+### Coverage counts
+
+Provide:
+
+- Total planned scenarios.
+- Total executed scenarios.
+- Passed.
+- Failed.
+- Blocked.
+- Not implemented.
+- Not executed.
+- Coverage percentage.
+- P0 pass rate.
+- P1 pass rate.
+- P2 pass rate.
+
+---
+
+# 28. DATABASE POSTFLIGHT
+
+After the browser journeys, use read-only SQL against the disposable test database to verify:
+
+- One ADMIN.
+- At least four AUTHORS.
+- Email verification state.
+- Password hashing format.
+- Session records.
+- Audit entries.
+- Category records created through UI.
+- Tag records created through UI.
+- Article ownership.
+- Draft and published states.
+- Article blocks.
+- ArticleSnapshots.
+- Article tags.
+- UserProfiles.
+- Comments.
+- Moderation status.
+- Moderation reason.
+- Comment ownership.
+- Foreign-key integrity.
+
+### Important
+
+Do not repair database records through direct SQL.
+
+If a UI action produced inconsistent data, report the defect.
+
+---
+
+# 29. DISPOSABLE DATABASE CLEANUP
+
+After test execution and evidence collection:
+
+1. Stop all application connections.
+2. Stop browser runners.
+3. Confirm database identity and ownership.
+4. Confirm database name matches the allowlist.
+5. Perform normal connection teardown.
+6. Drop only the disposable database created by this checkpoint.
+7. Verify no leftover disposable databases from this execution.
+
+### Forbidden
+
+- Forced database drop.
+- Backend termination of PostgreSQL sessions.
+- Primary database deletion.
+- Primary schema mutation.
+- Primary application-data mutation.
+
+If a disposable database cannot be safely dropped, leave it intact and report its exact name and blocker.
+
+---
+
+# 30. PROJECT RESTRICTIONS
+
+### Markdown
+
+Never create, edit, rename, move or delete `.md` files.
+
+All reports must be delivered directly in Antigravity chat.
+
+### Version control
+
+No Git or other version-control commands.
+
+### Source code
+
+No application feature implementation or unrelated source modifications.
+
+### Dependencies
+
+No installation or upgrades without explicit approval.
+
+### Database
+
+No primary database writes.
+
+### UI acceptance
+
+No direct business-data inserts.
+
+### Product scope
+
+Do not implement:
+
+- Subscriptions.
+- MCP.
+- Payment integrations.
+- Nested comments.
+- Reactions.
+- Bookmarks.
+- Following.
+- Avatar upload.
+- Admin unpublish functionality.
+
+---
+
+# 31. REQUIRED FINAL REPORT — ANTIGRAVITY CHAT ONLY
+
+Produce the following sections.
+
+### A. Executive Summary
+
+Overall execution results and acceptance verdict.
+
+### B. Environment Isolation Verification
+
+Disposable database identity, runtime configuration and primary protection.
+
+### C. Migration Verification
+
+14 migrations in disposable, 13 retained in primary.
+
+### D. Test Account Inventory
+
+One ADMIN and all UI-registered AUTHORS.
+
+### E. Registration and Email Verification
+
+Real browser workflow outcomes.
+
+### F. Authentication and Session Security
+
+Login, logout, session inventory and revocation.
+
+### G. Category Management
+
+Created, edited, invalid and duplicate scenarios.
+
+### H. Tag Management
+
+Created, edited, invalid and duplicate scenarios.
+
+### I. Multi-Author Article Inventory
+
+Titles, ownership, category, tags and publication state.
+
+### J. Article Creation UI
+
+Complete step-by-step journey for each AUTHOR.
+
+### K. Article Editor
+
+Block types, formatting, reorder, save, reload and preview.
+
+### L. Publishing and Snapshot Integrity
+
+Published revisions, slugs, immutable snapshots and negative tests.
+
+### M. Public Catalog
+
+Search, filters, pagination and Article visibility.
+
+### N. Public Reader
+
+All published Article rendering results.
+
+### O. User Profiles
+
+Display-name changes, persistence and privacy.
+
+### P. Comments
+
+Creation, editing, deletion and validation.
+
+### Q. Cross-User Security
+
+Ownership restrictions and unauthorized attempts.
+
+### R. Admin Moderation
+
+Removal reasons, status changes and audit effects.
+
+### S. Admin Hub
+
+Metrics, Users, Articles, taxonomy and moderation.
+
+### T. Account Status and Security Tests
+
+Actual supported UI and negative cases.
+
+### U. Responsive and Accessibility Results
+
+Seven Microsoft Edge viewports.
+
+### V. Full Scenario Matrix
+
+Every test, evidence and status.
+
+### W. Aggregate Coverage
+
+PASS, FAIL, BLOCKED, NOT IMPLEMENTED and NOT EXECUTED counts.
+
+### X. Defect Register
+
+Prioritized actionable defects.
+
+### Y. Database Persistence Verification
+
+Read-only checks against disposable DB.
+
+### Z. Protected Primary Safety Audit
+
+Before and after counts, no intentional mutations.
+
+### AA. Disposable Cleanup
+
+Drop result or safe teardown blocker.
+
+### AB. Source-Change Audit
+
+Zero application modifications.
+
+### AC. Markdown Compliance
+
+Zero `.md` changes.
+
+### AD. Version-Control Compliance
+
+No Git commands.
+
+### AE. Product Scope Compliance
+
+No subscriptions, MCP or billing.
+
+### AF. Strict Stop Confirmation
+
+No unauthorized implementation.
+
+### AG. Final Verdict
+
+Choose exactly one:
+
+**P9-UI-E2E-01 GATE B COMPLETE — FULL DASHBOARD-DRIVEN ACCEPTANCE PASSED; MULTIPLE AUTHORS, ADMIN, ARTICLES, TAXONOMY, PROFILES, COMMENTS, SECURITY AND READER VERIFIED; PRIMARY UNCHANGED**
+
+**P9-UI-E2E-01 GATE B COMPLETE WITH DEFECTS — REAL UI TESTING EXECUTED; SPECIFIC FAILURES REQUIRE CORRECTION**
+
+**P9-UI-E2E-01 GATE B PARTIAL — SOME REQUIRED USER JOURNEYS BLOCKED OR NOT EXECUTED**
+
+**P9-UI-E2E-01 GATE B BLOCKED — SAFE DISPOSABLE ENVIRONMENT OR REAL UI EXECUTION COULD NOT BE ESTABLISHED**
+
+**P9-UI-E2E-01 GATE B FAILED — PRIMARY DATABASE, SOURCE OR SECURITY BOUNDARY VIOLATED**
+
+---
+
+# 32. ACCEPTANCE CRITERIA
+
+Gate B can be considered fully accepted only if:
+
+1. Exactly one ADMIN is provisioned in the disposable environment.
+2. At least four AUTHORS register through the actual UI.
+3. Registration and verification workflows are tested.
+4. Multiple Authors log in independently.
+5. Categories are created through Admin UI.
+6. Tags are created through Admin UI.
+7. Multiple Articles are created through Author Studio.
+8. At least three Articles are published by different AUTHORS.
+9. A fourth Article remains draft.
+10. Editor blocks are created through visible controls.
+11. Draft content survives reload.
+12. Article preview works.
+13. Publishing creates immutable snapshots.
+14. Public Article links work.
+15. Public search and filters work.
+16. Profiles can be edited through the UI.
+17. Profile changes appear publicly.
+18. Multiple accounts can comment.
+19. Comment owner edit/delete works.
+20. ADMIN moderation works.
+21. Cross-user editing is denied.
+22. Cross-user comment mutations are denied.
+23. Session management works.
+24. Existing role security is preserved.
+25. Admin Hub reflects correct data.
+26. All seven canonical viewports are tested.
+27. No browser mocks are counted as real acceptance evidence.
+28. No backend business-data inserts are used.
+29. Primary database remains unmodified.
+30. Disposable database is safely cleaned up.
+31. No source changes are made.
+32. No Markdown changes are made.
+33. No Git commands are executed.
+34. Full evidence and defect matrix are reported.
+35. Strict stop is enforced.
+
+---
+
+# 33. STRICT STOP CONDITION
+
+After completing all authorized real-browser tests, read-only persistence verification, safe disposable database cleanup and final reporting:
+
+**STOP IMMEDIATELY.**
+
+Do not start P10-B.
+
+Do not implement subscriptions.
+
+Do not implement MCP.
+
+Do not add billing.
+
+Do not apply migration 14 to primary.
+
+Do not modify the existing two primary accounts.
+
+Do not modify the three primary published Articles.
+
+Do not create production-facing test data.
+
+Do not directly insert application business records.
+
+Do not bypass failed UI controls.
+
+Do not modify source code.
+
+Do not install dependencies.
+
+Do not modify global CSS.
+
+Do not create, edit, rename, move or delete Markdown files.
+
+Do not execute Git or other version-control commands.
+
+Do not drop any database other than the verified owned disposable database.
+
+Do not terminate PostgreSQL processes forcibly.
+
+**P9-UI-E2E-01 Gate B exists to prove that Bachina Labs Academy's implemented features work through the real Admin Dashboard, Author Studio, Account Settings and Public Reader using multiple genuine application users and an isolated PostgreSQL database.**
+
+**Only real UI interactions count as functional acceptance.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T16:28:34+05:30.
+</ADDITIONAL_METADATA>

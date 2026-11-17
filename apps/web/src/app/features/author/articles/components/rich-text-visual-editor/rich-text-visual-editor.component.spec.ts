@@ -360,6 +360,48 @@ describe('RichTextVisualEditorComponent', () => {
     expect(component.mode()).toBe('visual');
     expect(component.editor?.getHTML()).toContain('Important text');
   });
+
+  it('should not emit dirty when disabled toggles false -> true -> false around save', () => {
+    host.dirtyEmitted = false;
+    host.disabledSignal.set(true);
+    fixture.detectChanges();
+    host.disabledSignal.set(false);
+    fixture.detectChanges();
+
+    expect(host.dirtyEmitted).toBe(false);
+  });
+
+  it('should not emit dirty on programmatic content or blockId signal updates', () => {
+    host.dirtyEmitted = false;
+    host.contentSignal.set('<p>Updated from server</p>');
+    fixture.detectChanges();
+    expect(host.dirtyEmitted).toBe(false);
+
+    host.blockIdSignal.set('b-2');
+    host.contentSignal.set('<p>Another block content</p>');
+    fixture.detectChanges();
+    expect(host.dirtyEmitted).toBe(false);
+  });
+
+  it('should not emit dirty when ProseMirror update has docChanged === false', () => {
+    host.dirtyEmitted = false;
+    const editor = component.editor!;
+    const selectionOnlyTr = editor.state.tr;
+    expect(selectionOnlyTr.docChanged).toBe(false);
+    editor.view.dispatch(selectionOnlyTr);
+    fixture.detectChanges();
+
+    expect(host.dirtyEmitted).toBe(false);
+  });
+
+  it('should emit dirty when genuine user edit or formatting changes the document', () => {
+    host.dirtyEmitted = false;
+    component.editor?.chain().focus().insertContent(' edited').run();
+    fixture.detectChanges();
+
+    expect(host.dirtyEmitted).toBe(true);
+    expect(host.lastEmittedContent).toContain('edited');
+  });
 });
 
 describe('Tiptap Schema and Source Validators', () => {

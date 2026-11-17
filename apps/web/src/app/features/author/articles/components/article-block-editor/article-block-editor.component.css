@@ -27,3 +27,9 @@
   color: #fde68a;
   border-color: #78350f;
 }
+
+:host-context([data-theme="dark"]) textarea,
+:host-context([data-theme="dark"]) .table-editor-scroll,
+:host-context([data-theme="dark"]) select {
+  color-scheme: dark;
+}

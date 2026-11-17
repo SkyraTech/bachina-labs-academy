@@ -65,6 +65,11 @@ export class OriginGuard implements CanActivate {
         'localhost',
         '127.0.0.1',
       ];
+      for (const ao of this.allowedOrigins) {
+        try {
+          trustedHosts.push(new URL(ao).host.toLowerCase());
+        } catch {}
+      }
       return trustedHosts.includes(h.trim().toLowerCase());
     };
 

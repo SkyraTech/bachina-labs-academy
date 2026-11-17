@@ -1,12 +1,28 @@
 <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-10 shadow-sm max-w-4xl mx-auto">
-  <!-- Draft Watermark Banner -->
-  <div class="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-medium mb-8">
-    <div class="flex items-center gap-2">
-      <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-      <span>Draft Preview Mode · Revision {{ state.currentRevision() }}</span>
+  <!-- Draft / Synced Preview Banner -->
+  @if (state.article()?.status === 'PUBLISHED' && (state.article()?.draftRevision ?? 0) <= (state.article()?.publishedRevision ?? 0)) {
+    <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium mb-8">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Synchronized Preview · Revision {{ state.currentRevision() }}</span>
+      </div>
+      <span class="text-[11px] opacity-85">Matches the currently published public article</span>
     </div>
-    <span class="text-[11px] opacity-80">Unpublished changes are visible here for author review</span>
-  </div>
+  } @else {
+    <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-medium mb-8">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span>Draft Preview Mode · Revision {{ state.currentRevision() }}</span>
+      </div>
+      <span class="text-[11px] opacity-85">
+        @if (state.article()?.status === 'PUBLISHED') {
+          Showing unpublished draft edits ahead of live Revision {{ state.article()?.publishedRevision }}
+        } @else {
+          Private author preview before publishing
+        }
+      </span>
+    </div>
+  }
 
   <!-- Article Header -->
   <header class="mb-10 pb-8 border-b border-[var(--color-border)]">

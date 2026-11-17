@@ -122,4 +122,15 @@ describe('ArticleBlockListComponent', () => {
 
     expect(stateMock.deleteBlock).not.toHaveBeenCalled();
   });
+
+  it('8. should render two-row block rail cards with accessible move and delete controls', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const cards = el.querySelectorAll('.block-rail-card');
+    expect(cards.length).toBe(2);
+    expect(cards[0].textContent).toContain('HEADING');
+    expect(cards[0].textContent).toContain('Heading 1');
+    expect(cards[0].querySelector('button[aria-label="Move block up"]')).toBeTruthy();
+    expect(cards[0].querySelector('button[aria-label="Move block down"]')).toBeTruthy();
+    expect(cards[0].querySelector('button[aria-label="Delete block"]')).toBeTruthy();
+  });
 });

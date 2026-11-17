@@ -68,6 +68,15 @@
   } @else {
     <!-- Desktop Table View -->
     <div class="hidden md:block">
+      <ng-template #deviceCell let-val let-row="row">
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-[var(--color-text)]">{{ val }}</span>
+          @if (row.isCurrent) {
+            <app-status-badge variant="brand" [dot]="true">This Device</app-status-badge>
+          }
+        </div>
+      </ng-template>
+
       <app-data-table
         [data]="sessions()"
         [columns]="tableColumns"

@@ -127,11 +127,11 @@ export class RichTextVisualEditorComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    // React to disabled input changes
+    // React to disabled input changes without emitting a synthetic user edit
     effect(() => {
       const isDisabled = this.disabled();
       if (this.editor) {
-        this.editor.setEditable(!isDisabled);
+        this.editor.setEditable(!isDisabled, false);
       }
     });
   }
@@ -170,8 +170,8 @@ export class RichTextVisualEditorComponent implements AfterViewInit, OnDestroy {
           'aria-label': 'Document content editor',
         },
       },
-      onUpdate: ({ editor }) => {
-        if (this.mode() === 'source') {
+      onUpdate: ({ editor, transaction }) => {
+        if (this.mode() === 'source' || (transaction && !transaction.docChanged)) {
           return;
         }
         this.isInternalUpdate = true;

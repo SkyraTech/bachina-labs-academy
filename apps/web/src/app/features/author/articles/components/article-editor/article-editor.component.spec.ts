@@ -178,4 +178,38 @@ describe('ArticleEditorComponent', () => {
 
     expect(saveSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('10. should coordinate sticky studio header offset below dashboard topbar and switch tabs via real clicks', async () => {
+    stateService.setTab('editor');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('header.editor-sticky-header') as HTMLElement;
+    expect(header).toBeTruthy();
+    expect(header.classList.contains('top-0')).toBe(false);
+    expect(header.classList.contains('sticky')).toBe(true);
+    expect(header.classList.contains('z-20')).toBe(true);
+
+    const headerTop = getComputedStyle(header).top;
+    expect(['64px', 'var(--dashboard-topbar-height, 64px)']).toContain(headerTop);
+
+    const backLink = header.querySelector('a[aria-label="Back to Articles"]') as HTMLAnchorElement;
+    const previewBtn = Array.from(header.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Preview') as HTMLButtonElement;
+    const editorBtn = Array.from(header.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Editor') as HTMLButtonElement;
+
+    expect(backLink).toBeTruthy();
+    expect(previewBtn).toBeTruthy();
+    expect(editorBtn).toBeTruthy();
+
+    previewBtn.click();
+    fixture.detectChanges();
+    expect(stateService.activeTab()).toBe('preview');
+    expect(fixture.nativeElement.querySelector('app-article-preview')).toBeTruthy();
+
+    editorBtn.click();
+    fixture.detectChanges();
+    expect(stateService.activeTab()).toBe('editor');
+    expect(fixture.nativeElement.querySelector('app-article-block-editor')).toBeTruthy();
+  });
 });

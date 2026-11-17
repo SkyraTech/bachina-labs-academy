@@ -916,6 +916,24 @@ describe('PublicArticleReaderComponent — Unsafe Origin Rejection', () => {
       // In template, TOC container is omitted when tableOfContents().length < 2
       const el: HTMLElement = fixture.nativeElement;
       expect(el.querySelector('app-reader-table-of-contents')).toBeNull();
+      expect(el.querySelector('.reader-layout-with-toc')).toBeNull();
+    });
+
+    it('applies two-column reader-layout-with-toc grid class when article has >= 2 headings', () => {
+      const twoHeadingArticle: PublicArticleDetailResponse = {
+        ...mockDetailResponse,
+        blocks: [
+          { id: 'b-1', type: 'HEADING', position: 0, schemaVersion: 1, content: { text: 'Overview', level: 2 }, media: null },
+          { id: 'b-2', type: 'HEADING', position: 1, schemaVersion: 1, content: { text: 'Details', level: 2 }, media: null },
+        ],
+      };
+
+      component.article.set(twoHeadingArticle);
+      fixture.detectChanges();
+
+      const el: HTMLElement = fixture.nativeElement;
+      const layoutWrapper = el.querySelector('.reader-layout-with-toc');
+      expect(layoutWrapper).not.toBeNull();
     });
   });
 });
