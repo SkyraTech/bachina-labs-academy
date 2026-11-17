@@ -4,6 +4,7 @@ import { PublicLayoutComponent } from './layouts/public-layout/public-layout.com
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
 import { authGuard, guestGuard, roleGuard } from './core';
+import { articleEditorDeactivateGuard } from './features/author/articles/guards';
 
 /**
  * Isolated development-only showcase routes.
@@ -142,6 +143,7 @@ export const routes: Routes = [
       {
         path: 'author/articles/:articleId/edit',
         canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
+        canDeactivate: [articleEditorDeactivateGuard],
         loadComponent: () =>
           import('./features/author/articles/components/article-editor/article-editor.component').then(
             (m) => m.ArticleEditorComponent,

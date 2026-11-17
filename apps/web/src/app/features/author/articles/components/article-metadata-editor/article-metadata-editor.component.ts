@@ -107,24 +107,41 @@ export class ArticleMetadataEditorComponent {
     if (!art) return;
 
     const currentVal = this.form.value;
-    const artTags = art.tagIds ?? [];
-    const currentTags = this.tagIds();
+    const artTags = [...(art.tagIds ?? [])].sort();
+    const currentTags = [...this.tagIds()].sort();
     const tagsEqual =
       artTags.length === currentTags.length &&
-      artTags.every((id) => currentTags.includes(id));
+      artTags.every((id, idx) => id === currentTags[idx]);
+
+    const titleEqual = (currentVal.title || '').trim() === art.title.trim();
+    const slugEqual = (currentVal.draftSlug || '').trim() === art.draftSlug.trim();
+    const summaryEqual = (currentVal.summary || '').trim() === (art.summary || '').trim();
+    const presetEqual = currentVal.typographyPreset === art.typographyPreset;
+    const coverEqual = (this.coverMediaId() || null) === (art.coverMediaId || null);
+    const categoryEqual = (this.categoryId() || null) === (art.categoryId || null);
 
     const dirty =
-      currentVal.title !== art.title ||
-      currentVal.draftSlug !== art.draftSlug ||
-      (currentVal.summary || '') !== (art.summary || '') ||
-      currentVal.typographyPreset !== art.typographyPreset ||
-      this.coverMediaId() !== art.coverMediaId ||
-      this.categoryId() !== (art.categoryId ?? null) ||
+      !titleEqual ||
+      !slugEqual ||
+      !summaryEqual ||
+      !presetEqual ||
+      !coverEqual ||
+      !categoryEqual ||
       !tagsEqual;
 
     this.isDirty.set(dirty);
+    if (typeof this.state?.isMetadataDirty?.set === 'function') {
+      this.state.isMetadataDirty.set(dirty);
+    }
     if (dirty) {
       this.state.markDirty();
+    } else {
+      // If metadata is no longer dirty and no blocks are dirty, reset save state to SAVED
+      const isBlockDirty = typeof this.state?.isBlockDirty === 'function' ? this.state.isBlockDirty() : false;
+      const saveState = typeof this.state?.saveState === 'function' ? this.state.saveState() : null;
+      if (!isBlockDirty && saveState === 'DIRTY') {
+        (this.state.saveState as any)?.set?.('SAVED');
+      }
     }
   }
 

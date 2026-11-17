@@ -281,20 +281,26 @@ export class ArticlesService {
 
       if (dto.title !== undefined) {
         const trimmedTitle = dto.title.trim();
-        if (trimmedTitle !== article.title) {
+        const currentTitle = article.title.trim();
+        if (trimmedTitle !== currentTitle) {
           hasChanges = true;
           updateData.title = trimmedTitle;
         }
       }
 
-      if (dto.draftSlug !== undefined && dto.draftSlug !== article.draftSlug) {
-        hasChanges = true;
-        updateData.draftSlug = dto.draftSlug;
+      if (dto.draftSlug !== undefined) {
+        const trimmedSlug = dto.draftSlug.trim();
+        const currentSlug = article.draftSlug.trim();
+        if (trimmedSlug !== currentSlug) {
+          hasChanges = true;
+          updateData.draftSlug = trimmedSlug;
+        }
       }
 
       if (dto.summary !== undefined) {
-        const normalizedSummary = dto.summary ?? null;
-        if (normalizedSummary !== (article.summary ?? null)) {
+        const normalizedSummary = dto.summary?.trim() || null;
+        const currentSummary = article.summary?.trim() || null;
+        if (normalizedSummary !== currentSummary) {
           hasChanges = true;
           updateData.summary = normalizedSummary;
         }
@@ -310,7 +316,8 @@ export class ArticlesService {
 
       if (dto.coverMediaId !== undefined) {
         const normalizedCover = dto.coverMediaId ?? null;
-        if (normalizedCover !== (article.coverMediaId ?? null)) {
+        const currentCover = article.coverMediaId ?? null;
+        if (normalizedCover !== currentCover) {
           hasChanges = true;
           if (normalizedCover === null) {
             updateData.coverMedia = { disconnect: true };
@@ -322,6 +329,9 @@ export class ArticlesService {
 
       // If no mutable fields changed, return existing article without updating or bumping revision
       if (!hasChanges) {
+        this.logger.debug(
+          `Update draft metadata for article ${article.id} is an exact no-op. Preserving revision ${article.draftRevision}.`,
+        );
         const current = await this.repository.findPrivateById(
           article.id,
           user.id,

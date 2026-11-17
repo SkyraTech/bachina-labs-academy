@@ -442,4 +442,60 @@ describe('ArticleEditorStateService', () => {
     expect(apiMock.duplicateArticle).not.toHaveBeenCalled();
     expect(toastMock.error).toHaveBeenCalledWith('Please save your pending changes before duplicating.');
   });
+
+  // ── Checkpoint P9-FIX-01: Regression Tests FE-01, FE-04, FE-07, FE-08, FE-10 ──
+
+  it('FE-01 & FE-04: should detect identical metadata update as no-op and make zero HTTP calls', async () => {
+    await service.loadArticle('art-100');
+
+    // Attempt to update with identical values
+    const result = await service.updateMetadata({
+      title: 'PostgreSQL Distributed Architecture',
+      draftSlug: 'postgresql-distributed-architecture',
+      summary: 'A deep dive into distributed tables.',
+      typographyPreset: 'MODERN_SANS',
+    });
+
+    expect(result).toBe(true);
+    expect(apiMock.updateDraftMetadata).not.toHaveBeenCalled();
+    expect(service.currentRevision()).toBe(1);
+    expect(service.saveState()).toBe('SAVED');
+  });
+
+  it('FE-06: should treat trimmed whitespace or equivalent tags as no-op without HTTP call', async () => {
+    await service.loadArticle('art-100');
+
+    // Title with leading/trailing whitespace matching trimmed baseline
+    const result = await service.updateMetadata({
+      title: '  PostgreSQL Distributed Architecture  ',
+      draftSlug: 'postgresql-distributed-architecture',
+      summary: '  A deep dive into distributed tables.  ',
+    });
+
+    expect(result).toBe(true);
+    expect(apiMock.updateDraftMetadata).not.toHaveBeenCalled();
+    expect(service.currentRevision()).toBe(1);
+  });
+
+  it('FE-07: should reject overlapping save when another save is already in-flight', async () => {
+    await service.loadArticle('art-100');
+    (service.saveState as any).set('SAVING');
+
+    const result = await service.updateMetadata({ title: 'New Fast Title' });
+
+    expect(result).toBe(false);
+    expect(apiMock.updateDraftMetadata).not.toHaveBeenCalled();
+  });
+
+  it('FE-10: should detect identical block update as no-op and make zero HTTP calls', async () => {
+    await service.loadArticle('art-100');
+
+    // Attempt to update block-1 with identical content
+    const result = await service.updateBlock('block-1', { text: 'Introduction', level: 2 }, null);
+
+    expect(result).toBe(true);
+    expect(apiMock.updateBlock).not.toHaveBeenCalled();
+    expect(service.currentRevision()).toBe(1);
+    expect(service.saveState()).toBe('SAVED');
+  });
 });

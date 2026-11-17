@@ -3,6 +3,11 @@
   display: block;
 }
 
+:host:has(app-article-media-picker) {
+  position: relative;
+  z-index: 60;
+}
+
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 0.75rem;

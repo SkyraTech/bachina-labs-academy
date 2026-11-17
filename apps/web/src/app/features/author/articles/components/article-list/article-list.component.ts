@@ -38,6 +38,7 @@ export class ArticleListComponent implements OnInit {
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
   readonly duplicatingId = signal<string | null>(null);
+  readonly deletingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadArticles();
@@ -81,6 +82,44 @@ export class ArticleListComponent implements OnInit {
       this.toast.error(msg);
     } finally {
       this.duplicatingId.set(null);
+    }
+  }
+
+  isDeletable(article: EditableArticle): boolean {
+    return (
+      article.status === 'DRAFT' &&
+      !article.currentSnapshotId &&
+      !article.publishedSlug &&
+      (!article.publishedRevision || article.publishedRevision === 0)
+    );
+  }
+
+  async onDelete(article: EditableArticle): Promise<void> {
+    const confirmed = await this.dialog.confirm({
+      title: 'Delete Draft Article',
+      message: `Are you sure you want to permanently delete "${article.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Draft',
+      cancelLabel: 'Cancel',
+      type: 'danger',
+      destructive: true,
+      closable: true,
+      dismissableMask: true,
+    });
+
+    if (!confirmed) return;
+
+    this.deletingId.set(article.id);
+    try {
+      await firstValueFrom(this.api.deleteArticle(article.id, article.draftRevision));
+      this.toast.success('Draft article deleted successfully.');
+      this.articles.update((list) => list.filter((a) => a.id !== article.id));
+    } catch (err: unknown) {
+      const msg =
+        (err as { error?: { message?: string } })?.error?.message ||
+        (err instanceof Error ? err.message : 'Failed to delete draft article.');
+      this.toast.error(msg);
+    } finally {
+      this.deletingId.set(null);
     }
   }
 

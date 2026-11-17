@@ -174,8 +174,11 @@ export class RichTextVisualEditorComponent implements AfterViewInit, OnDestroy {
         if (this.mode() === 'source' || (transaction && !transaction.docChanged)) {
           return;
         }
-        this.isInternalUpdate = true;
         const html = editor.getHTML();
+        if (html === this.lastAppliedContent) {
+          return;
+        }
+        this.isInternalUpdate = true;
         this.lastAppliedContent = html;
         this.sourceHtml.set(html);
         this.sourceError.set(null);

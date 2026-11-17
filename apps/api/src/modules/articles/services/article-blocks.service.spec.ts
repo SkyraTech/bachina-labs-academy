@@ -218,6 +218,55 @@ describe('ArticleBlocksService', () => {
       expect(repositoryMock.incrementDraftRevision).not.toHaveBeenCalled();
     });
 
+    it('BE-15: treats objects with equivalent properties in different key order as canonical no-op', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(mockArticle as any);
+      repositoryMock.findBlockById.mockResolvedValue({
+        ...mockBlock,
+        content: { text: 'Heading 1', level: 2 },
+      } as any);
+
+      const res = await service.updateBlock(mockUser, mockArticle.id, mockBlock.id, {
+        expectedRevision: 5,
+        content: { level: 2, text: 'Heading 1' }, // Reversed keys!
+      });
+
+      expect(res.draftRevision).toBe(5);
+      expect(repositoryMock.updateBlock).not.toHaveBeenCalled();
+      expect(repositoryMock.incrementDraftRevision).not.toHaveBeenCalled();
+    });
+
+    it('BE-16: canonicalizes nested objects while respecting meaningful array ordering', async () => {
+      const tableBlock = {
+        ...mockBlock,
+        type: ArticleBlockType.TABLE,
+        content: { headers: ['Col 1', 'Col 2'], rows: [['A', 'B']] },
+      };
+      repositoryMock.findArticleForUpdate.mockResolvedValue(mockArticle as any);
+      repositoryMock.findBlockById.mockResolvedValue(tableBlock as any);
+
+      // Equivalent nested payload with reversed object keys -> no-op
+      const resEqual = await service.updateBlock(mockUser, mockArticle.id, mockBlock.id, {
+        expectedRevision: 5,
+        content: { rows: [['A', 'B']], headers: ['Col 1', 'Col 2'] },
+      });
+      expect(resEqual.draftRevision).toBe(5);
+      expect(repositoryMock.updateBlock).not.toHaveBeenCalled();
+
+      // Different array order -> genuine update
+      repositoryMock.incrementDraftRevision.mockResolvedValue(6);
+      repositoryMock.updateBlock.mockResolvedValue({
+        ...tableBlock,
+        content: { headers: ['Col 2', 'Col 1'], rows: [['A', 'B']] },
+      } as any);
+
+      const resDiff = await service.updateBlock(mockUser, mockArticle.id, mockBlock.id, {
+        expectedRevision: 5,
+        content: { headers: ['Col 2', 'Col 1'], rows: [['A', 'B']] },
+      });
+      expect(resDiff.draftRevision).toBe(6);
+      expect(repositoryMock.updateBlock).toHaveBeenCalled();
+    });
+
     it('throws NotFoundException if block does not exist on article', async () => {
       repositoryMock.findArticleForUpdate.mockResolvedValue(mockArticle as any);
       repositoryMock.findBlockById.mockResolvedValue(null);

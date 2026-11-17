@@ -288,4 +288,44 @@ describe('ArticleMetadataEditorComponent', () => {
     expect(component.categoryId()).toBe('cat-1');
     expect(component.tagIds()).toEqual(['tag-1', 'tag-2']);
   });
+
+  // ── Checkpoint P9-FIX-01: Regression Tests FE-02, FE-03, FE-05, FE-06 ──
+
+  it('FE-02: should not mark dirty or trigger save when input is focused or blurred without edit', async () => {
+    const titleControl = component.form.get('title');
+    titleControl?.markAsTouched();
+
+    expect(component.isDirty()).toBe(false);
+
+    await component.onSave();
+    expect(stateMock.updateMetadata).not.toHaveBeenCalled();
+  });
+
+  it('FE-03: should keep dirty state false when hydrated with unchanged authoritative article', () => {
+    expect(component.isDirty()).toBe(false);
+    expect(stateMock.markDirty).not.toHaveBeenCalled();
+  });
+
+  it('FE-05: should mark dirty and dispatch exactly one PATCH for real title change', async () => {
+    component.form.get('title')?.setValue('Modified Title For Real');
+
+    expect(component.isDirty()).toBe(true);
+    expect(stateMock.markDirty).toHaveBeenCalled();
+
+    await component.onSave();
+    expect(stateMock.updateMetadata).toHaveBeenCalledTimes(1);
+    expect(component.isDirty()).toBe(false);
+  });
+
+  it('FE-06: should clear dirty state when an edited field is reverted to its persisted baseline', () => {
+    const originalTitle = mockArticle.title;
+
+    // Change title
+    component.form.get('title')?.setValue('Temporary Edit');
+    expect(component.isDirty()).toBe(true);
+
+    // Revert title back to baseline
+    component.form.get('title')?.setValue(originalTitle);
+    expect(component.isDirty()).toBe(false);
+  });
 });

@@ -153,4 +153,11 @@
       }
     </div>
   }
+
+  @if (isImagePickerOpen()) {
+    <app-article-media-picker
+      (mediaSelected)="onImageBlockMediaSelected($event)"
+      (closed)="onImagePickerClosed()"
+    />
+  }
 </div>

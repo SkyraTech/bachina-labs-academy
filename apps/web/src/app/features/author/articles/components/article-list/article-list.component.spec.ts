@@ -14,6 +14,7 @@ describe('ArticleListComponent', () => {
   let apiMock: {
     listMyArticles: ReturnType<typeof vi.fn>;
     duplicateArticle: ReturnType<typeof vi.fn>;
+    deleteArticle: ReturnType<typeof vi.fn>;
   };
   let dialogMock: {
     confirm: ReturnType<typeof vi.fn>;
@@ -80,6 +81,7 @@ describe('ArticleListComponent', () => {
           title: 'Architectural Patterns in Modern Angular (Copy)',
         }),
       ),
+      deleteArticle: vi.fn().mockReturnValue(of(undefined)),
     };
 
     dialogMock = {
@@ -187,5 +189,92 @@ describe('ArticleListComponent', () => {
 
     expect(apiMock.duplicateArticle).not.toHaveBeenCalled();
     expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('8. should accurately determine isDeletable for draft vs published articles', () => {
+    expect(component.isDeletable(mockArticles[0])).toBe(false); // PUBLISHED
+    expect(component.isDeletable(mockArticles[1])).toBe(true); // DRAFT without snapshot/publishedRevision
+
+    const draftWithSnapshot: EditableArticle = {
+      ...mockArticles[1],
+      currentSnapshotId: 'snap-old',
+    };
+    expect(component.isDeletable(draftWithSnapshot)).toBe(false);
+
+    const draftWithPublishedRevision: EditableArticle = {
+      ...mockArticles[1],
+      publishedRevision: 1,
+    };
+    expect(component.isDeletable(draftWithPublishedRevision)).toBe(false);
+
+    const draftWithPublishedSlug: EditableArticle = {
+      ...mockArticles[1],
+      publishedSlug: 'some-slug',
+    };
+    expect(component.isDeletable(draftWithPublishedSlug)).toBe(false);
+  });
+
+  it('9. should render Delete button for eligible drafts and omit it for published articles', () => {
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const deleteButtons = compiled.querySelectorAll('[data-testid="delete-article-btn"]');
+    expect(deleteButtons.length).toBe(1);
+    expect(deleteButtons[0].textContent).toContain('Delete');
+  });
+
+  it('10. should confirm before deleting and dispatch delete request with expectedRevision', async () => {
+    fixture.detectChanges();
+
+    await component.onDelete(mockArticles[1]);
+
+    expect(dialogMock.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Delete Draft Article',
+        message: expect.stringContaining(mockArticles[1].title),
+        confirmLabel: 'Delete Draft',
+        destructive: true,
+      }),
+    );
+    expect(apiMock.deleteArticle).toHaveBeenCalledWith(mockArticles[1].id, mockArticles[1].draftRevision);
+    expect(toastMock.success).toHaveBeenCalledWith('Draft article deleted successfully.');
+    expect(component.articles().find((a) => a.id === mockArticles[1].id)).toBeUndefined();
+    expect(component.articles().length).toBe(1);
+  });
+
+  it('11. should abort deletion if confirmation dialog is cancelled', async () => {
+    fixture.detectChanges();
+    dialogMock.confirm.mockResolvedValue(false);
+
+    await component.onDelete(mockArticles[1]);
+
+    expect(apiMock.deleteArticle).not.toHaveBeenCalled();
+    expect(toastMock.success).not.toHaveBeenCalled();
+    expect(component.articles().length).toBe(2);
+  });
+
+  it('12. should handle deletion API error, show error toast, and retain article in list', async () => {
+    fixture.detectChanges();
+    apiMock.deleteArticle.mockReturnValue(
+      throwError(() => ({ error: { message: 'Article is locked by another process' } })),
+    );
+
+    await component.onDelete(mockArticles[1]);
+
+    expect(apiMock.deleteArticle).toHaveBeenCalledWith(mockArticles[1].id, mockArticles[1].draftRevision);
+    expect(toastMock.error).toHaveBeenCalledWith('Article is locked by another process');
+    expect(component.articles().length).toBe(2);
+    expect(component.deletingId()).toBeNull();
+  });
+
+  it('13. should handle generic deletion Error instance correctly', async () => {
+    fixture.detectChanges();
+    apiMock.deleteArticle.mockReturnValue(throwError(() => new Error('Network timeout')));
+
+    await component.onDelete(mockArticles[1]);
+
+    expect(toastMock.error).toHaveBeenCalledWith('Network timeout');
+    expect(component.articles().length).toBe(2);
+    expect(component.deletingId()).toBeNull();
   });
 });

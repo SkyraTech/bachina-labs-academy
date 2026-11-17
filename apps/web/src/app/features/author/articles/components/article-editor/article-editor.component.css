@@ -53,6 +53,10 @@
   min-width: 0;
 }
 
+.editor-outline-col:has(.media-picker-overlay) {
+  z-index: 60;
+}
+
 .editor-canvas-col {
   min-width: 0;
 }

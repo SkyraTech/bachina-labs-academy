@@ -11,6 +11,7 @@ describe('ArticleEditorComponent', () => {
   let component: ArticleEditorComponent;
   let fixture: ComponentFixture<ArticleEditorComponent>;
   let stateService: ArticleEditorStateService;
+  let dialogService: any;
 
   const mockArticle: EditableArticle = {
     id: 'art-edit-1',
@@ -87,6 +88,7 @@ describe('ArticleEditorComponent', () => {
     fixture = TestBed.createComponent(ArticleEditorComponent);
     component = fixture.componentInstance;
     stateService = fixture.debugElement.injector.get(ArticleEditorStateService);
+    dialogService = TestBed.inject(AcademyDialogService);
     fixture.detectChanges();
   });
 
@@ -211,5 +213,221 @@ describe('ArticleEditorComponent', () => {
     fixture.detectChanges();
     expect(stateService.activeTab()).toBe('editor');
     expect(fixture.nativeElement.querySelector('app-article-block-editor')).toBeTruthy();
+  });
+
+  describe('Navigation & Unsaved Changes Protection (AUTHOR-06)', () => {
+    beforeEach(() => {
+      dialogService.confirm.mockReset();
+    });
+
+    it('11. should allow navigation without confirmation dialog when editor is clean', async () => {
+      stateService.saveState.set('SAVED');
+      stateService.isMetadataDirty.set(false);
+      stateService.isBlockDirty.set(false);
+      fixture.detectChanges();
+
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(true);
+      expect(dialogService.confirm).not.toHaveBeenCalled();
+    });
+
+    it('12. should intercept navigation and show dialog when metadata is dirty', async () => {
+      stateService.isMetadataDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      dialogService.confirm.mockResolvedValueOnce(false); // User chooses Stay
+      const canLeave = await component.canDeactivate();
+
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Unsaved changes',
+          confirmLabel: 'Discard changes and leave',
+          cancelLabel: 'Stay and continue editing',
+        })
+      );
+    });
+
+    it('13. should intercept navigation and show dialog when block is dirty', async () => {
+      stateService.isBlockDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      dialogService.confirm.mockResolvedValueOnce(false); // User chooses Stay
+      const canLeave = await component.canDeactivate();
+
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalled();
+    });
+
+    it('14. should intercept navigation when both metadata and block are dirty', async () => {
+      stateService.isMetadataDirty.set(true);
+      stateService.isBlockDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      dialogService.confirm.mockResolvedValueOnce(false);
+      const canLeave = await component.canDeactivate();
+
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalled();
+    });
+
+    it('15. should cancel navigation and retain dirty state when user chooses Stay', async () => {
+      stateService.isMetadataDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      dialogService.confirm.mockResolvedValueOnce(false); // Stay
+      const canLeave = await component.canDeactivate();
+
+      expect(canLeave).toBe(false);
+      expect(stateService.hasUnsavedChanges()).toBe(true);
+      expect(stateService.isMetadataDirty()).toBe(true);
+    });
+
+    it('16. should allow navigation and discard dirty state when user chooses Discard', async () => {
+      stateService.isMetadataDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      dialogService.confirm.mockResolvedValueOnce(true); // Discard
+      const canLeave = await component.canDeactivate();
+
+      expect(canLeave).toBe(true);
+      expect(stateService.hasUnsavedChanges()).toBe(false);
+      expect(stateService.isMetadataDirty()).toBe(false);
+      expect(stateService.saveState()).toBe('SAVED');
+    });
+
+    it('17. should allow navigation without dialog when edits were reverted to original values', async () => {
+      stateService.isMetadataDirty.set(false);
+      stateService.isBlockDirty.set(false);
+      stateService.saveState.set('SAVED');
+      fixture.detectChanges();
+
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(true);
+      expect(dialogService.confirm).not.toHaveBeenCalled();
+    });
+
+    it('18. should allow navigation without dialog after successful save', async () => {
+      stateService.isMetadataDirty.set(false);
+      stateService.isBlockDirty.set(false);
+      stateService.saveState.set('SAVED');
+      fixture.detectChanges();
+
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(true);
+      expect(dialogService.confirm).not.toHaveBeenCalled();
+    });
+
+    it('19. should protect navigation while a save is in-flight (saveState === SAVING)', async () => {
+      stateService.saveState.set('SAVING');
+      fixture.detectChanges();
+
+      expect(component.hasUnsavedChanges()).toBe(true);
+      dialogService.confirm.mockResolvedValueOnce(false);
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalled();
+    });
+
+    it('20. should protect navigation when a previous save failed (saveState === ERROR)', async () => {
+      stateService.saveState.set('ERROR');
+      stateService.errorMessage.set('Network timeout while saving block');
+      fixture.detectChanges();
+
+      expect(component.hasUnsavedChanges()).toBe(true);
+      dialogService.confirm.mockResolvedValueOnce(false);
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalled();
+    });
+
+    it('21. should protect navigation when a 409 revision conflict exists (saveState === CONFLICT)', async () => {
+      stateService.saveState.set('CONFLICT');
+      stateService.conflictMessage.set('Stale revision conflict detected');
+      fixture.detectChanges();
+
+      expect(component.hasUnsavedChanges()).toBe(true);
+      dialogService.confirm.mockResolvedValueOnce(false);
+      const canLeave = await component.canDeactivate();
+      expect(canLeave).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalled();
+    });
+
+    it('22. should return correct asynchronous navigation result from canDeactivate', async () => {
+      stateService.isMetadataDirty.set(true);
+      dialogService.confirm.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 10)));
+
+      const canLeavePromise = component.canDeactivate();
+      expect(canLeavePromise instanceof Promise).toBe(true);
+      const result = await canLeavePromise;
+      expect(result).toBe(true);
+    });
+
+    it('23. should deduplicate dialogs across multiple rapid navigation attempts', async () => {
+      stateService.isMetadataDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      let resolveDialog!: (val: boolean) => void;
+      dialogService.confirm.mockImplementation(
+        () => new Promise((resolve) => (resolveDialog = resolve))
+      );
+
+      const navPromise1 = component.canDeactivate();
+      const navPromise2 = component.canDeactivate();
+
+      expect(dialogService.confirm).toHaveBeenCalledTimes(1);
+
+      resolveDialog(false);
+      const [res1, res2] = await Promise.all([navPromise1, navPromise2]);
+
+      expect(res1).toBe(false);
+      expect(res2).toBe(false);
+      expect(dialogService.confirm).toHaveBeenCalledTimes(1);
+    });
+
+    it('24. should attach and clean up beforeunload listener based on dirty state and destruction', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+      stateService.isMetadataDirty.set(true);
+      fixture.detectChanges();
+
+      stateService.isMetadataDirty.set(false);
+      stateService.saveState.set('SAVED');
+      fixture.detectChanges();
+
+      expect(removeSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
+
+      fixture.destroy();
+      expect(removeSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
+    });
+
+    it('25. onBeforeUnloadFn should call preventDefault and set returnValue when dirty, and do nothing when clean', () => {
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        returnValue: undefined as string | undefined,
+      } as unknown as BeforeUnloadEvent;
+
+      stateService.saveState.set('SAVED');
+      stateService.isMetadataDirty.set(false);
+      stateService.isBlockDirty.set(false);
+      fixture.detectChanges();
+
+      component.onBeforeUnloadFn(mockEvent);
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBeUndefined();
+
+      stateService.isMetadataDirty.set(true);
+      stateService.saveState.set('DIRTY');
+      fixture.detectChanges();
+
+      component.onBeforeUnloadFn(mockEvent);
+      expect(mockEvent.preventDefault).toHaveBeenCalledTimes(1);
+      expect(mockEvent.returnValue).toBe('');
+    });
   });
 });

@@ -191,7 +191,8 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
       this.isDirty.set(false);
       this.isSourceValid.set(true);
       this.state?.isBlockDirty?.set(false);
-      if (typeof this.state?.saveState === 'function' && this.state.saveState() === 'DIRTY') {
+      const isMetadataDirty = typeof this.state?.isMetadataDirty === 'function' ? this.state.isMetadataDirty() : false;
+      if (!isMetadataDirty && typeof this.state?.saveState === 'function' && this.state.saveState() === 'DIRTY') {
         (this.state.saveState as { set(v: SaveState): void })?.set?.('SAVED');
       }
     }
@@ -279,6 +280,7 @@ export class ArticleBlockEditorComponent implements OnInit, OnDestroy {
         );
       case 'IMAGE':
         return (
+          !!this.imageMediaId() &&
           this.imageCaption.length <= 500 &&
           this.imageAltText.length <= 255
         );

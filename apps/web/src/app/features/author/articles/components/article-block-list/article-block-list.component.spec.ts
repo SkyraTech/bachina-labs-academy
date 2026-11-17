@@ -1,8 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { ArticleBlockListComponent } from './article-block-list.component';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { AcademyDialogService } from '../../../../../shared/ui';
+import { ArticleMediaApiService } from '../../services/article-media-api.service';
 import { ArticleBlock } from '../../models/article.models';
+import { MediaAssetDto } from '../../models/article-media.models';
 
 describe('ArticleBlockListComponent', () => {
   let component: ArticleBlockListComponent;
@@ -18,6 +21,11 @@ describe('ArticleBlockListComponent', () => {
   };
   let dialogMock: {
     danger: ReturnType<typeof vi.fn>;
+  };
+  let mediaApiMock: {
+    listMyMedia: ReturnType<typeof vi.fn>;
+    uploadMedia: ReturnType<typeof vi.fn>;
+    getPrivateMediaPreviewUrl: ReturnType<typeof vi.fn>;
   };
 
   const sampleBlocks: ArticleBlock[] = [
@@ -58,12 +66,18 @@ describe('ArticleBlockListComponent', () => {
     dialogMock = {
       danger: vi.fn().mockResolvedValue(true),
     };
+    mediaApiMock = {
+      listMyMedia: vi.fn().mockReturnValue(of({ items: [], total: 0, page: 1, limit: 12, totalPages: 1 })),
+      uploadMedia: vi.fn(),
+      getPrivateMediaPreviewUrl: vi.fn().mockReturnValue('/media/preview/123'),
+    };
 
     await TestBed.configureTestingModule({
       imports: [ArticleBlockListComponent],
       providers: [
         { provide: ArticleEditorStateService, useValue: stateMock },
         { provide: AcademyDialogService, useValue: dialogMock },
+        { provide: ArticleMediaApiService, useValue: mediaApiMock },
       ],
     }).compileComponents();
 
@@ -132,5 +146,84 @@ describe('ArticleBlockListComponent', () => {
     expect(cards[0].querySelector('button[aria-label="Move block up"]')).toBeTruthy();
     expect(cards[0].querySelector('button[aria-label="Move block down"]')).toBeTruthy();
     expect(cards[0].querySelector('button[aria-label="Delete block"]')).toBeTruthy();
+  });
+
+  it('9. onAddBlock(IMAGE) should open media picker and NOT call createBlock immediately', async () => {
+    expect(component.isImagePickerOpen()).toBe(false);
+    await component.onAddBlock('IMAGE');
+
+    expect(component.isImagePickerOpen()).toBe(true);
+    expect(stateMock.createBlock).not.toHaveBeenCalled();
+    expect(component.showAddMenu()).toBe(false);
+  });
+
+  it('10. onImageBlockMediaSelected should create IMAGE block with valid mediaAssetId and close picker', async () => {
+    component.isImagePickerOpen.set(true);
+    const mockAsset: MediaAssetDto = {
+      id: 'a0000000-0000-4000-8000-000000000099',
+      originalFilename: 'test.png',
+      mimeType: 'image/png',
+      fileSize: 1234,
+      mediaType: 'IMAGE',
+      width: 800,
+      height: 600,
+      createdAt: '2026-10-25T10:00:00Z',
+    };
+
+    await component.onImageBlockMediaSelected(mockAsset);
+
+    expect(stateMock.createBlock).toHaveBeenCalledWith(
+      'IMAGE',
+      expect.objectContaining({
+        caption: 'Architectural diagram overview',
+        altText: 'test',
+      }),
+      'a0000000-0000-4000-8000-000000000099',
+    );
+    expect(component.isImagePickerOpen()).toBe(false);
+    expect(component.isSubmittingImageBlock()).toBe(false);
+  });
+
+  it('11. onImagePickerClosed should close picker without creating any block', () => {
+    component.isImagePickerOpen.set(true);
+    component.onImagePickerClosed();
+
+    expect(component.isImagePickerOpen()).toBe(false);
+    expect(stateMock.createBlock).not.toHaveBeenCalled();
+  });
+
+  it('12. should prevent duplicate block creation while already submitting', async () => {
+    component.isSubmittingImageBlock.set(true);
+    const mockAsset: MediaAssetDto = {
+      id: 'a0000000-0000-4000-8000-000000000099',
+      originalFilename: 'test.png',
+      mimeType: 'image/png',
+      fileSize: 1234,
+      mediaType: 'IMAGE',
+      width: null,
+      height: null,
+      createdAt: '2026-10-25T10:00:00Z',
+    };
+
+    await component.onImageBlockMediaSelected(mockAsset);
+
+    expect(stateMock.createBlock).not.toHaveBeenCalled();
+  });
+
+  it('13. should reset isSubmittingImageBlock on failure gracefully', async () => {
+    stateMock.createBlock.mockRejectedValue(new Error('Network error'));
+    const mockAsset: MediaAssetDto = {
+      id: 'a0000000-0000-4000-8000-000000000099',
+      originalFilename: 'test.png',
+      mimeType: 'image/png',
+      fileSize: 1234,
+      mediaType: 'IMAGE',
+      width: null,
+      height: null,
+      createdAt: '2026-10-25T10:00:00Z',
+    };
+
+    await expect(component.onImageBlockMediaSelected(mockAsset)).rejects.toThrow('Network error');
+    expect(component.isSubmittingImageBlock()).toBe(false);
   });
 });

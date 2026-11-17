@@ -47,7 +47,29 @@ export class ArticleBlocksService {
    * Deep comparison for JSON content objects to identify exact no-ops.
    */
   private isContentEqual(a: unknown, b: unknown): boolean {
-    return JSON.stringify(a) === JSON.stringify(b);
+    return this.canonicalJson(a) === this.canonicalJson(b);
+  }
+
+  private canonicalJson(obj: unknown): string {
+    if (obj === null || typeof obj !== 'object') {
+      return JSON.stringify(obj);
+    }
+    if (Array.isArray(obj)) {
+      return '[' + obj.map((item) => this.canonicalJson(item)).join(',') + ']';
+    }
+    const keys = Object.keys(obj as Record<string, unknown>).sort();
+    return (
+      '{' +
+      keys
+        .map(
+          (k) =>
+            JSON.stringify(k) +
+            ':' +
+            this.canonicalJson((obj as Record<string, unknown>)[k]),
+        )
+        .join(',') +
+      '}'
+    );
   }
 
   /**

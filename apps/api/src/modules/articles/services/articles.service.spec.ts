@@ -492,6 +492,67 @@ describe('ArticlesService', () => {
       expect(result.draftRevision).toBe(1);
     });
 
+    it('BE-11: treats null summary and empty or whitespace summary as equivalent no-op', async () => {
+      const articleWithNullSummary = { ...MOCK_ARTICLE, summary: null };
+      mockTx.findArticleForUpdate.mockResolvedValue(articleWithNullSummary);
+
+      const result = await service.updateDraftMetadata(VALID_USER, articleWithNullSummary.id, {
+        expectedRevision: 1,
+        summary: '   ',
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(result.draftRevision).toBe(1);
+      expect(result.updatedAt).toBe(MOCK_ARTICLE.updatedAt.toISOString());
+    });
+
+    it('BE-13: treats equivalent tag ID sets in different orders as no-op', async () => {
+      const tagA = 't1111111-0000-4000-8000-000000000001';
+      const tagB = 't2222222-0000-4000-8000-000000000002';
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+      });
+      mockTx.findTagsByIds.mockResolvedValue([
+        { id: tagA, slug: 'tag-a' },
+        { id: tagB, slug: 'tag-b' },
+      ]);
+      mockTx.findArticleTagIds.mockResolvedValue([tagA, tagB]);
+      repositoryMock.findPrivateById.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        draftRevision: 3,
+        tags: [
+          { tagId: tagA, tag: { slug: 'tag-a' } },
+          { tagId: tagB, tag: { slug: 'tag-b' } },
+        ],
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 3,
+        tagIds: [tagB, tagA], // Reversed order!
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(mockTx.replaceArticleTags).not.toHaveBeenCalled();
+      expect(result.draftRevision).toBe(3);
+    });
+
+    it('BE-17: preserves exact updatedAt on no-op requests', async () => {
+      const originalDate = new Date('2026-10-25T10:00:00.000Z');
+      mockTx.findArticleForUpdate.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        updatedAt: originalDate,
+      });
+
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        title: MOCK_ARTICLE.title,
+      });
+
+      expect(mockTx.updateArticle).not.toHaveBeenCalled();
+      expect(result.updatedAt).toBe(originalDate.toISOString());
+    });
+
     it('atomically increments draftRevision on meaningful update', async () => {
       mockTx.findArticleForUpdate.mockResolvedValue(MOCK_ARTICLE);
       const updatedArticle = {

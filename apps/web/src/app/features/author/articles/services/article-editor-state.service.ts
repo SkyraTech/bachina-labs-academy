@@ -30,6 +30,7 @@ export class ArticleEditorStateService {
   readonly activeTab = signal<'editor' | 'preview'>('editor');
 
   readonly isBlockDirty = signal<boolean>(false);
+  readonly isMetadataDirty = signal<boolean>(false);
   readonly pendingBlockId = signal<string | null>(null);
   readonly showUnsavedSwitchDialog = signal<boolean>(false);
 
@@ -41,7 +42,19 @@ export class ArticleEditorStateService {
     return [...list].sort((a, b) => a.position - b.position);
   });
   readonly isSaving = computed(() => this.saveState() === 'SAVING');
-  readonly hasUnsavedChanges = computed(() => this.saveState() === 'DIRTY');
+  readonly hasUnsavedChanges = computed(() => {
+    const s = this.saveState();
+    if (s === 'DIRTY' || s === 'SAVING' || s === 'CONFLICT' || s === 'ERROR') {
+      return true;
+    }
+    if (this.isMetadataDirty() || this.isBlockDirty()) {
+      return true;
+    }
+    if (this.conflictMessage()) {
+      return true;
+    }
+    return false;
+  });
   readonly isPublished = computed(() => this.article()?.status === 'PUBLISHED');
   readonly isArchived = computed(() => this.article()?.status === 'ARCHIVED');
   readonly hasUnpublishedChanges = computed(() => {
@@ -68,6 +81,8 @@ export class ArticleEditorStateService {
       const data = await firstValueFrom(this.api.getArticle(articleId));
       this.article.set(data);
       this.saveState.set('SAVED');
+      this.isBlockDirty.set(false);
+      this.isMetadataDirty.set(false);
       if (data.blocks.length > 0 && !this.selectedBlockId()) {
         this.selectedBlockId.set(data.blocks[0].id);
       }
@@ -99,6 +114,48 @@ export class ArticleEditorStateService {
       return false;
     }
 
+    // Defensive no-op check: compare normalized patch fields against current state
+    const currentTitle = current.title.trim();
+    const patchTitle = patch.title !== undefined ? patch.title.trim() : currentTitle;
+
+    const currentSlug = current.draftSlug.trim();
+    const patchSlug = patch.draftSlug !== undefined ? patch.draftSlug.trim() : currentSlug;
+
+    const currentSummary = (current.summary || '').trim();
+    const patchSummary = patch.summary !== undefined ? (patch.summary || '').trim() : currentSummary;
+
+    const currentPreset = current.typographyPreset;
+    const patchPreset = patch.typographyPreset !== undefined ? patch.typographyPreset : currentPreset;
+
+    const currentCover = current.coverMediaId || null;
+    const patchCover = patch.coverMediaId !== undefined ? (patch.coverMediaId || null) : currentCover;
+
+    const currentCategory = current.categoryId || null;
+    const patchCategory = patch.categoryId !== undefined ? (patch.categoryId || null) : currentCategory;
+
+    const currentTags = [...(current.tagIds ?? [])].sort();
+    const patchTags = patch.tagIds !== undefined ? [...patch.tagIds].sort() : currentTags;
+    const tagsEqual =
+      currentTags.length === patchTags.length &&
+      currentTags.every((id, idx) => id === patchTags[idx]);
+
+    const hasChanges =
+      patchTitle !== currentTitle ||
+      patchSlug !== currentSlug ||
+      patchSummary !== currentSummary ||
+      patchPreset !== currentPreset ||
+      patchCover !== currentCover ||
+      patchCategory !== currentCategory ||
+      !tagsEqual;
+
+    if (!hasChanges) {
+      this.isMetadataDirty.set(false);
+      if (!this.isBlockDirty()) {
+        this.saveState.set('SAVED');
+      }
+      return true;
+    }
+
     this.saveState.set('SAVING');
     this.conflictMessage.set(null);
 
@@ -127,7 +184,12 @@ export class ArticleEditorStateService {
         updatedAt: updated.updatedAt,
       });
 
-      this.saveState.set('SAVED');
+      this.isMetadataDirty.set(false);
+      if (!this.isBlockDirty()) {
+        this.saveState.set('SAVED');
+      } else {
+        this.saveState.set('DIRTY');
+      }
       this.toast.success('Article metadata saved successfully.');
       return true;
     } catch (err: unknown) {
@@ -184,7 +246,12 @@ export class ArticleEditorStateService {
       });
 
       this.selectedBlockId.set(created.id);
-      this.saveState.set('SAVED');
+      this.isBlockDirty.set(false);
+      if (this.isMetadataDirty()) {
+        this.saveState.set('DIRTY');
+      } else {
+        this.saveState.set('SAVED');
+      }
       this.toast.success(`${type} block added.`);
       return true;
     } catch (err: unknown) {
@@ -205,6 +272,19 @@ export class ArticleEditorStateService {
     if (!current) return false;
 
     if (this.isSaving()) return false;
+
+    const existingBlock = current.blocks.find((b) => b.id === blockId);
+    if (existingBlock) {
+      const contentUnchanged = JSON.stringify(existingBlock.content) === JSON.stringify(content);
+      const mediaUnchanged = (existingBlock.mediaAssetId || null) === (mediaAssetId || null);
+      if (contentUnchanged && mediaUnchanged) {
+        this.isBlockDirty.set(false);
+        if (!this.isMetadataDirty()) {
+          this.saveState.set('SAVED');
+        }
+        return true;
+      }
+    }
 
     this.saveState.set('SAVING');
     this.conflictMessage.set(null);
@@ -235,7 +315,12 @@ export class ArticleEditorStateService {
         blocks: updatedBlocks,
       });
 
-      this.saveState.set('SAVED');
+      this.isBlockDirty.set(false);
+      if (!this.isMetadataDirty()) {
+        this.saveState.set('SAVED');
+      } else {
+        this.saveState.set('DIRTY');
+      }
       this.toast.success('Block updated.');
       return true;
     } catch (err: unknown) {
@@ -427,6 +512,19 @@ export class ArticleEditorStateService {
     if (this.blockEditorHandler) {
       this.blockEditorHandler.discard();
     }
+  }
+
+  /**
+   * Explicitly discards all local in-progress edits (block and metadata)
+   * and resets saveState to SAVED.
+   */
+  discardAllChanges(): void {
+    this.discardCurrentBlock();
+    this.isBlockDirty.set(false);
+    this.isMetadataDirty.set(false);
+    this.saveState.set('SAVED');
+    this.conflictMessage.set(null);
+    this.errorMessage.set(null);
   }
 
   /**

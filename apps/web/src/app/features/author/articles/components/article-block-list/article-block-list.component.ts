@@ -12,7 +12,9 @@ import {
 } from '@angular/cdk/drag-drop';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleBlock, ArticleBlockType } from '../../models/article.models';
+import { MediaAssetDto } from '../../models/article-media.models';
 import { AcademyDialogService } from '../../../../../shared/ui';
+import { ArticleMediaPickerComponent } from '../article-media-picker/article-media-picker.component';
 
 interface BlockTypeOption {
   type: ArticleBlockType;
@@ -24,7 +26,7 @@ interface BlockTypeOption {
 @Component({
   selector: 'app-article-block-list',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, ArticleMediaPickerComponent],
   templateUrl: './article-block-list.component.html',
   styleUrl: './article-block-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +36,8 @@ export class ArticleBlockListComponent {
   private readonly dialog = inject(AcademyDialogService);
 
   readonly showAddMenu = signal(false);
+  readonly isImagePickerOpen = signal(false);
+  readonly isSubmittingImageBlock = signal(false);
 
   readonly availableBlockTypes: BlockTypeOption[] = [
     { type: 'HEADING', label: 'Heading', icon: 'H#', description: 'Section title (H1–H4)' },
@@ -54,6 +58,11 @@ export class ArticleBlockListComponent {
 
   async onAddBlock(type: ArticleBlockType): Promise<void> {
     this.showAddMenu.set(false);
+
+    if (type === 'IMAGE') {
+      this.isImagePickerOpen.set(true);
+      return;
+    }
 
     let defaultContent: Record<string, unknown> = {};
 
@@ -99,15 +108,29 @@ export class ArticleBlockListComponent {
           caption: 'Architectural overview video',
         };
         break;
-      case 'IMAGE':
-        defaultContent = {
-          caption: 'Architectural diagram overview',
-          altText: 'Database topology diagram',
-        };
-        break;
     }
 
     await this.state.createBlock(type, defaultContent);
+  }
+
+  async onImageBlockMediaSelected(asset: MediaAssetDto): Promise<void> {
+    if (this.isSubmittingImageBlock()) return;
+    this.isSubmittingImageBlock.set(true);
+    this.isImagePickerOpen.set(false);
+
+    try {
+      const defaultContent: Record<string, unknown> = {
+        caption: 'Architectural diagram overview',
+        altText: asset.originalFilename ? asset.originalFilename.replace(/\.[^/.]+$/, '') : 'Article image',
+      };
+      await this.state.createBlock('IMAGE', defaultContent, asset.id);
+    } finally {
+      this.isSubmittingImageBlock.set(false);
+    }
+  }
+
+  onImagePickerClosed(): void {
+    this.isImagePickerOpen.set(false);
   }
 
   async onDrop(event: CdkDragDrop<ArticleBlock[]>): Promise<void> {

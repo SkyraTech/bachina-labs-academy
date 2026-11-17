@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   inject,
   signal,
+  effect,
   OnInit,
   DestroyRef,
 } from '@angular/core';
@@ -21,6 +22,7 @@ import {
   StatusBadgeComponent,
   StatusVariant,
 } from '../../../../../shared/ui/status-badge/status-badge.component';
+import { AcademyDialogService } from '../../../../../shared/ui';
 
 @Component({
   selector: 'app-article-editor',
@@ -45,9 +47,83 @@ import {
 export class ArticleEditorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(AcademyDialogService);
   readonly state = inject(ArticleEditorStateService);
 
   readonly mobileTab = signal<'outline' | 'content' | 'settings'>('content');
+
+  private pendingNavigationPromise: Promise<boolean> | null = null;
+  private beforeUnloadListenerAttached = false;
+
+  readonly onBeforeUnloadFn = (event: BeforeUnloadEvent): void => {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  };
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      effect(() => {
+        const isDirty = this.state.hasUnsavedChanges();
+        if (isDirty && !this.beforeUnloadListenerAttached) {
+          window.addEventListener('beforeunload', this.onBeforeUnloadFn);
+          this.beforeUnloadListenerAttached = true;
+        } else if (!isDirty && this.beforeUnloadListenerAttached) {
+          window.removeEventListener('beforeunload', this.onBeforeUnloadFn);
+          this.beforeUnloadListenerAttached = false;
+        }
+      });
+
+      this.destroyRef.onDestroy(() => {
+        if (this.beforeUnloadListenerAttached) {
+          window.removeEventListener('beforeunload', this.onBeforeUnloadFn);
+          this.beforeUnloadListenerAttached = false;
+        }
+      });
+    }
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.state.hasUnsavedChanges();
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    if (!this.hasUnsavedChanges()) {
+      return true;
+    }
+
+    if (this.pendingNavigationPromise) {
+      return this.pendingNavigationPromise;
+    }
+
+    this.pendingNavigationPromise = (async () => {
+      try {
+        const discard = await this.dialog.confirm({
+          title: 'Unsaved changes',
+          message:
+            "You have changes that haven't been saved. If you leave this page, those changes will be lost.",
+          confirmLabel: 'Discard changes and leave',
+          cancelLabel: 'Stay and continue editing',
+          type: 'danger',
+          destructive: true,
+          closable: true,
+          dismissableMask: true,
+        });
+
+        if (discard) {
+          this.state.discardAllChanges();
+          return true;
+        }
+
+        return false;
+      } finally {
+        this.pendingNavigationPromise = null;
+      }
+    })();
+
+    return this.pendingNavigationPromise;
+  }
 
   ngOnInit(): void {
     if (this.route.paramMap) {
