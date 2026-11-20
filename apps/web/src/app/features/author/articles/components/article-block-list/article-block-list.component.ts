@@ -174,21 +174,38 @@ export class ArticleBlockListComponent {
   }
 
   getBlockSnippet(block: ArticleBlock): string {
-    const c = block.content;
-    const str = (key: string): string =>
-      typeof c[key] === 'string' ? (c[key] as string) : '';
+    if (!block) {
+      return 'Block';
+    }
+
+    const c = (block.content && typeof block.content === 'object') ? block.content : {};
+    const str = (key: string): string => {
+      const val = c[key];
+      return typeof val === 'string' ? val.trim() : '';
+    };
 
     switch (block.type) {
       case 'HEADING':
         return str('text') || 'Empty Heading';
-      case 'RICH_TEXT':
-        return str('html').replace(/<[^>]*>/g, '').slice(0, 40) || 'Rich text content';
-      case 'CODE':
-        return `${str('language') || 'code'}: ${str('code').slice(0, 30)}`;
-      case 'QUOTE':
-        return `“${str('quote').slice(0, 35)}”`;
-      case 'CALLOUT':
-        return `[${str('variant')}] ${str('title') || str('body').slice(0, 25)}`;
+      case 'RICH_TEXT': {
+        const raw = str('html');
+        const stripped = raw ? raw.replace(/<[^>]*>/g, '').trim() : '';
+        return stripped.slice(0, 40) || 'Rich text content';
+      }
+      case 'CODE': {
+        const lang = str('language') || 'code';
+        const code = str('code');
+        return code ? `${lang}: ${code.slice(0, 30)}` : `${lang}: (empty code)`;
+      }
+      case 'QUOTE': {
+        const quote = str('quote');
+        return quote ? `“${quote.slice(0, 35)}”` : '“Empty quote”';
+      }
+      case 'CALLOUT': {
+        const variant = str('variant') || 'NOTE';
+        const bodyOrTitle = str('title') || str('body');
+        return bodyOrTitle ? `[${variant}] ${bodyOrTitle.slice(0, 25)}` : `[${variant}] Empty callout`;
+      }
       case 'TABLE': {
         const headers = Array.isArray(c['headers']) ? c['headers'] : [];
         const rows = Array.isArray(c['rows']) ? c['rows'] : [];
@@ -198,8 +215,11 @@ export class ArticleBlockListComponent {
         return 'Horizontal Divider';
       case 'LINK_CARD':
         return str('title') || str('url') || 'Link Card';
-      case 'VIDEO':
-        return `${str('provider')}: ${str('caption') || str('url')}`;
+      case 'VIDEO': {
+        const provider = str('provider') || 'Video';
+        const detail = str('caption') || str('url');
+        return detail ? `${provider}: ${detail}` : `${provider} embed`;
+      }
       case 'IMAGE':
         return str('caption') || str('altText') || 'Image Asset';
       default:

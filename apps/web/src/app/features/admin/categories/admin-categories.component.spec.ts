@@ -233,5 +233,115 @@ describe('AdminCategoriesComponent', () => {
     expect(toastMock.error).toHaveBeenCalledWith('Cannot delete category: Category is referenced by active articles.');
     expect(component.categories()).toHaveLength(2);
   });
+
+  describe('TICKET-003 Regression Tests: Response Safety & Payload Sanitization', () => {
+    it('TICKET-003.1: should render valid populated category list normally', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(of(paginatedResponse));
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(2);
+      expect(component.loadError()).toBeNull();
+      const rows = fixture.nativeElement.querySelectorAll('[data-testid="category-row"]');
+      expect(rows.length).toBe(2);
+    });
+
+    it('TICKET-003.2: should render valid empty category list normally without error state', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(
+        of({ items: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
+      );
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.loadError()).toBeNull();
+      const emptyState = fixture.nativeElement.querySelector('[data-testid="categories-empty"]');
+      expect(emptyState).toBeTruthy();
+      const errorState = fixture.nativeElement.querySelector('[data-testid="categories-error-state"]');
+      expect(errorState).toBeNull();
+    });
+
+    it('TICKET-003.3: should report controlled error state when items is missing in response', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(
+        of({ total: 0, page: 1, limit: 20, totalPages: 0 } as unknown as PaginatedCategories),
+      );
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.loadError()).toContain('Malformed category response');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="categories-error-state"]');
+      expect(errorState).toBeTruthy();
+      const emptyState = fixture.nativeElement.querySelector('[data-testid="categories-empty"]');
+      expect(emptyState).toBeNull();
+    });
+
+    it('TICKET-003.4: should report controlled error state when items is null in response', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(
+        of({ items: null, total: 0, page: 1, limit: 20, totalPages: 0 } as unknown as PaginatedCategories),
+      );
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.loadError()).toContain('Malformed category response');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="categories-error-state"]');
+      expect(errorState).toBeTruthy();
+    });
+
+    it('TICKET-003.5: should report controlled error state when items is non-array in response', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(
+        of({ items: 'not-an-array', total: 0, page: 1, limit: 20, totalPages: 0 } as unknown as PaginatedCategories),
+      );
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.loadError()).toContain('Malformed category response');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="categories-error-state"]');
+      expect(errorState).toBeTruthy();
+    });
+
+    it('TICKET-003.6: should report controlled error state and allow retry on API failure', async () => {
+      taxonomyApiMock.getAdminCategories.mockReturnValue(
+        throwError(() => new Error('Service Unavailable (HTTP 503)')),
+      );
+      await component.loadCategories(1);
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.loadError()).toBe('Service Unavailable (HTTP 503)');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="categories-error-state"]');
+      expect(errorState).toBeTruthy();
+
+      // Retry recovers with valid response
+      taxonomyApiMock.getAdminCategories.mockReturnValue(of(paginatedResponse));
+      const retryBtn = fixture.nativeElement.querySelector('[data-testid="categories-retry-btn"]');
+      retryBtn.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(2);
+      expect(component.loadError()).toBeNull();
+    });
+
+    it('TICKET-003.7: should send null (clearing value) when updating category with optional description cleared', async () => {
+      component.openEdit(mockCategories[0]);
+      component.form.patchValue({
+        name: 'Cloud Computing Updated',
+        slug: 'cloud-computing',
+        description: '   ',
+      });
+
+      await component.onSave();
+
+      expect(taxonomyApiMock.updateCategory).toHaveBeenCalledWith('cat-1', {
+        name: 'Cloud Computing Updated',
+        slug: 'cloud-computing',
+        description: null,
+      });
+      expect(toastMock.success).toHaveBeenCalledWith('Category updated successfully.');
+    });
+  });
 });
 

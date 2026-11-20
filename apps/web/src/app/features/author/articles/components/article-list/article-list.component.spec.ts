@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ArticleListComponent } from './article-list.component';
 import { ArticleEditorApiService } from '../../services/article-editor-api.service';
+import { TaxonomyApiService } from '../../../../../core/taxonomy/services/taxonomy-api.service';
 import { AcademyDialogService, ToastService } from '../../../../../shared/ui';
 import { EditableArticle } from '../../models/article.models';
 
@@ -24,6 +25,9 @@ describe('ArticleListComponent', () => {
   let toastMock: {
     error: ReturnType<typeof vi.fn>;
     success: ReturnType<typeof vi.fn>;
+  };
+  let taxonomyApiMock: {
+    getCategories: ReturnType<typeof vi.fn>;
   };
 
   const mockArticles: EditableArticle[] = [
@@ -135,11 +139,18 @@ describe('ArticleListComponent', () => {
       success: vi.fn(),
     };
 
+    taxonomyApiMock = {
+      getCategories: vi.fn().mockReturnValue(
+        of({ items: [], total: 0, page: 1, limit: 100, totalPages: 0 }),
+      ),
+    };
+
     await TestBed.configureTestingModule({
       imports: [ArticleListComponent],
       providers: [
         provideRouter([]),
         { provide: ArticleEditorApiService, useValue: apiMock },
+        { provide: TaxonomyApiService, useValue: taxonomyApiMock },
         { provide: AcademyDialogService, useValue: dialogMock },
         { provide: ToastService, useValue: toastMock },
       ],
@@ -664,5 +675,93 @@ describe('ArticleListComponent', () => {
     const nextBtn = compiled.querySelector('[data-testid="next-page-btn"]') as HTMLButtonElement;
     expect(prevBtn.disabled).toBe(false);
     expect(nextBtn.disabled).toBe(false);
+  });
+
+  describe('loadCategories error handling and recovery', () => {
+    it('35. should populate categories when taxonomy service succeeds', () => {
+      taxonomyApiMock.getCategories.mockReturnValue(
+        of({
+          items: [
+            { id: 'cat-1', name: 'Software Architecture', slug: 'software-architecture', description: null, createdAt: '', updatedAt: '' },
+          ],
+          total: 1,
+          page: 1,
+          limit: 100,
+          totalPages: 1,
+        }),
+      );
+
+      component.loadCategories();
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(1);
+      expect(component.categoryLoadError()).toBe(false);
+      const errorDiv = fixture.nativeElement.querySelector('[data-testid="category-load-error"]');
+      expect(errorDiv).toBeNull();
+    });
+
+    it('36. should handle legitimate empty category response without error state', () => {
+      taxonomyApiMock.getCategories.mockReturnValue(
+        of({ items: [], total: 0, page: 1, limit: 100, totalPages: 0 }),
+      );
+
+      component.loadCategories();
+      fixture.detectChanges();
+
+      expect(component.categories()).toHaveLength(0);
+      expect(component.categoryLoadError()).toBe(false);
+      const errorDiv = fixture.nativeElement.querySelector('[data-testid="category-load-error"]');
+      expect(errorDiv).toBeNull();
+    });
+
+    it('37. should set categoryLoadError, trigger toast, and render retry UI on taxonomy API error', () => {
+      taxonomyApiMock.getCategories.mockReturnValue(
+        throwError(() => new Error('Service Unavailable (HTTP 503)')),
+      );
+
+      component.loadCategories();
+      fixture.detectChanges();
+
+      expect(component.categoryLoadError()).toBe(true);
+      expect(toastMock.error).toHaveBeenCalledWith('Failed to load categories for filtering. You can retry.');
+      const errorDiv = fixture.nativeElement.querySelector('[data-testid="category-load-error"]');
+      expect(errorDiv).toBeTruthy();
+      expect(errorDiv?.textContent).toContain('Categories failed to load');
+
+      // Article list rendering is preserved
+      expect(component.articles()).toHaveLength(3);
+    });
+
+    it('38. should recover categories and clear error state when retry button is clicked', async () => {
+      taxonomyApiMock.getCategories.mockReturnValue(
+        throwError(() => new Error('Gateway Timeout')),
+      );
+      component.loadCategories();
+      fixture.detectChanges();
+      expect(component.categoryLoadError()).toBe(true);
+
+      // Setup recovery on retry
+      taxonomyApiMock.getCategories.mockReturnValue(
+        of({
+          items: [
+            { id: 'cat-1', name: 'DevOps', slug: 'devops', description: null, createdAt: '', updatedAt: '' },
+          ],
+          total: 1,
+          page: 1,
+          limit: 100,
+          totalPages: 1,
+        }),
+      );
+
+      const retryBtn = fixture.nativeElement.querySelector('[data-testid="retry-categories-btn"]') as HTMLButtonElement;
+      expect(retryBtn).toBeTruthy();
+      retryBtn.click();
+      fixture.detectChanges();
+
+      expect(component.categoryLoadError()).toBe(false);
+      expect(component.categories()).toHaveLength(1);
+      const errorDiv = fixture.nativeElement.querySelector('[data-testid="category-load-error"]');
+      expect(errorDiv).toBeNull();
+    });
   });
 });

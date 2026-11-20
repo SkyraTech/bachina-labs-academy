@@ -479,7 +479,7 @@ describe('ArticleEditorStateService', () => {
 
   it('FE-07: should reject overlapping save when another save is already in-flight', async () => {
     await service.loadArticle('art-100');
-    (service.saveState as any).set('SAVING');
+    service.saveState.set('SAVING');
 
     const result = await service.updateMetadata({ title: 'New Fast Title' });
 

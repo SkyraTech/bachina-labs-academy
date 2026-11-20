@@ -44,12 +44,17 @@ export class AdminTagsComponent implements OnInit {
   readonly total = signal(0);
   readonly limit = 20;
   readonly searchQuery = signal('');
+  readonly loadError = signal<string | null>(null);
 
   readonly filteredTags = computed(() => {
+    const rawTags = this.tags();
+    const tagList = Array.isArray(rawTags) ? rawTags : [];
     const q = this.searchQuery().trim().toLowerCase();
-    if (!q) return this.tags();
-    return this.tags().filter(
-      (t) => t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q),
+    if (!q) return tagList;
+    return tagList.filter(
+      (t) =>
+        (typeof t?.name === 'string' && t.name.toLowerCase().includes(q)) ||
+        (typeof t?.slug === 'string' && t.slug.toLowerCase().includes(q)),
     );
   });
 
@@ -77,17 +82,23 @@ export class AdminTagsComponent implements OnInit {
 
   async loadTags(page = 1): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     try {
       const res = await firstValueFrom(
         this.taxonomyApi.getAdminTags(page, this.limit),
       );
+      if (!res || !Array.isArray(res.items)) {
+        throw new Error('Malformed tag response: expected "items" array.');
+      }
       this.tags.set(res.items);
-      this.total.set(res.total);
-      this.page.set(res.page);
+      this.total.set(typeof res.total === 'number' ? res.total : res.items.length);
+      this.page.set(typeof res.page === 'number' ? res.page : page);
     } catch (err: unknown) {
+      this.tags.set([]);
       const msg =
         (err as { error?: { message?: string } })?.error?.message ||
         (err instanceof Error ? err.message : 'Failed to load tags.');
+      this.loadError.set(msg);
       this.toast.error(msg);
     } finally {
       this.loading.set(false);

@@ -1,11 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal, WritableSignal } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of } from 'rxjs';
 import { ArticleMetadataEditorComponent } from './article-metadata-editor.component';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleMediaApiService } from '../../services/article-media-api.service';
 import { TaxonomyApiService } from '../../../../../core/taxonomy/services/taxonomy-api.service';
-import { EditableArticle } from '../../models/article.models';
+import { EditableArticle, SaveState } from '../../models/article.models';
 import { MediaAssetDto } from '../../models/article-media.models';
 
 describe('ArticleMetadataEditorComponent', () => {
@@ -16,6 +17,9 @@ describe('ArticleMetadataEditorComponent', () => {
     isSaving: ReturnType<typeof vi.fn>;
     markDirty: ReturnType<typeof vi.fn>;
     updateMetadata: ReturnType<typeof vi.fn>;
+    isMetadataDirty: WritableSignal<boolean>;
+    isBlockDirty: WritableSignal<boolean>;
+    saveState: WritableSignal<SaveState>;
   };
   let mediaApiMock: {
     getPrivateMediaPreviewUrl: ReturnType<typeof vi.fn>;
@@ -53,6 +57,9 @@ describe('ArticleMetadataEditorComponent', () => {
       isSaving: vi.fn().mockReturnValue(false),
       markDirty: vi.fn(),
       updateMetadata: vi.fn().mockResolvedValue(true),
+      isMetadataDirty: signal<boolean>(false),
+      isBlockDirty: signal<boolean>(false),
+      saveState: signal<SaveState>('SAVED'),
     };
 
     mediaApiMock = {
@@ -364,5 +371,22 @@ describe('ArticleMetadataEditorComponent', () => {
       expect(label.className).toContain('flex-col');
       expect(label.className).toContain('sm:flex-row');
     });
+  });
+
+  it('19. should reset saveState to SAVED when metadata changes back to clean and no blocks are dirty', () => {
+    stateMock.saveState.set('DIRTY');
+    stateMock.isBlockDirty.set(false);
+
+    component.form.patchValue({ title: 'New Modified Title' });
+    fixture.detectChanges();
+    expect(stateMock.saveState()).toBe('DIRTY');
+    expect(stateMock.isMetadataDirty()).toBe(true);
+
+    // Reset back to original article title
+    component.form.patchValue({ title: mockArticle.title });
+    fixture.detectChanges();
+
+    expect(stateMock.isMetadataDirty()).toBe(false);
+    expect(stateMock.saveState()).toBe('SAVED');
   });
 });

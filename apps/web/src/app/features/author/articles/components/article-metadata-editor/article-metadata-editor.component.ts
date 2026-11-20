@@ -145,17 +145,13 @@ export class ArticleMetadataEditorComponent implements OnDestroy {
       !tagsEqual;
 
     this.isDirty.set(dirty);
-    if (typeof this.state?.isMetadataDirty?.set === 'function') {
-      this.state.isMetadataDirty.set(dirty);
-    }
+    this.state.isMetadataDirty.set(dirty);
     if (dirty) {
       this.state.markDirty();
     } else {
       // If metadata is no longer dirty and no blocks are dirty, reset save state to SAVED
-      const isBlockDirty = typeof this.state?.isBlockDirty === 'function' ? this.state.isBlockDirty() : false;
-      const saveState = typeof this.state?.saveState === 'function' ? this.state.saveState() : null;
-      if (!isBlockDirty && saveState === 'DIRTY') {
-        (this.state.saveState as any)?.set?.('SAVED');
+      if (!this.state.isBlockDirty() && this.state.saveState() === 'DIRTY') {
+        this.state.saveState.set('SAVED');
       }
     }
   }

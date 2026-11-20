@@ -94,12 +94,21 @@ export class CategoriesService {
       }
     }
 
+    let normalizedDescription: string | null | undefined = undefined;
+    if (dto.description !== undefined) {
+      if (dto.description === null) {
+        normalizedDescription = null;
+      } else {
+        const trimmed = dto.description.trim();
+        normalizedDescription = trimmed === '' ? null : trimmed;
+      }
+    }
+
     try {
       const updated = await this.categoriesRepo.update(id, {
         name: dto.name !== undefined ? dto.name.trim() : undefined,
         slug: normalizedSlug,
-        description:
-          dto.description !== undefined ? dto.description.trim() : undefined,
+        description: normalizedDescription,
       });
 
       return this.mapToResponse(updated);

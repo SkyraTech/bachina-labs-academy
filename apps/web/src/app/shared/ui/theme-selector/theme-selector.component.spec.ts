@@ -32,7 +32,7 @@ describe('ThemeSelectorComponent', () => {
     const buttons = fixture.nativeElement.querySelectorAll('button[role="radio"]');
     expect(buttons.length).toBe(2);
 
-    const labels = Array.from(buttons).map((btn: any) => btn.getAttribute('aria-label'));
+    const labels = Array.from(buttons).map((btn) => (btn as HTMLElement).getAttribute('aria-label'));
     expect(labels).toContain('Light mode');
     expect(labels).toContain('Dark mode');
     expect(labels).not.toContain('System mode');

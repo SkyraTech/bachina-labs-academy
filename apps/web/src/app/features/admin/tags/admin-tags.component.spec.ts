@@ -241,5 +241,112 @@ describe('AdminTagsComponent', () => {
     component.searchQuery.set('');
     expect(component.filteredTags()).toHaveLength(2);
   });
+
+  describe('TICKET-004 Regression Tests: Tags Safety and Response Error Handling', () => {
+    it('TICKET-004.1: should render valid populated tags list normally', async () => {
+      taxonomyApiMock.getAdminTags.mockReturnValue(of(paginatedResponse));
+      await component.loadTags(1);
+      fixture.detectChanges();
+
+      expect(component.tags()).toHaveLength(2);
+      expect(component.loadError()).toBeNull();
+      const rows = fixture.nativeElement.querySelectorAll('[data-testid="tag-row"]');
+      expect(rows.length).toBe(2);
+    });
+
+    it('TICKET-004.2: should render valid empty tags list normally without error state', async () => {
+      taxonomyApiMock.getAdminTags.mockReturnValue(
+        of({ items: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
+      );
+      await component.loadTags(1);
+      fixture.detectChanges();
+
+      expect(component.tags()).toHaveLength(0);
+      expect(component.loadError()).toBeNull();
+      const emptyState = fixture.nativeElement.querySelector('[data-testid="tags-empty"]');
+      expect(emptyState).toBeTruthy();
+      const errorState = fixture.nativeElement.querySelector('[data-testid="tags-error-state"]');
+      expect(errorState).toBeNull();
+    });
+
+    it('TICKET-004.3: should report controlled error state when items is missing in response', async () => {
+      taxonomyApiMock.getAdminTags.mockReturnValue(
+        of({ total: 0, page: 1, limit: 20, totalPages: 0 } as unknown as PaginatedTags),
+      );
+      await component.loadTags(1);
+      fixture.detectChanges();
+
+      expect(component.tags()).toHaveLength(0);
+      expect(component.loadError()).toContain('Malformed tag response');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="tags-error-state"]');
+      expect(errorState).toBeTruthy();
+      const emptyState = fixture.nativeElement.querySelector('[data-testid="tags-empty"]');
+      expect(emptyState).toBeNull();
+    });
+
+    it('TICKET-004.4: should prevent filteredTags from throwing when collection is null or malformed', async () => {
+      // Force non-array value into tags signal to verify signal guard
+      (component.tags as unknown as { set: (v: unknown) => void }).set(null);
+      expect(() => component.filteredTags()).not.toThrow();
+      expect(component.filteredTags()).toEqual([]);
+
+      (component.tags as unknown as { set: (v: unknown) => void }).set(undefined);
+      expect(() => component.filteredTags()).not.toThrow();
+      expect(component.filteredTags()).toEqual([]);
+    });
+
+    it('TICKET-004.5: should execute search and filter operations seamlessly after valid response', async () => {
+      taxonomyApiMock.getAdminTags.mockReturnValue(of(paginatedResponse));
+      await component.loadTags(1);
+      fixture.detectChanges();
+
+      component.searchQuery.set('angular');
+      expect(component.filteredTags()).toHaveLength(1);
+      expect(component.filteredTags()[0].slug).toBe('angular');
+
+      component.searchQuery.set('nonexistent-tag');
+      expect(component.filteredTags()).toHaveLength(0);
+    });
+
+    it('TICKET-004.6: should report controlled error state and allow recovery on API failure', async () => {
+      taxonomyApiMock.getAdminTags.mockReturnValue(
+        throwError(() => new Error('Gateway Timeout (HTTP 504)')),
+      );
+      await component.loadTags(1);
+      fixture.detectChanges();
+
+      expect(component.tags()).toHaveLength(0);
+      expect(component.loadError()).toBe('Gateway Timeout (HTTP 504)');
+      const errorState = fixture.nativeElement.querySelector('[data-testid="tags-error-state"]');
+      expect(errorState).toBeTruthy();
+
+      // Retry recovers with valid response
+      taxonomyApiMock.getAdminTags.mockReturnValue(of(paginatedResponse));
+      const retryBtn = fixture.nativeElement.querySelector('[data-testid="tags-retry-btn"]');
+      retryBtn.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(component.tags()).toHaveLength(2);
+      expect(component.loadError()).toBeNull();
+    });
+
+    it('TICKET-004.7: should preserve existing tag creation and mutation behavior', async () => {
+      component.openCreate();
+      component.form.setValue({
+        name: 'Distributed Systems',
+        slug: 'distributed-systems',
+      });
+
+      await component.onSave();
+
+      expect(taxonomyApiMock.createTag).toHaveBeenCalledWith({
+        name: 'Distributed Systems',
+        slug: 'distributed-systems',
+      });
+      expect(toastMock.success).toHaveBeenCalledWith('Tag created successfully.');
+      expect(component.formVisible()).toBe(false);
+    });
+  });
 });
 

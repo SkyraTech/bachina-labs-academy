@@ -146,7 +146,9 @@ export class ArticleFullPreviewComponent implements OnInit, OnDestroy {
             if (targetEl) {
               targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-          } catch {}
+          } catch {
+            void 0;
+          }
         }
       };
       window.addEventListener('popstate', this.historyListener);

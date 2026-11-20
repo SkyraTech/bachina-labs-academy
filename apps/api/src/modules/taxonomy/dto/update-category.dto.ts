@@ -5,6 +5,7 @@ import {
   MaxLength,
   Matches,
   IsOptional,
+  ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -36,15 +37,22 @@ export class UpdateCategoryDto {
   slug?: string;
 
   @ApiPropertyOptional({
-    description: 'Updated category description (up to 500 characters)',
+    description: 'Updated category description (up to 500 characters) or null to clear',
     example: 'Updated articles about backend engineering',
+    nullable: true,
   })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === null) return null;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    }
+    return value;
+  })
   @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
   @IsString({ message: 'description must be a string' })
   @MaxLength(500, { message: 'description must not exceed 500 characters' })
-  description?: string;
+  description?: string | null;
 }
 

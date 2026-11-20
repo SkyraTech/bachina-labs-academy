@@ -100,12 +100,12 @@ export class AdminArticlesComponent implements OnInit {
         q: this.searchQuery().trim() || undefined,
       })
       .subscribe({
-        next: (res: any) => {
-          const rawItems = res.items || res.data || [];
-          const mapped: AdminArticleItem[] = rawItems.map((item: any) => ({
+        next: (res: PaginatedAdminArticlesResponse & { items?: readonly AdminArticleItem[] }) => {
+          const rawItems = res.data || res.items || [];
+          const mapped: AdminArticleItem[] = rawItems.map((item) => ({
             ...item,
-            authorId: item.authorId || item.author?.id || '',
-            authorEmail: item.authorEmail || item.author?.email || '',
+            authorId: item.authorId || '',
+            authorEmail: item.authorEmail || '',
           }));
           this.articles.set(mapped);
           this.total.set(res.total ?? mapped.length);

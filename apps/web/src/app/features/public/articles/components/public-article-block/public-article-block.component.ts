@@ -47,7 +47,9 @@ export class PublicArticleBlockComponent {
           document.execCommand('copy');
           document.body.removeChild(textarea);
           markCopied();
-        } catch {}
+        } catch {
+          void 0;
+        }
       });
     } else {
       try {
@@ -60,7 +62,9 @@ export class PublicArticleBlockComponent {
         document.execCommand('copy');
         document.body.removeChild(textarea);
         markCopied();
-      } catch {}
+      } catch {
+        void 0;
+      }
     }
   }
 

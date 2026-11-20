@@ -3,7 +3,7 @@ import { ThemeService } from './theme.service';
 
 describe('ThemeService', () => {
   let service: ThemeService;
-  let matchMediaListeners: Array<() => void> = [];
+  let matchMediaListeners: (() => void)[] = [];
   let matchesDark = true;
 
   beforeEach(() => {

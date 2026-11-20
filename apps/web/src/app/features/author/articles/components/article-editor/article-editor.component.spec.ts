@@ -11,7 +11,7 @@ describe('ArticleEditorComponent', () => {
   let component: ArticleEditorComponent;
   let fixture: ComponentFixture<ArticleEditorComponent>;
   let stateService: ArticleEditorStateService;
-  let dialogService: any;
+  let dialogService: AcademyDialogService & { confirm: ReturnType<typeof vi.fn>; danger: ReturnType<typeof vi.fn> };
 
   const mockArticle: EditableArticle = {
     id: 'art-edit-1',
@@ -88,7 +88,10 @@ describe('ArticleEditorComponent', () => {
     fixture = TestBed.createComponent(ArticleEditorComponent);
     component = fixture.componentInstance;
     stateService = fixture.debugElement.injector.get(ArticleEditorStateService);
-    dialogService = TestBed.inject(AcademyDialogService);
+    dialogService = TestBed.inject(AcademyDialogService) as AcademyDialogService & {
+      confirm: ReturnType<typeof vi.fn>;
+      danger: ReturnType<typeof vi.fn>;
+    };
     fixture.detectChanges();
   });
 
@@ -400,9 +403,11 @@ describe('ArticleEditorComponent', () => {
       stateService.saveState.set('SAVED');
       fixture.detectChanges();
 
+      expect(addSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
       expect(removeSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
 
       fixture.destroy();
+      expect(addSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
       expect(removeSpy).toHaveBeenCalledWith('beforeunload', component.onBeforeUnloadFn);
     });
 

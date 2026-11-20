@@ -42,6 +42,7 @@ export class AdminCategoriesComponent implements OnInit {
   readonly page = signal(1);
   readonly total = signal(0);
   readonly limit = 20;
+  readonly loadError = signal<string | null>(null);
 
   private userEditedSlug = false;
 
@@ -68,17 +69,23 @@ export class AdminCategoriesComponent implements OnInit {
 
   async loadCategories(page = 1): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     try {
       const res = await firstValueFrom(
         this.taxonomyApi.getAdminCategories(page, this.limit),
       );
+      if (!res || !Array.isArray(res.items)) {
+        throw new Error('Malformed category response: expected "items" array.');
+      }
       this.categories.set(res.items);
-      this.total.set(res.total);
-      this.page.set(res.page);
+      this.total.set(typeof res.total === 'number' ? res.total : res.items.length);
+      this.page.set(typeof res.page === 'number' ? res.page : page);
     } catch (err: unknown) {
+      this.categories.set([]);
       const msg =
         (err as { error?: { message?: string } })?.error?.message ||
         (err instanceof Error ? err.message : 'Failed to load categories.');
+      this.loadError.set(msg);
       this.toast.error(msg);
     } finally {
       this.loading.set(false);
@@ -145,12 +152,13 @@ export class AdminCategoriesComponent implements OnInit {
     const catId = this.editingCategoryId();
 
     try {
+      const descVal = typeof val.description === 'string' ? val.description.trim() : '';
       if (catId) {
         await firstValueFrom(
           this.taxonomyApi.updateCategory(catId, {
             name: val.name.trim(),
             slug: val.slug.trim(),
-            description: val.description?.trim() || null,
+            description: descVal ? descVal : null,
           }),
         );
         this.toast.success('Category updated successfully.');
@@ -159,7 +167,7 @@ export class AdminCategoriesComponent implements OnInit {
           this.taxonomyApi.createCategory({
             name: val.name.trim(),
             slug: val.slug.trim(),
-            description: val.description?.trim() || undefined,
+            description: descVal || undefined,
           }),
         );
         this.toast.success('Category created successfully.');

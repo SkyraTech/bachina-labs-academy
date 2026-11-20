@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of } from 'rxjs';
 import { ArticleBlockListComponent } from './article-block-list.component';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
@@ -225,5 +226,82 @@ describe('ArticleBlockListComponent', () => {
 
     await expect(component.onImageBlockMediaSelected(mockAsset)).rejects.toThrow('Network error');
     expect(component.isSubmittingImageBlock()).toBe(false);
+  });
+
+  describe('TICKET-002 Regression Tests: getBlockSnippet Null Safety', () => {
+    const baseBlock = (type: ArticleBlock['type'], content: unknown): ArticleBlock => ({
+      id: 'b-test',
+      articleId: 'art-1',
+      type,
+      position: 0,
+      content: content as Record<string, unknown>,
+      mediaAssetId: null,
+      schemaVersion: 1,
+      createdAt: '2026-10-25T10:00:00Z',
+      updatedAt: '2026-10-25T10:00:00Z',
+    });
+
+    it('TICKET-002.1: should safely handle null content without throwing TypeError', () => {
+      const block = baseBlock('HEADING', null);
+      expect(() => component.getBlockSnippet(block)).not.toThrow();
+      expect(component.getBlockSnippet(block)).toBe('Empty Heading');
+
+      const codeBlock = baseBlock('CODE', null);
+      expect(() => component.getBlockSnippet(codeBlock)).not.toThrow();
+      expect(component.getBlockSnippet(codeBlock)).toBe('code: (empty code)');
+    });
+
+    it('TICKET-002.2: should safely handle undefined content without throwing TypeError', () => {
+      const block = baseBlock('RICH_TEXT', undefined);
+      expect(() => component.getBlockSnippet(block)).not.toThrow();
+      expect(component.getBlockSnippet(block)).toBe('Rich text content');
+    });
+
+    it('TICKET-002.3: should safely handle empty object content across block types', () => {
+      expect(component.getBlockSnippet(baseBlock('HEADING', {}))).toBe('Empty Heading');
+      expect(component.getBlockSnippet(baseBlock('RICH_TEXT', {}))).toBe('Rich text content');
+      expect(component.getBlockSnippet(baseBlock('CODE', {}))).toBe('code: (empty code)');
+      expect(component.getBlockSnippet(baseBlock('QUOTE', {}))).toBe('“Empty quote”');
+      expect(component.getBlockSnippet(baseBlock('CALLOUT', {}))).toBe('[NOTE] Empty callout');
+      expect(component.getBlockSnippet(baseBlock('TABLE', {}))).toBe('Table (0 cols, 0 rows)');
+      expect(component.getBlockSnippet(baseBlock('DIVIDER', {}))).toBe('Horizontal Divider');
+      expect(component.getBlockSnippet(baseBlock('LINK_CARD', {}))).toBe('Link Card');
+      expect(component.getBlockSnippet(baseBlock('VIDEO', {}))).toBe('Video embed');
+      expect(component.getBlockSnippet(baseBlock('IMAGE', {}))).toBe('Image Asset');
+    });
+
+    it('TICKET-002.4: should trim whitespace and fallback when string fields are empty or whitespace only', () => {
+      expect(component.getBlockSnippet(baseBlock('HEADING', { text: '   ' }))).toBe('Empty Heading');
+      expect(component.getBlockSnippet(baseBlock('RICH_TEXT', { html: '   <p>   </p>   ' }))).toBe('Rich text content');
+      expect(component.getBlockSnippet(baseBlock('CODE', { code: '   ', language: 'python' }))).toBe('python: (empty code)');
+      expect(component.getBlockSnippet(baseBlock('QUOTE', { quote: '   ' }))).toBe('“Empty quote”');
+    });
+
+    it('TICKET-002.5: should correctly format snippet for all 10 supported block types with valid content', () => {
+      expect(component.getBlockSnippet(baseBlock('HEADING', { text: 'System Architecture' }))).toBe('System Architecture');
+      expect(component.getBlockSnippet(baseBlock('RICH_TEXT', { html: '<p>Distributed consensus</p>' }))).toBe('Distributed consensus');
+      expect(component.getBlockSnippet(baseBlock('CODE', { code: 'fn main() {}', language: 'rust' }))).toBe('rust: fn main() {}');
+      expect(component.getBlockSnippet(baseBlock('QUOTE', { quote: 'Make it correct' }))).toBe('“Make it correct”');
+      expect(component.getBlockSnippet(baseBlock('CALLOUT', { variant: 'WARNING', title: 'Caution' }))).toBe('[WARNING] Caution');
+      expect(component.getBlockSnippet(baseBlock('TABLE', { headers: ['A', 'B'], rows: [['1', '2']] }))).toBe('Table (2 cols, 1 rows)');
+      expect(component.getBlockSnippet(baseBlock('DIVIDER', {}))).toBe('Horizontal Divider');
+      expect(component.getBlockSnippet(baseBlock('LINK_CARD', { title: 'Docs Link' }))).toBe('Docs Link');
+      expect(component.getBlockSnippet(baseBlock('VIDEO', { provider: 'YOUTUBE', caption: 'Deep Dive' }))).toBe('YOUTUBE: Deep Dive');
+      expect(component.getBlockSnippet(baseBlock('IMAGE', { caption: 'Network Topology' }))).toBe('Network Topology');
+    });
+
+    it('TICKET-002.6: should support block type switching on same block object without runtime exceptions', () => {
+      const mutableBlock = baseBlock('HEADING', { text: 'Initial Heading' });
+      expect(component.getBlockSnippet(mutableBlock)).toBe('Initial Heading');
+
+      mutableBlock.type = 'CODE';
+      mutableBlock.content = null as unknown as Record<string, unknown>;
+      expect(() => component.getBlockSnippet(mutableBlock)).not.toThrow();
+      expect(component.getBlockSnippet(mutableBlock)).toBe('code: (empty code)');
+
+      mutableBlock.type = 'CALLOUT';
+      mutableBlock.content = { variant: 'INFO', body: 'New info body' };
+      expect(component.getBlockSnippet(mutableBlock)).toBe('[INFO] New info body');
+    });
   });
 });

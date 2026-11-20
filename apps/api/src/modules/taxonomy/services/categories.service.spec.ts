@@ -146,6 +146,94 @@ describe('CategoriesService (Unit)', () => {
       });
     });
 
+    it('clears description when description: null is provided', async () => {
+      repo.findById.mockResolvedValue(mockCategory);
+      repo.findBySlug.mockResolvedValue(null);
+      const updatedMock = { ...mockCategory, description: null };
+      repo.update.mockResolvedValue(updatedMock);
+
+      const result = await service.update(mockCategory.id, {
+        description: null,
+      });
+
+      expect(result.description).toBeNull();
+      expect(repo.update).toHaveBeenCalledWith(mockCategory.id, {
+        name: undefined,
+        slug: undefined,
+        description: null,
+      });
+    });
+
+    it('clears description when description: "" is provided', async () => {
+      repo.findById.mockResolvedValue(mockCategory);
+      repo.findBySlug.mockResolvedValue(null);
+      const updatedMock = { ...mockCategory, description: null };
+      repo.update.mockResolvedValue(updatedMock);
+
+      const result = await service.update(mockCategory.id, {
+        description: '',
+      });
+
+      expect(result.description).toBeNull();
+      expect(repo.update).toHaveBeenCalledWith(mockCategory.id, {
+        name: undefined,
+        slug: undefined,
+        description: null,
+      });
+    });
+
+    it('clears description when whitespace-only description: "   " is provided', async () => {
+      repo.findById.mockResolvedValue(mockCategory);
+      repo.findBySlug.mockResolvedValue(null);
+      const updatedMock = { ...mockCategory, description: null };
+      repo.update.mockResolvedValue(updatedMock);
+
+      const result = await service.update(mockCategory.id, {
+        description: '   ',
+      });
+
+      expect(result.description).toBeNull();
+      expect(repo.update).toHaveBeenCalledWith(mockCategory.id, {
+        name: undefined,
+        slug: undefined,
+        description: null,
+      });
+    });
+
+    it('updates and trims description when valid text is provided', async () => {
+      repo.findById.mockResolvedValue(mockCategory);
+      repo.findBySlug.mockResolvedValue(null);
+      const updatedMock = { ...mockCategory, description: 'Updated cloud guide' };
+      repo.update.mockResolvedValue(updatedMock);
+
+      const result = await service.update(mockCategory.id, {
+        description: '   Updated cloud guide   ',
+      });
+
+      expect(result.description).toBe('Updated cloud guide');
+      expect(repo.update).toHaveBeenCalledWith(mockCategory.id, {
+        name: undefined,
+        slug: undefined,
+        description: 'Updated cloud guide',
+      });
+    });
+
+    it('preserves existing description when description is omitted', async () => {
+      repo.findById.mockResolvedValue(mockCategory);
+      repo.findBySlug.mockResolvedValue(null);
+      repo.update.mockResolvedValue(mockCategory);
+
+      await service.update(mockCategory.id, {
+        name: 'New Name',
+      });
+
+      expect(repo.update).toHaveBeenCalledWith(mockCategory.id, {
+        name: 'New Name',
+        slug: undefined,
+        description: undefined,
+      });
+    });
+
     it('throws BadRequestException if empty update payload is provided', async () => {
       await expect(
         service.update(mockCategory.id, {}),

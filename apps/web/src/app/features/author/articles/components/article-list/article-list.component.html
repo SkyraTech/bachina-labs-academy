@@ -54,7 +54,7 @@
       </div>
 
       <!-- Category Filter Dropdown -->
-      <div class="w-full md:w-56">
+      <div class="w-full md:w-56 flex flex-col gap-1">
         <select
           data-testid="article-category-filter"
           aria-label="Filter articles by category"
@@ -67,6 +67,19 @@
             <option [value]="category.id">{{ category.name }}</option>
           }
         </select>
+        @if (categoryLoadError()) {
+          <div class="flex items-center justify-between text-xs text-red-500 px-1" data-testid="category-load-error">
+            <span>Categories failed to load</span>
+            <button
+              type="button"
+              (click)="loadCategories()"
+              class="font-medium underline hover:text-red-700 cursor-pointer ml-1"
+              data-testid="retry-categories-btn"
+            >
+              Retry
+            </button>
+          </div>
+        }
       </div>
 
       <!-- Page Size Dropdown -->

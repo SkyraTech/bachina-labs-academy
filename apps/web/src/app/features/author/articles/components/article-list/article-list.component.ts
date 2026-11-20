@@ -64,6 +64,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   readonly searchQuery = signal<string>('');
   readonly selectedCategoryId = signal<string | null>(null);
   readonly categories = signal<Category[]>([]);
+  readonly categoryLoadError = signal<boolean>(false);
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(20);
   readonly totalArticles = signal<number>(0);
@@ -116,7 +117,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     const pages: number[] = [];
     const maxVisible = 5;
     let start = Math.max(1, current - 2);
-    let end = Math.min(total, start + maxVisible - 1);
+    const end = Math.min(total, start + maxVisible - 1);
 
     if (end - start + 1 < maxVisible) {
       start = Math.max(1, end - maxVisible + 1);
@@ -179,11 +180,16 @@ export class ArticleListComponent implements OnInit, OnDestroy {
 
   loadCategories(): void {
     if (!this.taxonomyApi) return;
+    this.categoryLoadError.set(false);
     this.taxonomyApi.getCategories(1, 100).subscribe({
       next: (res) => {
-        this.categories.set(res.items || []);
+        this.categories.set(res?.items || []);
+        this.categoryLoadError.set(false);
       },
-      error: () => {},
+      error: () => {
+        this.categoryLoadError.set(true);
+        this.toast.error('Failed to load categories for filtering. You can retry.');
+      },
     });
   }
 

@@ -136,6 +136,7 @@ describe('ArticleFullPreviewComponent', () => {
     expect(titleService.getTitle()).toBe(
       'Modern Architecture Patterns (Draft Preview) · Bachina Labs Academy',
     );
+    expect(metaService.getTag('name="robots"')?.content).toBe('noindex, nofollow');
     expect(component.loading()).toBe(false);
     expect(component.notFound()).toBe(false);
   });

@@ -106,8 +106,8 @@ export class AdminUsersComponent implements OnInit {
         q: this.searchQuery().trim() || undefined,
       })
       .subscribe({
-        next: (res: any) => {
-          const rawItems = res.items || res.data || [];
+        next: (res: PaginatedAdminUsersResponse & { items?: readonly AdminUserItem[] }) => {
+          const rawItems = res.data || res.items || [];
           this.users.set(rawItems);
           this.total.set(res.total ?? rawItems.length);
           this.page.set(res.page ?? 1);
