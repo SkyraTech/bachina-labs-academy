@@ -16,6 +16,12 @@ export interface BlockEditorHandler {
   discard: () => void;
 }
 
+export interface MetadataEditorHandler {
+  isValid: () => boolean;
+  save: () => Promise<boolean>;
+  discard: () => void;
+}
+
 @Injectable()
 export class ArticleEditorStateService {
   private readonly api = inject(ArticleEditorApiService);
@@ -35,6 +41,7 @@ export class ArticleEditorStateService {
   readonly showUnsavedSwitchDialog = signal<boolean>(false);
 
   private blockEditorHandler: BlockEditorHandler | null = null;
+  private metadataEditorHandler: MetadataEditorHandler | null = null;
 
   readonly currentRevision = computed(() => this.article()?.draftRevision ?? 1);
   readonly blocks = computed(() => {
@@ -512,6 +519,46 @@ export class ArticleEditorStateService {
     if (this.blockEditorHandler) {
       this.blockEditorHandler.discard();
     }
+  }
+
+  registerMetadataHandler(handler: MetadataEditorHandler): void {
+    this.metadataEditorHandler = handler;
+  }
+
+  unregisterMetadataHandler(): void {
+    this.metadataEditorHandler = null;
+  }
+
+  /**
+   * Attempts to persist all pending dirty changes (metadata and/or block) in sequence.
+   * Halts immediately if any save fails or encounters an optimistic concurrency conflict.
+   * Returns true only when all pending changes have been successfully persisted.
+   */
+  async saveAllPendingChanges(): Promise<boolean> {
+    if (this.isSaving()) return false;
+    if (!this.hasUnsavedChanges()) return true;
+
+    // 1. If metadata is dirty, persist metadata first
+    if (this.isMetadataDirty() && this.metadataEditorHandler) {
+      if (!this.metadataEditorHandler.isValid()) {
+        this.toast.error('Cannot save metadata: Please fix validation errors.');
+        return false;
+      }
+      const metadataOk = await this.metadataEditorHandler.save();
+      if (!metadataOk) return false;
+    }
+
+    // 2. If current block is dirty, persist current block next
+    if (this.isBlockDirty() && this.blockEditorHandler) {
+      if (!this.blockEditorHandler.isValid()) {
+        this.toast.error('Cannot save block: Please fix validation errors.');
+        return false;
+      }
+      const blockOk = await this.blockEditorHandler.save();
+      if (!blockOk) return false;
+    }
+
+    return !this.hasUnsavedChanges();
   }
 
   /**

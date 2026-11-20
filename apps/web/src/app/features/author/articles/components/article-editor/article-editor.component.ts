@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { ArticleEditorStateService } from '../../services/article-editor-state.service';
 import { ArticleBlockListComponent } from '../article-block-list/article-block-list.component';
@@ -46,6 +46,7 @@ import { AcademyDialogService } from '../../../../../shared/ui';
 })
 export class ArticleEditorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(AcademyDialogService);
   readonly state = inject(ArticleEditorStateService);
@@ -123,6 +124,36 @@ export class ArticleEditorComponent implements OnInit {
     })();
 
     return this.pendingNavigationPromise;
+  }
+
+  async openFullPagePreview(): Promise<void> {
+    const article = this.state.article();
+    if (!article) return;
+
+    if (!this.hasUnsavedChanges()) {
+      await this.router.navigate(['/author/articles', article.id, 'preview']);
+      return;
+    }
+
+    const proceed = await this.dialog.confirm({
+      title: 'Save changes before preview?',
+      message:
+        'You have unsaved changes. To view the full-page preview, your changes must be saved to the server first.',
+      confirmLabel: 'Save & Preview',
+      cancelLabel: 'Cancel',
+      type: 'info',
+      closable: true,
+      dismissableMask: true,
+    });
+
+    if (!proceed) {
+      return;
+    }
+
+    const saved = await this.state.saveAllPendingChanges();
+    if (saved) {
+      await this.router.navigate(['/author/articles', article.id, 'preview']);
+    }
   }
 
   ngOnInit(): void {

@@ -17,13 +17,13 @@ import { AuthApiService, AuthStateService, LoginRequest, UserRole } from '../../
 
 /**
  * Validates and sanitizes a return URL to prevent open-redirect attacks.
- * Directs ADMIN to /admin and AUTHOR to /author by default.
+ * Directs ADMIN to /admin, AUTHOR to /author, and READER to / by default.
  */
 export function sanitizeRedirectUrl(
   url: string | null | undefined,
   role: UserRole = 'AUTHOR'
 ): string {
-  const defaultDestination = role === 'ADMIN' ? '/admin' : '/author';
+  const defaultDestination = role === 'ADMIN' ? '/admin' : role === 'READER' ? '/' : '/author';
   if (!url || typeof url !== 'string') {
     return defaultDestination;
   }
@@ -46,11 +46,14 @@ export function sanitizeRedirectUrl(
     return defaultDestination;
   }
 
-  // Role destination separation: prevent ADMIN from being sent to AUTHOR workspace and vice versa
+  // Role destination separation: prevent unauthorized navigation across workspaces
   if (role === 'ADMIN' && trimmed.startsWith('/author')) {
     return defaultDestination;
   }
   if (role === 'AUTHOR' && trimmed.startsWith('/admin')) {
+    return defaultDestination;
+  }
+  if (role === 'READER' && (trimmed.startsWith('/author') || trimmed.startsWith('/admin'))) {
     return defaultDestination;
   }
 

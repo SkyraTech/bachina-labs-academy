@@ -62,4 +62,29 @@ describe('ListArticlesQueryDto', () => {
     const errors = await validate(invalidStatus);
     expect(errors.some((e) => e.property === 'status')).toBe(true);
   });
+
+  it('accepts valid search query and categoryId', async () => {
+    const valid = plainToInstance(ListArticlesQueryDto, {
+      search: '  Angular Architecture  ',
+      categoryId: '3bdb80dc-3e80-47d9-882b-42e897e112c8',
+      pageSize: 20,
+    });
+    const errors = await validate(valid);
+    expect(errors.length).toBe(0);
+    expect(valid.search).toBe('Angular Architecture');
+    expect(valid.categoryId).toBe('3bdb80dc-3e80-47d9-882b-42e897e112c8');
+    expect(valid.pageSize).toBe(20);
+  });
+
+  it('rejects invalid UUID categoryId and too-long search query', async () => {
+    const invalid = plainToInstance(ListArticlesQueryDto, {
+      search: 'a'.repeat(101),
+      categoryId: 'not-a-valid-uuid',
+      pageSize: 55,
+    });
+    const errors = await validate(invalid);
+    expect(errors.some((e) => e.property === 'search')).toBe(true);
+    expect(errors.some((e) => e.property === 'categoryId')).toBe(true);
+    expect(errors.some((e) => e.property === 'pageSize')).toBe(true);
+  });
 });

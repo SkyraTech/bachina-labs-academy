@@ -13,7 +13,15 @@ export type AuditActorType = (typeof AUDIT_ACTOR_TYPES)[number];
 export const AUDIT_OUTCOMES = ['SUCCESS', 'FAILURE', 'DENIED'] as const;
 export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
 
-export const AUDIT_RESOURCE_TYPES = ['USER', 'SESSION', 'TOKEN', 'SYSTEM'] as const;
+export const AUDIT_RESOURCE_TYPES = [
+  'USER',
+  'SESSION',
+  'TOKEN',
+  'SYSTEM',
+  'ARTICLE',
+  'ACCESS_POLICY',
+  'ENTITLEMENT',
+] as const;
 export type AuditResourceType = (typeof AUDIT_RESOURCE_TYPES)[number];
 
 /**
@@ -26,6 +34,12 @@ export const MANDATORY_TRANSACTIONAL_ACTIONS = [
   'auth.login.succeeded',
   'auth.session.revoked',
   'auth.session.revoked_all',
+  'article.archived',
+  'article.restored',
+  'policy.created',
+  'policy.tier_changed',
+  'entitlement.issued',
+  'entitlement.revoked',
 ] as const;
 export type MandatoryTransactionalAction = (typeof MANDATORY_TRANSACTIONAL_ACTIONS)[number];
 
@@ -45,10 +59,10 @@ export type AuditAction = MandatoryTransactionalAction | HighRiskIndependentActi
 
 /**
  * Metadata for auth.user.registered.
- * Aligned strictly with Prisma UserRole enum ('AUTHOR' | 'ADMIN').
+ * Aligned strictly with Prisma UserRole enum ('READER' | 'AUTHOR' | 'ADMIN').
  */
 export interface UserRegisteredMetadata {
-  role: 'AUTHOR' | 'ADMIN';
+  role: 'READER' | 'AUTHOR' | 'ADMIN';
   registrationMethod?: 'EMAIL_PASSWORD' | 'INVITE';
 }
 
@@ -81,6 +95,51 @@ export interface LoginFailedMetadata {
   attemptCount: number;
 }
 
+export interface ArticleArchivedMetadata {
+  previousStatus: 'PUBLISHED';
+  newStatus: 'ARCHIVED';
+  draftRevision: number;
+  publishedRevision: number;
+}
+
+export interface ArticleRestoredMetadata {
+  previousStatus: 'ARCHIVED';
+  newStatus: 'PUBLISHED';
+  draftRevision: number;
+  publishedRevision: number;
+}
+
+export interface PolicyCreatedMetadata {
+  articleId: string;
+  policyId: string;
+  tier: 'FREE' | 'PREMIUM';
+  note?: string;
+}
+
+export interface PolicyTierChangedMetadata {
+  articleId: string;
+  policyId: string;
+  previousTier: 'FREE' | 'PREMIUM';
+  newTier: 'FREE' | 'PREMIUM';
+  reason?: string;
+}
+
+export interface EntitlementIssuedMetadata {
+  grantId: string;
+  targetUserId: string;
+  entitlementType: 'PREMIUM_CONTENT' | 'EARLY_ACCESS';
+  source: 'SUBSCRIPTION' | 'COMPLIMENTARY' | 'MANUAL_OVERRIDE' | 'PROMOTIONAL';
+  validFrom: string;
+  validUntil: string;
+}
+
+export interface EntitlementRevokedMetadata {
+  grantId: string;
+  targetUserId: string;
+  revocationReason: string;
+  revokedAt: string;
+}
+
 export interface AuditMetadataMap {
   'auth.user.registered': UserRegisteredMetadata;
   'auth.email.verified': EmailVerifiedMetadata;
@@ -89,6 +148,12 @@ export interface AuditMetadataMap {
   'auth.session.revoked_all': SessionRevokedAllMetadata;
   'auth.session.replay_detected': SessionReplayDetectedMetadata;
   'auth.login.failed': LoginFailedMetadata;
+  'article.archived': ArticleArchivedMetadata;
+  'article.restored': ArticleRestoredMetadata;
+  'policy.created': PolicyCreatedMetadata;
+  'policy.tier_changed': PolicyTierChangedMetadata;
+  'entitlement.issued': EntitlementIssuedMetadata;
+  'entitlement.revoked': EntitlementRevokedMetadata;
 }
 
 // ── Verified Actor Attribution & Provenance Model ────────────────────────────
@@ -126,7 +191,7 @@ export interface AuditActor {
   readonly type: AuditActorType;
   readonly id: string | null;
   readonly provenance: AuditActorProvenance;
-  readonly roles?: readonly ('AUTHOR' | 'ADMIN')[];
+  readonly roles?: readonly ('READER' | 'AUTHOR' | 'ADMIN')[];
 }
 
 /**
@@ -139,8 +204,8 @@ export class AuditActorFactory {
    */
   static fromAuthenticatedPrincipal(principal: {
     id: string;
-    role?: 'AUTHOR' | 'ADMIN';
-    roles?: readonly ('AUTHOR' | 'ADMIN')[];
+    role?: 'READER' | 'AUTHOR' | 'ADMIN';
+    roles?: readonly ('READER' | 'AUTHOR' | 'ADMIN')[];
     sessionId?: string;
   }): AuditActor {
     if (!principal || typeof principal !== 'object') {
@@ -164,7 +229,7 @@ export class AuditActorFactory {
   /**
    * Constructs an actor from a verified domain login operation AFTER credential verification succeeds.
    */
-  static fromVerifiedLogin(user: { id: string; role?: 'AUTHOR' | 'ADMIN' }): AuditActor {
+  static fromVerifiedLogin(user: { id: string; role?: 'READER' | 'AUTHOR' | 'ADMIN' }): AuditActor {
     if (!user || typeof user !== 'object') {
       throw new Error('Verified login user must be a non-null object');
     }
@@ -186,7 +251,7 @@ export class AuditActorFactory {
   /**
    * Constructs an actor from a newly registered user account within the registration domain boundary.
    */
-  static fromRegistrationTarget(user: { id: string; role?: 'AUTHOR' | 'ADMIN' }): AuditActor {
+  static fromRegistrationTarget(user: { id: string; role?: 'READER' | 'AUTHOR' | 'ADMIN' }): AuditActor {
     if (!user || typeof user !== 'object') {
       throw new Error('Registration target must be a non-null object');
     }

@@ -328,4 +328,41 @@ describe('ArticleMetadataEditorComponent', () => {
     component.form.get('title')?.setValue(originalTitle);
     expect(component.isDirty()).toBe(false);
   });
+
+  // ── Checkpoint P9-FIX-07: Responsive Mobile Editor Hardening Tests ──
+
+  it('P9-FIX-07: should render dedicated touch cover image action buttons when cover image is present', () => {
+    // Set article with cover
+    stateMock.article.mockReturnValue({
+      ...mockArticle,
+      coverMediaId: 'media-cover-1',
+    });
+    component.coverMediaId.set('media-cover-1');
+    fixture.detectChanges();
+
+    const changeBtn = fixture.nativeElement.querySelector('[data-testid="change-cover-btn"]');
+    const removeBtn = fixture.nativeElement.querySelector('[data-testid="remove-cover-btn"]');
+
+    expect(changeBtn).toBeTruthy();
+    expect(removeBtn).toBeTruthy();
+
+    // Verify clicking remove clears the cover
+    removeBtn.click();
+    expect(component.coverMediaId()).toBeNull();
+    expect(component.isDirty()).toBe(true);
+  });
+
+  it('P9-FIX-07: should render typography presets with responsive touch layout', () => {
+    fixture.detectChanges();
+    const presetLabels = fixture.nativeElement.querySelectorAll('[data-testid="typography-preset-option"]');
+    expect(presetLabels.length).toBe(3);
+
+    presetLabels.forEach((label: HTMLElement) => {
+      // Must have min-height for touch target
+      expect(label.className).toContain('min-h-[44px]');
+      // Must have responsive flex-col sm:flex-row stacking
+      expect(label.className).toContain('flex-col');
+      expect(label.className).toContain('sm:flex-row');
+    });
+  });
 });

@@ -27,6 +27,8 @@ export interface FindMyArticlesParams {
   page: number;
   limit: number;
   status?: ArticleStatus;
+  search?: string;
+  categoryId?: string;
 }
 
 export type ArticleWithTags = Article & {
@@ -101,15 +103,29 @@ export class ArticlesRepository {
   }
 
   /**
-   * Lists articles owned by the authenticated author with pagination and optional status filter.
-   * Uses deterministic ordering: createdAt DESC, id DESC.
+   * Lists articles owned by the authenticated author with pagination, optional status, category, and search filters.
+   * Uses deterministic ordering: updatedAt DESC, id DESC.
    */
   async findMyArticles(
     params: FindMyArticlesParams,
   ): Promise<{ items: ArticleWithTags[]; total: number }> {
+    const trimmedSearch = params.search?.trim();
+    const escapedSearch = trimmedSearch
+      ? trimmedSearch.replace(/[\\%_]/g, '\\$&')
+      : undefined;
+
     const where: Prisma.ArticleWhereInput = {
       authorId: params.authorId,
       ...(params.status ? { status: params.status } : {}),
+      ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      ...(escapedSearch
+        ? {
+            OR: [
+              { title: { contains: escapedSearch, mode: 'insensitive' } },
+              { summary: { contains: escapedSearch, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -122,7 +138,7 @@ export class ArticlesRepository {
             orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
           },
         },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         skip: (params.page - 1) * params.limit,
         take: params.limit,
       }),

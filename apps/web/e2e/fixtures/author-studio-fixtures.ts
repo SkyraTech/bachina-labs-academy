@@ -179,6 +179,7 @@ export interface MockAuthorOptions {
   tagDeleteConflict?: boolean;
   metadataSaveConflict?: boolean;
   incompleteArticle?: boolean;
+  initialArticles?: any[];
 }
 
 export async function setupAuthorStudioMock(page: Page, options: MockAuthorOptions = {}): Promise<void> {
@@ -191,7 +192,11 @@ export async function setupAuthorStudioMock(page: Page, options: MockAuthorOptio
   const categoriesList = [...MOCK_CATEGORIES];
   const tagsList = [...MOCK_TAGS];
   const articlesMap = new Map<string, any>();
-  if (options.incompleteArticle) {
+  if (options.initialArticles && Array.isArray(options.initialArticles)) {
+    for (const art of options.initialArticles) {
+      articlesMap.set(art.id, { ...art });
+    }
+  } else if (options.incompleteArticle) {
     articlesMap.set('art-001-mock', {
       ...MOCK_EDITABLE_ARTICLE,
       title: 'Hi',
@@ -605,6 +610,67 @@ export async function setupAuthorStudioMock(page: Page, options: MockAuthorOptio
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify(duplicated),
+      });
+    }
+
+    // 15. Delete Draft Article: DELETE /api/v1/articles/:articleId
+    if (articleDetailMatch && method === 'DELETE') {
+      const articleId = articleDetailMatch[1];
+      articlesMap.delete(articleId);
+      return route.fulfill({ status: 204 });
+    }
+
+    // 16. Archive Article: POST /api/v1/articles/:articleId/archive
+    const archiveMatch = path.match(/^\/api\/v1\/articles\/([^/]+)\/archive$/);
+    if (archiveMatch && method === 'POST') {
+      const articleId = archiveMatch[1];
+      const existing = articlesMap.get(articleId) || { ...MOCK_EDITABLE_ARTICLE, id: articleId };
+      const archived = {
+        ...existing,
+        status: 'ARCHIVED',
+        draftRevision: (existing.draftRevision || 1) + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      articlesMap.set(articleId, archived);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          articleId,
+          status: 'ARCHIVED',
+          draftRevision: archived.draftRevision,
+          publishedRevision: archived.publishedRevision,
+          publishedSlug: archived.publishedSlug,
+          currentSnapshotId: archived.currentSnapshotId,
+          publishedAt: archived.publishedAt,
+        }),
+      });
+    }
+
+    // 17. Restore Article: POST /api/v1/articles/:articleId/restore
+    const restoreMatch = path.match(/^\/api\/v1\/articles\/([^/]+)\/restore$/);
+    if (restoreMatch && method === 'POST') {
+      const articleId = restoreMatch[1];
+      const existing = articlesMap.get(articleId) || { ...MOCK_EDITABLE_ARTICLE, id: articleId };
+      const restored = {
+        ...existing,
+        status: 'PUBLISHED',
+        draftRevision: (existing.draftRevision || 1) + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      articlesMap.set(articleId, restored);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          articleId,
+          status: 'PUBLISHED',
+          draftRevision: restored.draftRevision,
+          publishedRevision: restored.publishedRevision,
+          publishedSlug: restored.publishedSlug,
+          currentSnapshotId: restored.currentSnapshotId,
+          publishedAt: restored.publishedAt,
+        }),
       });
     }
 

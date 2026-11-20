@@ -4,7 +4,7 @@ import {
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
@@ -104,6 +104,7 @@ export class RegistrationService {
           {
             email,
             passwordHash,
+            role: UserRole.READER,
           },
           tx,
         );
@@ -112,13 +113,13 @@ export class RegistrationService {
           action: 'auth.user.registered',
           actor: AuditActorFactory.fromRegistrationTarget({
             id: created.id,
-            role: created.role as 'AUTHOR' | 'ADMIN',
+            role: created.role,
           }),
           resourceType: 'USER',
           resourceId: null, // Privacy Option A
           outcome: 'SUCCESS',
           metadata: {
-            role: created.role as 'AUTHOR' | 'ADMIN',
+            role: created.role,
             registrationMethod: 'EMAIL_PASSWORD',
           },
         });

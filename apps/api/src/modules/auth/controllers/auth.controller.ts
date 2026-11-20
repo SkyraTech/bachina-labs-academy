@@ -84,9 +84,9 @@ export class AuthController {
   @ApiOperation({
     summary: 'Register a new account',
     description:
-      'Creates a new email/password account with the AUTHOR role and sends a ' +
+      'Creates a new email/password account with the READER role and sends a ' +
       'verification email. Does not issue a session or access token. ' +
-      'Email verification is required before publishing content.',
+      'Email verification is required before full account activation.',
   })
   @ApiCreatedResponse({
     description: 'Account registered successfully',

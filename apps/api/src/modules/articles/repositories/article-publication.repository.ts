@@ -252,4 +252,34 @@ export class ArticlePublicationRepository {
       },
     });
   }
+
+  /**
+   * Looks up an article snapshot by its UUID.
+   */
+  async findSnapshotById(
+    snapshotId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<ArticleSnapshot | null> {
+    return tx.articleSnapshot.findUnique({
+      where: { id: snapshotId },
+    });
+  }
+
+  /**
+   * Atomically updates an article's lifecycle status (e.g. ARCHIVED or PUBLISHED)
+   * while refreshing updatedAt.
+   */
+  async updateArticleStatus(
+    articleId: string,
+    status: 'ARCHIVED' | 'PUBLISHED',
+    tx: Prisma.TransactionClient,
+  ): Promise<Article> {
+    return tx.article.update({
+      where: { id: articleId },
+      data: {
+        status,
+        updatedAt: new Date(),
+      },
+    });
+  }
 }

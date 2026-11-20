@@ -1,5 +1,5 @@
 <div
-  class="media-picker-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+  class="media-picker-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs"
   role="dialog"
   aria-modal="true"
   aria-labelledby="media-picker-title"
@@ -8,25 +8,25 @@
   (keydown.escape)="closeModal()"
 >
   <div
-    class="media-picker-modal bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+    class="media-picker-modal bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden"
     tabindex="0"
     (click)="$event.stopPropagation()"
     (keydown)="$event.stopPropagation()"
   >
     <!-- Modal Header -->
-    <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+    <div class="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--color-border)]">
       <div>
-        <h2 id="media-picker-title" class="text-base font-bold text-[var(--color-text)]">
+        <h2 id="media-picker-title" class="text-sm sm:text-base font-bold text-[var(--color-text)]">
           Author Media Library
         </h2>
-        <p class="text-xs text-[var(--color-text-muted)] mt-0.5">
+        <p class="text-[11px] sm:text-xs text-[var(--color-text-muted)] mt-0.5">
           Select an owned image or upload a new asset for your article.
         </p>
       </div>
       <button
         type="button"
         (click)="closeModal()"
-        class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1.5 rounded-lg hover:bg-[var(--color-workspace-bg)] transition-colors"
+        class="text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-2 rounded-lg hover:bg-[var(--color-workspace-bg)] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
         aria-label="Close media picker"
       >
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -36,11 +36,11 @@
     </div>
 
     <!-- Tab Navigation -->
-    <div class="flex items-center px-6 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+    <div class="flex items-center px-4 sm:px-6 border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
       <button
         type="button"
         (click)="activeTab.set('library')"
-        class="py-3 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer"
+        class="py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer min-h-[40px]"
         [class.border-[var(--color-brand)]]="activeTab() === 'library'"
         [class.text-[var(--color-brand)]]="activeTab() === 'library'"
         [class.border-transparent]="activeTab() !== 'library'"
@@ -52,7 +52,7 @@
       <button
         type="button"
         (click)="activeTab.set('upload')"
-        class="py-3 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5"
+        class="py-2.5 sm:py-3 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[40px]"
         [class.border-[var(--color-brand)]]="activeTab() === 'upload'"
         [class.text-[var(--color-brand)]]="activeTab() === 'upload'"
         [class.border-transparent]="activeTab() !== 'upload'"
@@ -66,7 +66,7 @@
     </div>
 
     <!-- Modal Body -->
-    <div class="flex-1 overflow-y-auto p-6 min-h-[300px]">
+    <div class="flex-1 overflow-y-auto p-3.5 sm:p-6 min-h-[250px] sm:min-h-[300px]">
       @if (activeTab() === 'upload') {
         <app-article-media-upload
           (uploaded)="onUploadCompleted($event)"
@@ -84,7 +84,7 @@
             <button
               type="button"
               (click)="loadMedia(currentPage())"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] min-h-[38px]"
             >
               Retry
             </button>
@@ -103,14 +103,14 @@
             <button
               type="button"
               (click)="activeTab.set('upload')"
-              class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] shadow-sm"
+              class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] shadow-sm min-h-[40px]"
             >
               Upload Image
             </button>
           </div>
         } @else {
           <!-- Media Grid -->
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" role="listbox" aria-label="Media library assets">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4" role="listbox" aria-label="Media library assets">
             @for (asset of mediaItems(); track asset.id) {
               <div
                 role="option"
@@ -149,8 +149,8 @@
 
           <!-- Pagination Controls -->
           @if (totalPages() > 1) {
-            <div class="flex items-center justify-between pt-6 border-t border-[var(--color-border)] mt-6">
-              <span class="text-xs text-[var(--color-text-muted)]">
+            <div class="flex items-center justify-between pt-4 sm:pt-6 border-t border-[var(--color-border)] mt-4 sm:mt-6">
+              <span class="text-[11px] sm:text-xs text-[var(--color-text-muted)]">
                 Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
               </span>
 
@@ -159,7 +159,7 @@
                   type="button"
                   [disabled]="currentPage() <= 1 || isLoading()"
                   (click)="goToPage(currentPage() - 1)"
-                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)]"
+                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)] min-h-[32px]"
                 >
                   Previous
                 </button>
@@ -167,7 +167,7 @@
                   type="button"
                   [disabled]="currentPage() >= totalPages() || isLoading()"
                   (click)="goToPage(currentPage() + 1)"
-                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)]"
+                  class="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] disabled:opacity-40 hover:bg-[var(--color-surface-hover)] min-h-[32px]"
                 >
                   Next
                 </button>
@@ -179,8 +179,8 @@
     </div>
 
     <!-- Modal Footer -->
-    <div class="flex items-center justify-between px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
-      <div class="text-xs text-[var(--color-text-muted)] truncate max-w-xs">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
+      <div class="text-[11px] sm:text-xs text-[var(--color-text-muted)] truncate max-w-full sm:max-w-xs text-center sm:text-left">
         @if (selectedAsset()) {
           <span>Selected: <strong class="text-[var(--color-text)]">{{ selectedAsset()?.originalFilename }}</strong></span>
         } @else {
@@ -188,11 +188,11 @@
         }
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
         <button
           type="button"
           (click)="closeModal()"
-          class="px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          class="flex-1 sm:flex-initial min-h-[38px] px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
         >
           Cancel
         </button>
@@ -201,7 +201,7 @@
           type="button"
           [disabled]="!selectedAsset() || activeTab() === 'upload'"
           (click)="confirmSelection()"
-          class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+          class="flex-1 sm:flex-initial min-h-[38px] px-4 py-2 text-xs font-semibold rounded-lg text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
         >
           Use Image
         </button>

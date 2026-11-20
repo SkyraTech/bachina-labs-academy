@@ -31,6 +31,7 @@ export class AuthStateService {
   );
   readonly isAdmin = computed(() => this._currentUser()?.role === 'ADMIN');
   readonly isAuthor = computed(() => this._currentUser()?.role === 'AUTHOR');
+  readonly isReader = computed(() => this._currentUser()?.role === 'READER');
 
   /** Monotonically increasing epoch to invalidate stale asynchronous results (e.g. late responses after logout) */
   private epoch = 0;

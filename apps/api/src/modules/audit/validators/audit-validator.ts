@@ -273,6 +273,12 @@ export class AuditValidator {
       'auth.session.revoked_all': ['revocationReason', 'sessionsCount'],
       'auth.session.replay_detected': ['incidentClassification', 'revocationReason'],
       'auth.login.failed': ['reason', 'attemptCount'],
+      'article.archived': ['previousStatus', 'newStatus', 'draftRevision', 'publishedRevision'],
+      'article.restored': ['previousStatus', 'newStatus', 'draftRevision', 'publishedRevision'],
+      'policy.created': ['articleId', 'policyId', 'tier', 'note'],
+      'policy.tier_changed': ['articleId', 'policyId', 'previousTier', 'newTier', 'reason'],
+      'entitlement.issued': ['grantId', 'targetUserId', 'entitlementType', 'source', 'validFrom', 'validUntil'],
+      'entitlement.revoked': ['grantId', 'targetUserId', 'revocationReason', 'revokedAt'],
     };
 
     const allowedKeys = allowedExceptions[action];
@@ -309,7 +315,7 @@ export class AuditValidator {
         if (HASH_REGEX.test(value)) {
           throw new AuditValidationError(`Metadata field '${key}' appears to contain a cryptographic password hash`);
         }
-        if (actorId && value === actorId) {
+        if (actorId && value === actorId && key !== 'targetUserId') {
           throw new AuditValidationError(`Metadata field '${key}' duplicates the actor ID, which is prohibited`);
         }
       }
@@ -319,9 +325,9 @@ export class AuditValidator {
     switch (action) {
       case 'auth.user.registered': {
         const m = metadata as Partial<AuditMetadataMap['auth.user.registered']>;
-        if (!m.role || !['AUTHOR', 'ADMIN'].includes(m.role)) {
+        if (!m.role || !['READER', 'AUTHOR', 'ADMIN'].includes(m.role)) {
           throw new AuditValidationError(
-            "Action 'auth.user.registered' requires role to be AUTHOR or ADMIN (aligned with Prisma UserRole)",
+            "Action 'auth.user.registered' requires role to be READER, AUTHOR or ADMIN (aligned with Prisma UserRole)",
           );
         }
         if (m.registrationMethod && !['EMAIL_PASSWORD', 'INVITE'].includes(m.registrationMethod)) {
@@ -413,6 +419,120 @@ export class AuditValidator {
         }
         if (m.attemptCount > 1_000) {
           throw new AuditValidationError("Action 'auth.login.failed' attemptCount exceeds safe limit (1,000)");
+        }
+        break;
+      }
+
+      case 'article.archived': {
+        const m = metadata as Partial<AuditMetadataMap['article.archived']>;
+        if (m.previousStatus !== 'PUBLISHED') {
+          throw new AuditValidationError("Action 'article.archived' requires previousStatus to be 'PUBLISHED'");
+        }
+        if (m.newStatus !== 'ARCHIVED') {
+          throw new AuditValidationError("Action 'article.archived' requires newStatus to be 'ARCHIVED'");
+        }
+        if (typeof m.draftRevision !== 'number' || !Number.isInteger(m.draftRevision) || m.draftRevision < 1) {
+          throw new AuditValidationError("Action 'article.archived' requires draftRevision to be an integer >= 1");
+        }
+        if (typeof m.publishedRevision !== 'number' || !Number.isInteger(m.publishedRevision) || m.publishedRevision < 1) {
+          throw new AuditValidationError("Action 'article.archived' requires publishedRevision to be an integer >= 1");
+        }
+        break;
+      }
+
+      case 'article.restored': {
+        const m = metadata as Partial<AuditMetadataMap['article.restored']>;
+        if (m.previousStatus !== 'ARCHIVED') {
+          throw new AuditValidationError("Action 'article.restored' requires previousStatus to be 'ARCHIVED'");
+        }
+        if (m.newStatus !== 'PUBLISHED') {
+          throw new AuditValidationError("Action 'article.restored' requires newStatus to be 'PUBLISHED'");
+        }
+        if (typeof m.draftRevision !== 'number' || !Number.isInteger(m.draftRevision) || m.draftRevision < 1) {
+          throw new AuditValidationError("Action 'article.restored' requires draftRevision to be an integer >= 1");
+        }
+        if (typeof m.publishedRevision !== 'number' || !Number.isInteger(m.publishedRevision) || m.publishedRevision < 1) {
+          throw new AuditValidationError("Action 'article.restored' requires publishedRevision to be an integer >= 1");
+        }
+        break;
+      }
+
+      case 'policy.created': {
+        const m = metadata as Partial<AuditMetadataMap['policy.created']>;
+        if (!m.articleId || typeof m.articleId !== 'string' || !UUID_REGEX.test(m.articleId)) {
+          throw new AuditValidationError("Action 'policy.created' requires articleId to be a valid UUID");
+        }
+        if (!m.policyId || typeof m.policyId !== 'string' || !UUID_REGEX.test(m.policyId)) {
+          throw new AuditValidationError("Action 'policy.created' requires policyId to be a valid UUID");
+        }
+        if (!m.tier || !['FREE', 'PREMIUM'].includes(m.tier)) {
+          throw new AuditValidationError("Action 'policy.created' requires tier in ['FREE', 'PREMIUM']");
+        }
+        if (m.note !== undefined && (typeof m.note !== 'string' || m.note.length > 200)) {
+          throw new AuditValidationError("Action 'policy.created' note must be a string up to 200 characters");
+        }
+        break;
+      }
+
+      case 'policy.tier_changed': {
+        const m = metadata as Partial<AuditMetadataMap['policy.tier_changed']>;
+        if (!m.articleId || typeof m.articleId !== 'string' || !UUID_REGEX.test(m.articleId)) {
+          throw new AuditValidationError("Action 'policy.tier_changed' requires articleId to be a valid UUID");
+        }
+        if (!m.policyId || typeof m.policyId !== 'string' || !UUID_REGEX.test(m.policyId)) {
+          throw new AuditValidationError("Action 'policy.tier_changed' requires policyId to be a valid UUID");
+        }
+        if (!m.previousTier || !['FREE', 'PREMIUM'].includes(m.previousTier)) {
+          throw new AuditValidationError("Action 'policy.tier_changed' requires previousTier in ['FREE', 'PREMIUM']");
+        }
+        if (!m.newTier || !['FREE', 'PREMIUM'].includes(m.newTier)) {
+          throw new AuditValidationError("Action 'policy.tier_changed' requires newTier in ['FREE', 'PREMIUM']");
+        }
+        if (m.reason !== undefined && (typeof m.reason !== 'string' || m.reason.length > 200)) {
+          throw new AuditValidationError("Action 'policy.tier_changed' reason must be a string up to 200 characters");
+        }
+        break;
+      }
+
+      case 'entitlement.issued': {
+        const m = metadata as Partial<AuditMetadataMap['entitlement.issued']>;
+        if (!m.grantId || typeof m.grantId !== 'string' || !UUID_REGEX.test(m.grantId)) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires grantId to be a valid UUID");
+        }
+        if (!m.targetUserId || typeof m.targetUserId !== 'string' || !UUID_REGEX.test(m.targetUserId)) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires targetUserId to be a valid UUID");
+        }
+        if (!m.entitlementType || !['PREMIUM_CONTENT', 'EARLY_ACCESS'].includes(m.entitlementType)) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires entitlementType in ['PREMIUM_CONTENT', 'EARLY_ACCESS']");
+        }
+        if (!m.source || !['SUBSCRIPTION', 'COMPLIMENTARY', 'MANUAL_OVERRIDE', 'PROMOTIONAL'].includes(m.source)) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires source in ['SUBSCRIPTION', 'COMPLIMENTARY', 'MANUAL_OVERRIDE', 'PROMOTIONAL']");
+        }
+        if (!m.validFrom || typeof m.validFrom !== 'string' || isNaN(Date.parse(m.validFrom))) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires validFrom to be a valid ISO timestamp");
+        }
+        if (!m.validUntil || typeof m.validUntil !== 'string' || isNaN(Date.parse(m.validUntil))) {
+          throw new AuditValidationError("Action 'entitlement.issued' requires validUntil to be a valid ISO timestamp");
+        }
+        if (new Date(m.validUntil).getTime() <= new Date(m.validFrom).getTime()) {
+          throw new AuditValidationError("Action 'entitlement.issued' validUntil must be strictly after validFrom");
+        }
+        break;
+      }
+
+      case 'entitlement.revoked': {
+        const m = metadata as Partial<AuditMetadataMap['entitlement.revoked']>;
+        if (!m.grantId || typeof m.grantId !== 'string' || !UUID_REGEX.test(m.grantId)) {
+          throw new AuditValidationError("Action 'entitlement.revoked' requires grantId to be a valid UUID");
+        }
+        if (!m.targetUserId || typeof m.targetUserId !== 'string' || !UUID_REGEX.test(m.targetUserId)) {
+          throw new AuditValidationError("Action 'entitlement.revoked' requires targetUserId to be a valid UUID");
+        }
+        if (!m.revocationReason || typeof m.revocationReason !== 'string' || m.revocationReason.trim().length === 0 || m.revocationReason.length > 200) {
+          throw new AuditValidationError("Action 'entitlement.revoked' requires non-empty revocationReason up to 200 characters");
+        }
+        if (!m.revokedAt || typeof m.revokedAt !== 'string' || isNaN(Date.parse(m.revokedAt))) {
+          throw new AuditValidationError("Action 'entitlement.revoked' requires revokedAt to be a valid ISO timestamp");
         }
         break;
       }

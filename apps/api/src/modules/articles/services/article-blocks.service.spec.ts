@@ -114,19 +114,27 @@ describe('ArticleBlocksService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws ConflictException if article is ARCHIVED', async () => {
+    it('allows creating block if article is ARCHIVED', async () => {
       repositoryMock.findArticleForUpdate.mockResolvedValue({
         ...mockArticle,
         status: ArticleStatus.ARCHIVED,
       } as any);
+      repositoryMock.getNextPosition.mockResolvedValue(2);
+      repositoryMock.createBlock.mockResolvedValue({
+        ...mockBlock,
+        id: 'blk-0002',
+        position: 2,
+      } as any);
+      repositoryMock.incrementDraftRevision.mockResolvedValue(6);
 
-      await expect(
-        service.createBlock(mockUser, mockArticle.id, {
-          expectedRevision: 5,
-          type: ArticleBlockType.DIVIDER,
-          content: {},
-        }),
-      ).rejects.toThrow('Archived articles cannot be modified.');
+      const result = await service.createBlock(mockUser, mockArticle.id, {
+        expectedRevision: 5,
+        type: ArticleBlockType.DIVIDER,
+        content: {},
+      });
+
+      expect(repositoryMock.createBlock).toHaveBeenCalled();
+      expect(result.id).toBe('blk-0002');
     });
 
     it('throws ConflictException if expectedRevision is stale', async () => {

@@ -129,7 +129,7 @@ describe('ArticlesRepository', () => {
             orderBy: [{ tag: { slug: 'asc' } }, { tagId: 'asc' }],
           },
         },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         skip: 10,
         take: 10,
       });
@@ -141,6 +141,37 @@ describe('ArticlesRepository', () => {
       });
       expect(result.items).toEqual([MOCK_ARTICLE]);
       expect(result.total).toBe(1);
+    });
+
+    it('applies categoryId and escapes search wildcards in where filter', async () => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+
+      await repository.findMyArticles({
+        authorId: MOCK_ARTICLE.authorId,
+        page: 1,
+        limit: 20,
+        categoryId: 'cat-uuid-1',
+        search: '100%_done',
+      });
+
+      const expectedWhere = {
+        authorId: MOCK_ARTICLE.authorId,
+        categoryId: 'cat-uuid-1',
+        OR: [
+          { title: { contains: '100\\%\\_done', mode: 'insensitive' } },
+          { summary: { contains: '100\\%\\_done', mode: 'insensitive' } },
+        ],
+      };
+
+      expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expectedWhere,
+        }),
+      );
+      expect(prismaMock.article.count).toHaveBeenCalledWith({
+        where: expectedWhere,
+      });
     });
   });
 

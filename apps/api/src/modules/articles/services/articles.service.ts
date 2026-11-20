@@ -181,13 +181,6 @@ export class ArticlesService {
         throw new NotFoundException('Article not found.');
       }
 
-      // Check lifecycle: ARCHIVED articles cannot be edited
-      if (article.status === 'ARCHIVED') {
-        throw new ConflictException(
-          'Archived articles cannot be edited. Restore or unarchive the article before editing.',
-        );
-      }
-
       // Optimistic concurrency check (checked before no-op evaluation)
       if (article.draftRevision !== dto.expectedRevision) {
         throw new ConflictException(
@@ -588,13 +581,15 @@ export class ArticlesService {
     AccountEligibilityPolicy.assertEligible(user);
 
     const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
+    const limit = query.pageSize ?? query.limit ?? 20;
 
     const { items, total } = await this.repository.findMyArticles({
       authorId: user.id,
       page,
       limit,
       status: query.status,
+      search: query.search,
+      categoryId: query.categoryId,
     });
 
     const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;

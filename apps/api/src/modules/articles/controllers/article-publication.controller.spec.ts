@@ -13,6 +13,8 @@ describe('ArticlePublicationController', () => {
   let reflector: Reflector;
   let serviceMock: {
     publishArticle: ReturnType<typeof vi.fn>;
+    archiveArticle: ReturnType<typeof vi.fn>;
+    restoreArticle: ReturnType<typeof vi.fn>;
   };
 
   const VALID_USER: AuthenticatedUser = {
@@ -37,6 +39,8 @@ describe('ArticlePublicationController', () => {
   beforeEach(async () => {
     serviceMock = {
       publishArticle: vi.fn(),
+      archiveArticle: vi.fn(),
+      restoreArticle: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,21 +67,19 @@ describe('ArticlePublicationController', () => {
     >;
 
     it('requires AUTHOR and ADMIN roles', () => {
-      const roles = reflector.get<UserRole[]>(
-        ROLES_KEY,
-        proto['publishArticle'],
-      );
-      expect(roles).toBeDefined();
-      expect(roles).toEqual([UserRole.AUTHOR, UserRole.ADMIN]);
+      for (const method of ['publishArticle', 'archiveArticle', 'restoreArticle']) {
+        const roles = reflector.get<UserRole[]>(ROLES_KEY, proto[method]);
+        expect(roles).toBeDefined();
+        expect(roles).toEqual([UserRole.AUTHOR, UserRole.ADMIN]);
+      }
     });
 
     it('attaches VerifiedEmailGuard', () => {
-      const guards = Reflect.getMetadata(
-        '__guards__',
-        proto['publishArticle'],
-      );
-      expect(guards).toBeDefined();
-      expect(guards).toContain(VerifiedEmailGuard);
+      for (const method of ['publishArticle', 'archiveArticle', 'restoreArticle']) {
+        const guards = Reflect.getMetadata('__guards__', proto[method]);
+        expect(guards).toBeDefined();
+        expect(guards).toContain(VerifiedEmailGuard);
+      }
     });
   });
 
@@ -92,6 +94,48 @@ describe('ArticlePublicationController', () => {
       );
 
       expect(serviceMock.publishArticle).toHaveBeenCalledWith(
+        VALID_USER,
+        'a1b2c3d4-1111-4000-8000-000000000001',
+        { expectedRevision: 8 },
+      );
+      expect(result).toEqual(MOCK_PUBLICATION_RESPONSE);
+    });
+  });
+
+  describe('archiveArticle', () => {
+    it('delegates to ArticlePublicationService.archiveArticle and returns archived response', async () => {
+      const archivedResponse = {
+        ...MOCK_PUBLICATION_RESPONSE,
+        status: ArticleStatus.ARCHIVED,
+      };
+      serviceMock.archiveArticle.mockResolvedValue(archivedResponse);
+
+      const result = await controller.archiveArticle(
+        VALID_USER,
+        'a1b2c3d4-1111-4000-8000-000000000001',
+        { expectedRevision: 8 },
+      );
+
+      expect(serviceMock.archiveArticle).toHaveBeenCalledWith(
+        VALID_USER,
+        'a1b2c3d4-1111-4000-8000-000000000001',
+        { expectedRevision: 8 },
+      );
+      expect(result).toEqual(archivedResponse);
+    });
+  });
+
+  describe('restoreArticle', () => {
+    it('delegates to ArticlePublicationService.restoreArticle and returns restored response', async () => {
+      serviceMock.restoreArticle.mockResolvedValue(MOCK_PUBLICATION_RESPONSE);
+
+      const result = await controller.restoreArticle(
+        VALID_USER,
+        'a1b2c3d4-1111-4000-8000-000000000001',
+        { expectedRevision: 8 },
+      );
+
+      expect(serviceMock.restoreArticle).toHaveBeenCalledWith(
         VALID_USER,
         'a1b2c3d4-1111-4000-8000-000000000001',
         { expectedRevision: 8 },

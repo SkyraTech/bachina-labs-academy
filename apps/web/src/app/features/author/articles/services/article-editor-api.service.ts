@@ -5,12 +5,14 @@ import {
   ArticleBlock,
   ArticlePublicationResponse,
   ArticleStatus,
+  ArchiveArticleRequest,
   CreateArticleRequest,
   CreateBlockRequest,
   EditableArticle,
   PaginatedAuthorArticlesResponse,
   PublishArticleRequest,
   ReorderBlocksRequest,
+  RestoreArticleRequest,
   UpdateArticleMetadataRequest,
   UpdateBlockRequest,
 } from '../models/article.models';
@@ -49,12 +51,18 @@ export class ArticleEditorApiService {
   listMyArticles(params?: {
     page?: number;
     limit?: number;
-    status?: ArticleStatus;
+    pageSize?: number;
+    status?: ArticleStatus | 'ALL';
+    search?: string;
+    categoryId?: string;
   }): Observable<PaginatedAuthorArticlesResponse> {
     const queryParams: Record<string, string | number> = {};
     if (params?.page) queryParams['page'] = params.page;
-    if (params?.limit) queryParams['limit'] = params.limit;
-    if (params?.status) queryParams['status'] = params.status;
+    const limit = params?.limit ?? params?.pageSize;
+    if (limit) queryParams['limit'] = limit;
+    if (params?.status && params.status !== 'ALL') queryParams['status'] = params.status;
+    if (params?.search && params.search.trim()) queryParams['search'] = params.search.trim();
+    if (params?.categoryId) queryParams['categoryId'] = params.categoryId;
 
     return this.api.get<PaginatedAuthorArticlesResponse>('articles/mine', {
       params: queryParams,
@@ -140,6 +148,30 @@ export class ArticleEditorApiService {
     dto: PublishArticleRequest,
   ): Observable<ArticlePublicationResponse> {
     return this.api.post<ArticlePublicationResponse>(`articles/${articleId}/publish`, dto);
+  }
+
+  /**
+   * Archives an owned published article, removing it from public visibility.
+   * POST /api/v1/articles/:articleId/archive
+   */
+  archiveArticle(
+    articleId: string,
+    expectedRevision: number,
+  ): Observable<ArticlePublicationResponse> {
+    const dto: ArchiveArticleRequest = { expectedRevision };
+    return this.api.post<ArticlePublicationResponse>(`articles/${articleId}/archive`, dto);
+  }
+
+  /**
+   * Restores an owned archived article back to published status.
+   * POST /api/v1/articles/:articleId/restore
+   */
+  restoreArticle(
+    articleId: string,
+    expectedRevision: number,
+  ): Observable<ArticlePublicationResponse> {
+    const dto: RestoreArticleRequest = { expectedRevision };
+    return this.api.post<ArticlePublicationResponse>(`articles/${articleId}/restore`, dto);
   }
 
   /**

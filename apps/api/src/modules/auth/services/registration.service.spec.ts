@@ -37,7 +37,7 @@ import type { RegisterRequestDto } from '../dto/register-request.dto.js';
 const MOCK_SAFE_USER: SafeUser = {
   id: 'a1b2c3d4-0000-4000-8000-000000000001',
   email: 'alice@example.com',
-  role: UserRole.AUTHOR,
+  role: UserRole.READER,
   status: UserStatus.ACTIVE,
   emailVerifiedAt: null,
   createdAt: new Date('2026-10-14T07:00:00.000Z'),
@@ -130,9 +130,9 @@ describe('RegistrationService', () => {
       expect(result).toEqual(MOCK_SAFE_USER);
     });
 
-    it('assigns the default AUTHOR role', async () => {
+    it('assigns the default READER role', async () => {
       const result = await service.register(VALID_DTO);
-      expect(result.role).toBe(UserRole.AUTHOR);
+      expect(result.role).toBe(UserRole.READER);
     });
 
     it('sets emailVerifiedAt to null', async () => {
@@ -327,7 +327,7 @@ describe('RegistrationService', () => {
 
       expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
       expect(usersRepositoryMock.createUser).toHaveBeenCalledWith(
-        { email: VALID_DTO.email, passwordHash: '$argon2id$v=19$mock-hash' },
+        { email: VALID_DTO.email, passwordHash: '$argon2id$v=19$mock-hash', role: UserRole.READER },
         mockTx,
       );
       expect(auditServiceMock.recordTransactional).toHaveBeenCalledTimes(1);
@@ -339,7 +339,7 @@ describe('RegistrationService', () => {
           resourceType: 'USER',
           resourceId: null,
           metadata: {
-            role: 'AUTHOR',
+            role: 'READER',
             registrationMethod: 'EMAIL_PASSWORD',
           },
         }),

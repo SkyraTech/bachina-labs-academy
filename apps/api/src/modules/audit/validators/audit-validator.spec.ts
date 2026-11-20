@@ -391,7 +391,7 @@ describe('AuditValidator', () => {
         metadata: { role: 'MEMBER', registrationMethod: 'EMAIL_PASSWORD' },
       };
       expect(() => AuditValidator.validate(event)).toThrow(AuditValidationError);
-      expect(() => AuditValidator.validate(event)).toThrow(/requires role to be AUTHOR or ADMIN/);
+      expect(() => AuditValidator.validate(event)).toThrow(/requires role to be READER, AUTHOR or ADMIN/);
     });
 
     it('rejects non-object metadata (e.g. array, string, null)', () => {
@@ -552,6 +552,185 @@ describe('AuditValidator', () => {
         metadata: { reason: 'RATE_LIMIT_EXCEEDED', attemptCount: 0 },
       };
       expect(() => AuditValidator.validate(invalidAttemptCount)).toThrow(AuditValidationError);
+    });
+
+    it('validates article.archived specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'article.archived',
+        actor: AuditActorFactory.fromAuthenticatedPrincipal({
+          id: validUserUuid,
+          role: 'AUTHOR',
+        }),
+        resourceType: 'ARTICLE',
+        resourceId: 'a0000000-0000-4000-8000-000000000002',
+        outcome: 'SUCCESS',
+        metadata: {
+          previousStatus: 'PUBLISHED',
+          newStatus: 'ARCHIVED',
+          draftRevision: 8,
+          publishedRevision: 8,
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('article.archived');
+
+      const invalidStatus: any = {
+        ...validEvent,
+        metadata: {
+          previousStatus: 'DRAFT',
+          newStatus: 'ARCHIVED',
+          draftRevision: 8,
+          publishedRevision: 8,
+        },
+      };
+      expect(() => AuditValidator.validate(invalidStatus)).toThrow(AuditValidationError);
+    });
+
+    it('validates article.restored specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'article.restored',
+        actor: AuditActorFactory.fromAuthenticatedPrincipal({
+          id: validUserUuid,
+          role: 'AUTHOR',
+        }),
+        resourceType: 'ARTICLE',
+        resourceId: 'a0000000-0000-4000-8000-000000000002',
+        outcome: 'SUCCESS',
+        metadata: {
+          previousStatus: 'ARCHIVED',
+          newStatus: 'PUBLISHED',
+          draftRevision: 10,
+          publishedRevision: 8,
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('article.restored');
+
+      const invalidStatus: any = {
+        ...validEvent,
+        metadata: {
+          previousStatus: 'PUBLISHED',
+          newStatus: 'PUBLISHED',
+          draftRevision: 10,
+          publishedRevision: 8,
+        },
+      };
+      expect(() => AuditValidator.validate(invalidStatus)).toThrow(AuditValidationError);
+    });
+
+    it('validates policy.created specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'policy.created',
+        actor: AuditActorFactory.forSystem(),
+        resourceType: 'ACCESS_POLICY',
+        resourceId: 'a0000000-0000-4000-8000-000000000003',
+        outcome: 'SUCCESS',
+        metadata: {
+          articleId: 'a0000000-0000-4000-8000-000000000002',
+          policyId: 'a0000000-0000-4000-8000-000000000003',
+          tier: 'FREE',
+          note: 'Initial default free tier',
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('policy.created');
+
+      const invalidTier: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, tier: 'INVALID_TIER' },
+      };
+      expect(() => AuditValidator.validate(invalidTier)).toThrow(AuditValidationError);
+
+      const invalidArticleId: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, articleId: 'not-a-uuid' },
+      };
+      expect(() => AuditValidator.validate(invalidArticleId)).toThrow(AuditValidationError);
+    });
+
+    it('validates policy.tier_changed specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'policy.tier_changed',
+        actor: AuditActorFactory.forSystem(),
+        resourceType: 'ACCESS_POLICY',
+        resourceId: 'a0000000-0000-4000-8000-000000000003',
+        outcome: 'SUCCESS',
+        metadata: {
+          articleId: 'a0000000-0000-4000-8000-000000000002',
+          policyId: 'a0000000-0000-4000-8000-000000000003',
+          previousTier: 'FREE',
+          newTier: 'PREMIUM',
+          reason: 'Promoted to premium access',
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('policy.tier_changed');
+
+      const invalidPrevious: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, previousTier: 'INVALID' },
+      };
+      expect(() => AuditValidator.validate(invalidPrevious)).toThrow(AuditValidationError);
+    });
+
+    it('validates entitlement.issued specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'entitlement.issued',
+        actor: AuditActorFactory.forSystem(),
+        resourceType: 'ENTITLEMENT',
+        resourceId: 'a0000000-0000-4000-8000-000000000004',
+        outcome: 'SUCCESS',
+        metadata: {
+          grantId: 'a0000000-0000-4000-8000-000000000004',
+          targetUserId: validUserUuid,
+          entitlementType: 'PREMIUM_CONTENT',
+          source: 'COMPLIMENTARY',
+          validFrom: '2026-01-01T00:00:00.000Z',
+          validUntil: '2026-12-31T23:59:59.000Z',
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('entitlement.issued');
+
+      const invertedDates: any = {
+        ...validEvent,
+        metadata: {
+          ...validEvent.metadata,
+          validFrom: '2026-12-31T23:59:59.000Z',
+          validUntil: '2026-01-01T00:00:00.000Z',
+        },
+      };
+      expect(() => AuditValidator.validate(invertedDates)).toThrow(AuditValidationError);
+
+      const invalidSource: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, source: 'INVALID_SOURCE' },
+      };
+      expect(() => AuditValidator.validate(invalidSource)).toThrow(AuditValidationError);
+    });
+
+    it('validates entitlement.revoked specific metadata', () => {
+      const validEvent: AuditEvent = {
+        action: 'entitlement.revoked',
+        actor: AuditActorFactory.forSystem(),
+        resourceType: 'ENTITLEMENT',
+        resourceId: 'a0000000-0000-4000-8000-000000000004',
+        outcome: 'SUCCESS',
+        metadata: {
+          grantId: 'a0000000-0000-4000-8000-000000000004',
+          targetUserId: validUserUuid,
+          revocationReason: 'Terms of service violation',
+          revokedAt: '2026-06-01T12:00:00.000Z',
+        },
+      };
+      expect(AuditValidator.validate(validEvent).action).toBe('entitlement.revoked');
+
+      const emptyReason: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, revocationReason: '   ' },
+      };
+      expect(() => AuditValidator.validate(emptyReason)).toThrow(AuditValidationError);
+
+      const invalidRevokedAt: any = {
+        ...validEvent,
+        metadata: { ...validEvent.metadata, revokedAt: 'not-a-date' },
+      };
+      expect(() => AuditValidator.validate(invalidRevokedAt)).toThrow(AuditValidationError);
     });
   });
 });

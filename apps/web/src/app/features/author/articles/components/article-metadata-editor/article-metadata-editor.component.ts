@@ -4,6 +4,7 @@ import {
   inject,
   signal,
   effect,
+  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -35,7 +36,7 @@ import { ArticleTagSelectorComponent } from '../article-tag-selector/article-tag
   styleUrl: './article-metadata-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ArticleMetadataEditorComponent {
+export class ArticleMetadataEditorComponent implements OnDestroy {
   readonly state = inject(ArticleEditorStateService);
   private readonly fb = inject(FormBuilder);
   private readonly mediaApi = inject(ArticleMediaApiService);
@@ -90,6 +91,20 @@ export class ArticleMetadataEditorComponent {
     this.form.valueChanges.subscribe(() => {
       this.recalculateDirty();
     });
+
+    if (typeof this.state?.registerMetadataHandler === 'function') {
+      this.state.registerMetadataHandler({
+        isValid: () => this.form.valid,
+        save: () => this.onSave(),
+        discard: () => this.discard(),
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (typeof this.state?.unregisterMetadataHandler === 'function') {
+      this.state.unregisterMetadataHandler();
+    }
   }
 
   onCategoryChanged(newCategoryId: string | null): void {
@@ -180,8 +195,8 @@ export class ArticleMetadataEditorComponent {
     return id ? this.mediaApi.getPrivateMediaPreviewUrl(id) : null;
   }
 
-  async onSave(): Promise<void> {
-    if (this.form.invalid || !this.isDirty()) return;
+  async onSave(): Promise<boolean> {
+    if (this.form.invalid || !this.isDirty()) return !this.isDirty();
 
     const val = this.form.value;
     const success = await this.state.updateMetadata({
@@ -196,6 +211,29 @@ export class ArticleMetadataEditorComponent {
 
     if (success) {
       this.isDirty.set(false);
+    }
+    return success;
+  }
+
+  discard(): void {
+    const art = this.state.article();
+    if (art) {
+      this.form.patchValue(
+        {
+          title: art.title,
+          draftSlug: art.draftSlug,
+          summary: art.summary || '',
+          typographyPreset: art.typographyPreset,
+        },
+        { emitEvent: false },
+      );
+      this.coverMediaId.set(art.coverMediaId);
+      this.categoryId.set(art.categoryId ?? null);
+      this.tagIds.set(art.tagIds ?? []);
+      this.isDirty.set(false);
+      if (typeof this.state?.isMetadataDirty?.set === 'function') {
+        this.state.isMetadataDirty.set(false);
+      }
     }
   }
 }

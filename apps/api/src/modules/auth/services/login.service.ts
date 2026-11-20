@@ -144,7 +144,7 @@ export class LoginService implements OnModuleInit {
         action: 'auth.login.succeeded',
         actor: AuditActorFactory.fromVerifiedLogin({
           id: creds.id,
-          role: creds.role as 'AUTHOR' | 'ADMIN',
+          role: creds.role,
         }),
         resourceType: 'SESSION',
         resourceId: session.id, // Privacy Option A: actual session UUID

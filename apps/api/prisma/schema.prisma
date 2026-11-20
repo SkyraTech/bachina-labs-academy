@@ -23,7 +23,10 @@ datasource db {
 
 /**
  * UserRole — controls access level within the Academy.
- * AUTHOR  — default role for all newly registered users.
+ * READER  — default role for all newly registered public users.
+ * Has read-only access to published content and personal account features.
+ * Cannot access Author Studio or Admin areas.
+ * AUTHOR  — elevated creator role for authors and contributors.
  * Grants access to author-specific functionality after
  * email verification is confirmed.
  * ADMIN   — elevated role. NEVER assigned automatically from
@@ -32,6 +35,7 @@ datasource db {
  * Assigned only through controlled server-side tooling.
  */
 enum UserRole {
+  READER
   AUTHOR
   ADMIN
 }
@@ -127,7 +131,7 @@ model User {
   id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email           String     @unique @db.VarChar(254)
   passwordHash    String?    @map("password_hash")
-  role            UserRole   @default(AUTHOR)
+  role            UserRole   @default(READER)
   status          UserStatus @default(ACTIVE)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(3)
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -141,6 +145,9 @@ model User {
   profile                 UserProfile?             @relation("UserProfileRelation")
   authoredComments        ArticleComment[]         @relation("UserAuthoredComments")
   moderatedComments       ArticleComment[]         @relation("AdminModeratedComments")
+  accessPolicyUpdates     ArticleAccessPolicy[]    @relation("PolicyUpdates")
+  entitlementGrants       EntitlementGrant[]       @relation("UserEntitlements")
+  issuedEntitlements      EntitlementGrant[]       @relation("IssuedEntitlements")
 
   @@map("users")
 }
@@ -383,6 +390,7 @@ model Article {
   snapshots  ArticleSnapshot[] @relation("ArticleHistoricalSnapshots")
   tags       ArticleTag[]      @relation("ArticleTags")
   comments   ArticleComment[]  @relation("ArticleComments")
+  accessPolicy ArticleAccessPolicy?
 
   @@index([authorId, createdAt(sort: Desc)], map: "articles_author_id_created_at_idx")
   @@index([status, publishedAt(sort: Desc)], map: "articles_status_published_at_idx")
@@ -589,4 +597,70 @@ model ArticleComment {
   @@index([userId, createdAt(sort: Desc)], map: "idx_article_comments_user_created")
   @@index([status, removedAt], map: "idx_article_comments_status_removed_at")
   @@map("article_comments")
+}
+
+// ── Tier 1: Core Access Control & Entitlement Foundation (POD-25 & POD-26) ────
+
+enum AccessPolicyTier {
+  FREE
+  PREMIUM
+}
+
+enum EntitlementType {
+  PREMIUM_CONTENT
+  EARLY_ACCESS
+}
+
+enum EntitlementSource {
+  SUBSCRIPTION
+  COMPLIMENTARY
+  MANUAL_OVERRIDE
+  PROMOTIONAL
+}
+
+/**
+ * ArticleAccessPolicy — independent monetization tier for published articles.
+ * Decoupled from ArticleSnapshot to allow tier changes without snapshot invalidation.
+ * Default effective tier is FREE when no policy row exists for an article.
+ */
+model ArticleAccessPolicy {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId   String           @unique @map("article_id") @db.Uuid
+  tier        AccessPolicyTier @default(FREE)
+  note        String?          @db.VarChar(255)
+  updatedById String?          @map("updated_by_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  updatedBy User?    @relation("PolicyUpdates", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([tier], map: "article_access_policies_tier_idx")
+  @@map("article_access_policies")
+}
+
+/**
+ * EntitlementGrant — authoritative server-side user access right.
+ * Evaluated using half-open time intervals: validFrom <= serverNow < validUntil.
+ * Standalone in Tier 1; does not reference any Tier 2 billing or subscription model.
+ */
+model EntitlementGrant {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String            @map("user_id") @db.Uuid
+  entitlementType  EntitlementType   @default(PREMIUM_CONTENT) @map("entitlement_type")
+  source           EntitlementSource @default(COMPLIMENTARY)
+  validFrom        DateTime          @default(now()) @map("valid_from") @db.Timestamptz(3)
+  validUntil       DateTime          @map("valid_until") @db.Timestamptz(3)
+  revokedAt        DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  revocationReason String?           @map("revocation_reason") @db.VarChar(100)
+  grantedById      String?           @map("granted_by_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user      User  @relation("UserEntitlements", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  grantedBy User? @relation("IssuedEntitlements", fields: [grantedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([userId, validFrom, validUntil], map: "entitlement_grants_user_validity_idx")
+  @@index([userId, revokedAt], map: "entitlement_grants_user_revocation_idx")
+  @@map("entitlement_grants")
 }

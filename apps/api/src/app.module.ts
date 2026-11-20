@@ -20,6 +20,7 @@ import { AuthorsModule } from './modules/authors/authors.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { UserProfilesModule } from './modules/users/user-profiles/user-profiles.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { EntitlementsModule } from './modules/entitlements/entitlements.module';
 import appConfig from './config/app.config';
 import emailConfig from './config/email.config';
 import jwtConfig from './config/jwt.config';
@@ -84,6 +85,7 @@ import jwtConfig from './config/jwt.config';
     AdminModule,    // Checkpoint P8 — Admin Hub, User Directory, Article Oversight & Platform Metrics
     UserProfilesModule, // Checkpoint P9-B1 — User Profile identity foundation
     CommentsModule, // Checkpoint P9-B1 — Flat comments and admin moderation
+    EntitlementsModule, // Checkpoint P10-ENTITLEMENT-FOUNDATION-01 — Standalone Tier 1 Access Foundation
   ],
   controllers: [AppController],
   providers: [

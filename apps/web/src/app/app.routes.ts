@@ -108,6 +108,17 @@ export const routes: Routes = [
     ],
   },
 
+  // Dedicated Authenticated Full-Page Draft Preview (AUTHOR-10)
+  {
+    path: 'author/articles/:articleId/preview',
+    canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
+    loadComponent: () =>
+      import(
+        './features/author/articles/components/article-full-preview/article-full-preview.component'
+      ).then((m) => m.ArticleFullPreviewComponent),
+    title: 'Draft Preview · Bachina Labs Academy',
+  },
+
   // Workspaces (Author, Admin, Account)
   {
     path: '',

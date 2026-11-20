@@ -15,10 +15,14 @@ import {
   type PublishedTaxonomySnapshot,
 } from '../repositories/article-publication.repository.js';
 import type { PublishArticleDto } from '../dto/publish-article.dto.js';
+import type { ArchiveArticleDto } from '../dto/archive-article.dto.js';
+import type { RestoreArticleDto } from '../dto/restore-article.dto.js';
 import type { ArticlePublicationResponseDto } from '../dto/article-publication-response.dto.js';
 import type { AuthenticatedUser } from '../../auth/types/jwt.types.js';
 import { AccountEligibilityPolicy } from '../../../common/authorization/policies/account-eligibility.policy.js';
 import { validateBlockContent } from '../types/block-payloads.types.js';
+import { AuditService } from '../../audit/audit.service.js';
+import { AuditActorFactory } from '../../audit/types/audit-event.types.js';
 
 /**
  * ArticlePublicationService — business logic layer for article publication and snapshotting.
@@ -38,7 +42,10 @@ import { validateBlockContent } from '../types/block-payloads.types.js';
 export class ArticlePublicationService {
   private readonly logger = new Logger(ArticlePublicationService.name);
 
-  constructor(private readonly repository: ArticlePublicationRepository) {}
+  constructor(
+    private readonly repository: ArticlePublicationRepository,
+    private readonly auditService?: AuditService,
+  ) {}
 
   /**
    * Publishes an owned article draft or republishes an updated published article.
@@ -348,6 +355,255 @@ export class ArticlePublicationService {
         );
       }
     }
+  }
+
+  /**
+   * Archives an owned published article.
+   *
+   * Invariants:
+   * - Author account eligibility and ownership verification.
+   * - Concurrency check: expectedRevision matches draftRevision.
+   * - Status check: article must be currently PUBLISHED.
+   * - Snapshot integrity: active currentSnapshotId exists, belongs to article, and matches publishedRevision.
+   * - Slug integrity: publishedSlug is present.
+   * - Atomically sets status to ARCHIVED and records 'article.archived' audit event.
+   */
+  async archiveArticle(
+    user: AuthenticatedUser,
+    articleId: string,
+    dto: ArchiveArticleDto,
+  ): Promise<ArticlePublicationResponseDto> {
+    AccountEligibilityPolicy.assertEligible(user);
+
+    return await this.repository.transaction(async (tx) => {
+      // 1. Lock the owned article row using PostgreSQL FOR UPDATE
+      const article = await this.repository.findArticleForUpdate(
+        articleId,
+        user.id,
+        tx,
+      );
+
+      // Mask existence if missing or foreign-owned
+      if (!article) {
+        throw new NotFoundException('Article not found.');
+      }
+
+      // 2. Lifecycle checks
+      if (article.status === 'ARCHIVED') {
+        throw new ConflictException('Article is already archived.');
+      }
+
+      if (article.status !== 'PUBLISHED') {
+        throw new BadRequestException(
+          `Cannot archive article with status ${article.status}. Only published articles can be archived.`,
+        );
+      }
+
+      // 3. Optimistic concurrency control: expectedRevision must match current draftRevision
+      if (article.draftRevision !== dto.expectedRevision) {
+        throw new ConflictException(
+          `Revision conflict: expected revision ${dto.expectedRevision}, but article is at revision ${article.draftRevision}.`,
+        );
+      }
+
+      // 4. Validate active snapshot and slug integrity
+      if (
+        !article.currentSnapshotId ||
+        !article.publishedSlug ||
+        article.publishedRevision === null ||
+        article.publishedRevision === undefined ||
+        article.publishedRevision < 1
+      ) {
+        throw new BadRequestException(
+          'Article is missing required publication snapshot metadata.',
+        );
+      }
+
+      // 5. Verify snapshot exists, belongs to this article, and matches publishedRevision
+      const snapshot = await this.repository.findSnapshotById(
+        article.currentSnapshotId,
+        tx,
+      );
+      if (!snapshot) {
+        throw new BadRequestException('Referenced publication snapshot does not exist.');
+      }
+      if (snapshot.articleId !== article.id) {
+        throw new BadRequestException('Snapshot does not belong to this article.');
+      }
+      if (snapshot.snapshotRevision !== article.publishedRevision) {
+        throw new BadRequestException(
+          'Snapshot revision mismatch with article published revision.',
+        );
+      }
+
+      // 6. Update status to ARCHIVED
+      const updated = await this.repository.updateArticleStatus(
+        article.id,
+        'ARCHIVED',
+        tx,
+      );
+
+      // 7. Record audit log atomically
+      if (this.auditService) {
+        const uuidV4Regex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const actor = uuidV4Regex.test(user.id)
+          ? AuditActorFactory.fromAuthenticatedPrincipal({
+              id: user.id,
+              role: user.role,
+            })
+          : AuditActorFactory.forSystem();
+
+        await this.auditService.recordTransactional(tx, {
+          action: 'article.archived',
+          actor,
+          resourceType: 'ARTICLE',
+          resourceId: article.id,
+          outcome: 'SUCCESS',
+          metadata: {
+            previousStatus: 'PUBLISHED',
+            newStatus: 'ARCHIVED',
+            draftRevision: article.draftRevision,
+            publishedRevision: article.publishedRevision,
+          },
+        });
+      }
+
+      return {
+        articleId: updated.id,
+        status: updated.status,
+        draftRevision: updated.draftRevision,
+        publishedRevision: updated.publishedRevision!,
+        publishedSlug: updated.publishedSlug!,
+        currentSnapshotId: updated.currentSnapshotId!,
+        publishedAt: updated.publishedAt!.toISOString(),
+      };
+    });
+  }
+
+  /**
+   * Restores an owned archived article back to published status.
+   *
+   * Invariants:
+   * - Author account eligibility and ownership verification.
+   * - Concurrency check: expectedRevision matches draftRevision.
+   * - Status check: article must be currently ARCHIVED.
+   * - Snapshot integrity: active currentSnapshotId exists, belongs to article, and matches publishedRevision.
+   * - Slug integrity: publishedSlug is present.
+   * - Atomically sets status to PUBLISHED and records 'article.restored' audit event.
+   * - Critical: does NOT create a new snapshot and does NOT publish uncommitted draft edits.
+   */
+  async restoreArticle(
+    user: AuthenticatedUser,
+    articleId: string,
+    dto: RestoreArticleDto,
+  ): Promise<ArticlePublicationResponseDto> {
+    AccountEligibilityPolicy.assertEligible(user);
+
+    return await this.repository.transaction(async (tx) => {
+      // 1. Lock the owned article row using PostgreSQL FOR UPDATE
+      const article = await this.repository.findArticleForUpdate(
+        articleId,
+        user.id,
+        tx,
+      );
+
+      // Mask existence if missing or foreign-owned
+      if (!article) {
+        throw new NotFoundException('Article not found.');
+      }
+
+      // 2. Lifecycle checks
+      if (article.status === 'PUBLISHED') {
+        throw new ConflictException('Article is already published.');
+      }
+
+      if (article.status !== 'ARCHIVED') {
+        throw new BadRequestException(
+          `Cannot restore article with status ${article.status}. Only archived articles can be restored.`,
+        );
+      }
+
+      // 3. Optimistic concurrency control: expectedRevision must match current draftRevision
+      if (article.draftRevision !== dto.expectedRevision) {
+        throw new ConflictException(
+          `Revision conflict: expected revision ${dto.expectedRevision}, but article is at revision ${article.draftRevision}.`,
+        );
+      }
+
+      // 4. Validate active snapshot and slug integrity
+      if (
+        !article.currentSnapshotId ||
+        !article.publishedSlug ||
+        article.publishedRevision === null ||
+        article.publishedRevision === undefined ||
+        article.publishedRevision < 1
+      ) {
+        throw new BadRequestException(
+          'Article is missing required publication snapshot metadata.',
+        );
+      }
+
+      // 5. Verify snapshot exists, belongs to this article, and matches publishedRevision
+      const snapshot = await this.repository.findSnapshotById(
+        article.currentSnapshotId,
+        tx,
+      );
+      if (!snapshot) {
+        throw new BadRequestException('Referenced publication snapshot does not exist.');
+      }
+      if (snapshot.articleId !== article.id) {
+        throw new BadRequestException('Snapshot does not belong to this article.');
+      }
+      if (snapshot.snapshotRevision !== article.publishedRevision) {
+        throw new BadRequestException(
+          'Snapshot revision mismatch with article published revision.',
+        );
+      }
+
+      // 6. Update status to PUBLISHED
+      const updated = await this.repository.updateArticleStatus(
+        article.id,
+        'PUBLISHED',
+        tx,
+      );
+
+      // 7. Record audit log atomically
+      if (this.auditService) {
+        const uuidV4Regex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const actor = uuidV4Regex.test(user.id)
+          ? AuditActorFactory.fromAuthenticatedPrincipal({
+              id: user.id,
+              role: user.role,
+            })
+          : AuditActorFactory.forSystem();
+
+        await this.auditService.recordTransactional(tx, {
+          action: 'article.restored',
+          actor,
+          resourceType: 'ARTICLE',
+          resourceId: article.id,
+          outcome: 'SUCCESS',
+          metadata: {
+            previousStatus: 'ARCHIVED',
+            newStatus: 'PUBLISHED',
+            draftRevision: article.draftRevision,
+            publishedRevision: article.publishedRevision,
+          },
+        });
+      }
+
+      return {
+        articleId: updated.id,
+        status: updated.status,
+        draftRevision: updated.draftRevision,
+        publishedRevision: updated.publishedRevision!,
+        publishedSlug: updated.publishedSlug!,
+        currentSnapshotId: updated.currentSnapshotId!,
+        publishedAt: updated.publishedAt!.toISOString(),
+      };
+    });
   }
 
   /**

@@ -275,6 +275,8 @@ describe('ArticlesService', () => {
         page: 1,
         limit: 20,
         status: undefined,
+        search: undefined,
+        categoryId: undefined,
       });
 
       expect(result).toEqual({
@@ -292,6 +294,29 @@ describe('ArticlesService', () => {
         limit: 20,
         total: 1,
         totalPages: 1,
+      });
+    });
+
+    it('passes search, categoryId, and maps pageSize to limit', async () => {
+      repositoryMock.findMyArticles.mockResolvedValue({
+        items: [],
+        total: 0,
+      });
+
+      await service.listMyArticles(VALID_USER, {
+        page: 2,
+        pageSize: 10,
+        search: 'docker',
+        categoryId: '3bdb80dc-3e80-47d9-882b-42e897e112c8',
+      });
+
+      expect(repositoryMock.findMyArticles).toHaveBeenCalledWith({
+        authorId: VALID_USER.id,
+        page: 2,
+        limit: 10,
+        status: undefined,
+        search: 'docker',
+        categoryId: '3bdb80dc-3e80-47d9-882b-42e897e112c8',
       });
     });
 
@@ -420,18 +445,26 @@ describe('ArticlesService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws 409 ConflictException if article is ARCHIVED', async () => {
+    it('allows updating draft metadata if article is ARCHIVED', async () => {
       mockTx.findArticleForUpdate.mockResolvedValue({
         ...MOCK_ARTICLE,
         status: ArticleStatus.ARCHIVED,
       });
+      mockTx.updateArticle.mockResolvedValue({
+        ...MOCK_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+        title: 'Updated Title',
+        draftRevision: 2,
+      });
 
-      await expect(
-        service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
-          expectedRevision: 1,
-          title: 'Updated Title',
-        }),
-      ).rejects.toThrow('Archived articles cannot be edited');
+      const result = await service.updateDraftMetadata(VALID_USER, MOCK_ARTICLE.id, {
+        expectedRevision: 1,
+        title: 'Updated Title',
+      });
+
+      expect(mockTx.updateArticle).toHaveBeenCalled();
+      expect(result.title).toBe('Updated Title');
+      expect(result.status).toBe(ArticleStatus.ARCHIVED);
     });
 
     it('throws 409 ConflictException when expectedRevision does not match current draftRevision', async () => {

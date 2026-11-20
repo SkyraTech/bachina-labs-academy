@@ -117,7 +117,7 @@ export class UsersRepository {
       data: {
         email: input.email,
         passwordHash: input.passwordHash,
-        // role:   uses model default → AUTHOR
+        ...(input.role ? { role: input.role } : {}),
         // status: uses model default → ACTIVE
         // emailVerifiedAt: null (no default — Prisma inserts NULL)
         // id: database-generated → gen_random_uuid()

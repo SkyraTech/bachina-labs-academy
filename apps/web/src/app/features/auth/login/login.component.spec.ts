@@ -213,5 +213,13 @@ describe('LoginComponent', () => {
       expect(sanitizeRedirectUrl('')).toBe('/author');
       expect(sanitizeRedirectUrl('   ')).toBe('/author');
     });
+
+    it('should route READER to home by default and block AUTHOR/ADMIN paths', () => {
+      expect(sanitizeRedirectUrl(null, 'READER')).toBe('/');
+      expect(sanitizeRedirectUrl('/author', 'READER')).toBe('/');
+      expect(sanitizeRedirectUrl('/author/articles/new', 'READER')).toBe('/');
+      expect(sanitizeRedirectUrl('/admin', 'READER')).toBe('/');
+      expect(sanitizeRedirectUrl('/articles/intro-to-angular', 'READER')).toBe('/articles/intro-to-angular');
+    });
   });
 });

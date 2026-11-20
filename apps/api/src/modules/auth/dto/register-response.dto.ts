@@ -25,9 +25,9 @@ export class RegisterResponseDto {
   email!: string;
 
   @ApiProperty({
-    description: 'Assigned role — always AUTHOR at registration',
+    description: 'Assigned role — always READER at registration',
     enum: UserRole,
-    example: UserRole.AUTHOR,
+    example: UserRole.READER,
   })
   role!: UserRole;
 

@@ -3,6 +3,7 @@ import { PublicLayoutComponent } from './layouts/public-layout/public-layout.com
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
 import { authGuard, guestGuard, roleGuard } from './core';
+import { articleEditorDeactivateGuard } from './features/author/articles/guards';
 
 /**
  * Bachina Labs Academy — Production Route Configuration.
@@ -120,11 +121,21 @@ export const routes: Routes = [
       {
         path: 'author/articles/:articleId/edit',
         canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
+        canDeactivate: [articleEditorDeactivateGuard],
         loadComponent: () =>
           import('./features/author/articles/components/article-editor/article-editor.component').then(
             (m) => m.ArticleEditorComponent,
           ),
         title: 'Article Editor · Bachina Labs Academy',
+      },
+      {
+        path: 'author/articles/:articleId/preview',
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/author/articles/components/article-full-preview/article-full-preview.component').then(
+            (m) => m.ArticleFullPreviewComponent,
+          ),
+        title: 'Draft Preview · Bachina Labs Academy',
       },
       {
         path: 'admin',

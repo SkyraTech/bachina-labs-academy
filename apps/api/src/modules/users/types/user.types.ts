@@ -46,6 +46,7 @@ export type UserLookupResult = SafeUser | null;
 export interface CreateUserInput {
   email: string;
   passwordHash: string;
+  role?: UserRole;
 }
 
 /**

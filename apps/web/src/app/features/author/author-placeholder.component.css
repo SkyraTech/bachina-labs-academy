@@ -8,6 +8,15 @@
   margin: 0 auto;
 }
 
+.metric-card {
+  transition: all 150ms ease;
+}
+
+.metric-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
 .workspace-action-card {
   display: flex;
   flex-direction: column;
@@ -53,4 +62,47 @@
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.badge-published {
+  background-color: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.badge-draft {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.badge-archived {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+:host-context(.dark) .badge-published {
+  background-color: rgba(6, 78, 59, 0.4);
+  color: #34d399;
+  border-color: rgba(6, 95, 70, 0.6);
+}
+
+:host-context(.dark) .badge-draft {
+  background-color: rgba(120, 53, 15, 0.4);
+  color: #fbbf24;
+  border-color: rgba(146, 64, 14, 0.6);
+}
+
+:host-context(.dark) .badge-archived {
+  background-color: rgba(15, 23, 42, 0.6);
+  color: #94a3b8;
+  border-color: #334155;
 }

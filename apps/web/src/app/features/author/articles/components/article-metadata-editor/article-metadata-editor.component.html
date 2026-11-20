@@ -21,7 +21,7 @@
         id="meta-title"
         type="text"
         formControlName="title"
-        class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+        class="w-full px-3 py-2.5 text-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] min-h-[42px]"
       />
       @if (isFieldInvalid('title')) {
         <p class="text-xs text-red-500 mt-1">Title must be between 3 and 255 characters.</p>
@@ -37,7 +37,7 @@
         <button
           type="button"
           (click)="regenerateSlug()"
-          class="text-xs text-[var(--color-brand)] hover:underline"
+          class="text-xs text-[var(--color-brand)] hover:underline py-1 px-1.5 -mr-1.5 min-h-[32px] inline-flex items-center cursor-pointer"
         >
           From Title
         </button>
@@ -46,7 +46,7 @@
         id="meta-slug"
         type="text"
         formControlName="draftSlug"
-        class="w-full px-3 py-2 font-mono text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+        class="w-full px-3 py-2 font-mono text-xs sm:text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] min-h-[40px]"
       />
       @if (isFieldInvalid('draftSlug')) {
         <p class="text-xs text-red-500 mt-1">Slug must be lowercase alphanumeric with hyphens (3–280 chars).</p>
@@ -67,7 +67,7 @@
         id="meta-summary"
         formControlName="summary"
         rows="3"
-        class="w-full px-3 py-2 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)]"
+        class="w-full px-3 py-2.5 text-xs sm:text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-workspace-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] resize-y min-h-[84px]"
       ></textarea>
       @if (isFieldInvalid('summary')) {
         <p class="text-xs text-red-500 mt-1">Summary cannot exceed 500 characters.</p>
@@ -80,34 +80,60 @@
         Cover Image
       </span>
       @if (coverMediaId()) {
-        <div class="relative rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-workspace-bg)] mb-2 aspect-video max-h-36">
+        <div class="relative rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-workspace-bg)] mb-2 aspect-video max-h-40">
           <img
             [src]="getCoverPreviewUrl()"
             alt="Cover image preview"
             class="w-full h-full object-cover"
           />
-          <div class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <div class="hidden sm:flex absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity items-center justify-center gap-2">
             <button
               type="button"
               (click)="openMediaPicker()"
-              class="px-2.5 py-1 text-xs font-semibold rounded bg-white text-black hover:bg-neutral-100"
+              class="px-2.5 py-1 text-xs font-semibold rounded bg-white text-black hover:bg-neutral-100 cursor-pointer"
             >
               Change
             </button>
             <button
               type="button"
               (click)="removeCover()"
-              class="px-2.5 py-1 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700"
+              class="px-2.5 py-1 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer"
             >
               Remove
             </button>
           </div>
         </div>
+
+        <!-- Touch-Friendly & Accessible Mobile Action Controls -->
+        <div class="flex items-center gap-2 mt-1.5">
+          <button
+            type="button"
+            (click)="openMediaPicker()"
+            data-testid="change-cover-btn"
+            class="flex-1 py-2 px-3 text-xs font-semibold rounded-xl bg-[var(--color-workspace-bg)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text)] transition-colors min-h-[38px] flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Change Cover</span>
+          </button>
+          <button
+            type="button"
+            (click)="removeCover()"
+            data-testid="remove-cover-btn"
+            class="py-2 px-3 text-xs font-semibold rounded-xl text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors min-h-[38px] flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Remove</span>
+          </button>
+        </div>
       } @else {
         <button
           type="button"
           (click)="openMediaPicker()"
-          class="w-full py-3 px-4 border border-dashed border-[var(--color-border)] hover:border-[var(--color-brand)] rounded-xl text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-brand)] bg-[var(--color-workspace-bg)] transition-colors flex items-center justify-center gap-2"
+          class="w-full py-3 px-4 border border-dashed border-[var(--color-border)] hover:border-[var(--color-brand)] rounded-xl text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-brand)] bg-[var(--color-workspace-bg)] transition-colors flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -125,21 +151,22 @@
       <div class="space-y-1.5">
         @for (preset of presets; track preset.value) {
           <label
-            class="flex items-center justify-between px-3 py-2 text-xs rounded-lg border cursor-pointer transition-colors"
+            data-testid="typography-preset-option"
+            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 px-3 py-2.5 text-xs rounded-xl border cursor-pointer transition-colors min-h-[44px]"
             [class.border-[var(--color-brand)]]="form.get('typographyPreset')?.value === preset.value"
             [class.bg-[var(--color-brand-surface)]]="form.get('typographyPreset')?.value === preset.value"
             [class.border-[var(--color-border)]]="form.get('typographyPreset')?.value !== preset.value"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 min-w-0">
               <input
                 type="radio"
                 formControlName="typographyPreset"
                 [value]="preset.value"
-                class="text-[var(--color-brand)] focus:ring-[var(--color-brand)]"
+                class="text-[var(--color-brand)] focus:ring-[var(--color-brand)] shrink-0"
               />
-              <span class="font-medium text-[var(--color-text)]">{{ preset.label }}</span>
+              <span class="font-medium text-[var(--color-text)] truncate">{{ preset.label }}</span>
             </div>
-            <span class="text-[10px] text-[var(--color-text-muted)]">{{ preset.hint }}</span>
+            <span class="text-[10px] sm:text-[11px] text-[var(--color-text-muted)] pl-6 sm:pl-0 leading-tight">{{ preset.hint }}</span>
           </label>
         }
       </div>
@@ -166,7 +193,7 @@
       <button
         type="submit"
         [disabled]="!isDirty() || form.invalid || state.isSaving()"
-        class="w-full py-2 px-4 rounded-lg font-medium text-xs text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] shadow-sm"
+        class="w-full py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm text-white bg-[var(--btn-primary-bg)] hover:bg-[var(--btn-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--color-brand)] shadow-sm min-h-[42px] flex items-center justify-center cursor-pointer"
       >
         @if (state.isSaving()) {
           <span>Saving Metadata...</span>

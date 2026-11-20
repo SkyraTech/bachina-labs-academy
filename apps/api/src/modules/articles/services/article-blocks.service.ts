@@ -117,12 +117,7 @@ export class ArticleBlocksService {
         throw new NotFoundException('Article not found.');
       }
 
-      // 2. Lifecycle check: Archived articles cannot be edited
-      if (article.status === ArticleStatus.ARCHIVED) {
-        throw new ConflictException('Archived articles cannot be modified.');
-      }
-
-      // 3. Concurrency check: Validate optimistic draft revision
+      // 2. Concurrency check: Validate optimistic draft revision
       if (article.draftRevision !== dto.expectedRevision) {
         throw new ConflictException(
           `Draft revision conflict: expected revision ${dto.expectedRevision}, but article is at revision ${article.draftRevision}.`,
@@ -211,12 +206,7 @@ export class ArticleBlocksService {
         throw new NotFoundException('Article not found.');
       }
 
-      // 2. Lifecycle check: Archived articles cannot be edited
-      if (article.status === ArticleStatus.ARCHIVED) {
-        throw new ConflictException('Archived articles cannot be modified.');
-      }
-
-      // 3. Concurrency check: Validate optimistic draft revision
+      // 2. Concurrency check: Validate optimistic draft revision
       if (article.draftRevision !== dto.expectedRevision) {
         throw new ConflictException(
           `Draft revision conflict: expected revision ${dto.expectedRevision}, but article is at revision ${article.draftRevision}.`,
@@ -351,12 +341,7 @@ export class ArticleBlocksService {
         throw new NotFoundException('Article not found.');
       }
 
-      // 2. Lifecycle check: Archived articles cannot be edited
-      if (article.status === ArticleStatus.ARCHIVED) {
-        throw new ConflictException('Archived articles cannot be modified.');
-      }
-
-      // 3. Concurrency check: Validate optimistic draft revision
+      // 2. Concurrency check: Validate optimistic draft revision
       if (article.draftRevision !== query.expectedRevision) {
         throw new ConflictException(
           `Draft revision conflict: expected revision ${query.expectedRevision}, but article is at revision ${article.draftRevision}.`,
@@ -408,12 +393,7 @@ export class ArticleBlocksService {
         throw new NotFoundException('Article not found.');
       }
 
-      // 2. Lifecycle check: Archived articles cannot be edited
-      if (article.status === ArticleStatus.ARCHIVED) {
-        throw new ConflictException('Archived articles cannot be modified.');
-      }
-
-      // 3. Concurrency check: Validate optimistic draft revision
+      // 2. Concurrency check: Validate optimistic draft revision
       if (article.draftRevision !== dto.expectedRevision) {
         throw new ConflictException(
           `Draft revision conflict: expected revision ${dto.expectedRevision}, but article is at revision ${article.draftRevision}.`,

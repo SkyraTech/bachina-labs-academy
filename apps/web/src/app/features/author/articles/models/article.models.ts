@@ -155,6 +155,14 @@ export interface PublishArticleRequest {
   expectedRevision: number;
 }
 
+export interface ArchiveArticleRequest {
+  expectedRevision: number;
+}
+
+export interface RestoreArticleRequest {
+  expectedRevision: number;
+}
+
 export interface ArticlePublicationResponse {
   articleId: string;
   status: ArticleStatus;

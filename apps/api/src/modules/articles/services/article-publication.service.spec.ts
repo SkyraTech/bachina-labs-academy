@@ -18,6 +18,9 @@ import type { AuthenticatedUser } from '../../auth/types/jwt.types.js';
 
 describe('ArticlePublicationService', () => {
   let service: ArticlePublicationService;
+  let auditServiceMock: {
+    recordTransactional: ReturnType<typeof vi.fn>;
+  };
   let repositoryMock: {
     transaction: ReturnType<typeof vi.fn>;
     findArticleForUpdate: ReturnType<typeof vi.fn>;
@@ -27,6 +30,8 @@ describe('ArticlePublicationService', () => {
     createSnapshot: ReturnType<typeof vi.fn>;
     createSnapshotMediaRetention: ReturnType<typeof vi.fn>;
     updateArticlePublished: ReturnType<typeof vi.fn>;
+    findSnapshotById: ReturnType<typeof vi.fn>;
+    updateArticleStatus: ReturnType<typeof vi.fn>;
   };
 
   const AUTHOR_ID = 'u1111111-0000-4000-8000-000000000001';
@@ -88,6 +93,10 @@ describe('ArticlePublicationService', () => {
   };
 
   beforeEach(() => {
+    auditServiceMock = {
+      recordTransactional: vi.fn().mockResolvedValue({ id: 'audit-log-id' }),
+    };
+
     repositoryMock = {
       transaction: vi.fn(async (cb) => cb({} as any)),
       findArticleForUpdate: vi.fn(),
@@ -103,10 +112,13 @@ describe('ArticlePublicationService', () => {
       createSnapshot: vi.fn(),
       createSnapshotMediaRetention: vi.fn(),
       updateArticlePublished: vi.fn(),
+      findSnapshotById: vi.fn(),
+      updateArticleStatus: vi.fn(),
     };
 
     service = new ArticlePublicationService(
       repositoryMock as unknown as ArticlePublicationRepository,
+      auditServiceMock as any,
     );
   });
 
@@ -1279,6 +1291,255 @@ describe('ArticlePublicationService', () => {
           }),
         );
       });
+    });
+  });
+
+  describe('archiveArticle (AUTHOR-08)', () => {
+    const PUBLISHED_ARTICLE = {
+      ...VALID_ARTICLE_DRAFT,
+      status: ArticleStatus.PUBLISHED,
+      publishedSlug: 'relational-database-concurrency',
+      publishedRevision: 8,
+      draftRevision: 8,
+      currentSnapshotId: SNAPSHOT_ID,
+      publishedAt: new Date('2026-10-25T12:00:00Z'),
+    };
+
+    const VALID_SNAPSHOT = {
+      id: SNAPSHOT_ID,
+      articleId: ARTICLE_ID,
+      snapshotRevision: 8,
+      publishedSlug: 'relational-database-concurrency',
+    };
+
+    it('1. archives an eligible owned published article successfully', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue(VALID_SNAPSHOT);
+      repositoryMock.updateArticleStatus.mockResolvedValue({
+        ...PUBLISHED_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+      });
+
+      const res = await service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, {
+        expectedRevision: 8,
+      });
+
+      expect(res.status).toBe(ArticleStatus.ARCHIVED);
+      expect(res.publishedSlug).toBe('relational-database-concurrency');
+      expect(res.publishedRevision).toBe(8);
+      expect(res.draftRevision).toBe(8);
+      expect(repositoryMock.updateArticleStatus).toHaveBeenCalledWith(
+        ARTICLE_ID,
+        'ARCHIVED',
+        expect.anything(),
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'article.archived',
+          resourceType: 'ARTICLE',
+          resourceId: ARTICLE_ID,
+          outcome: 'SUCCESS',
+        }),
+      );
+    });
+
+    it('2. rejects archival of a draft article with BadRequestException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(VALID_ARTICLE_DRAFT);
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('3. rejects archival of an already archived article with ConflictException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue({
+        ...PUBLISHED_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+      });
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Article is already archived.');
+    });
+
+    it('4. rejects archival when article belongs to another author (NotFoundException)', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(null);
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('5. rejects archival with stale revision with ConflictException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 7 }),
+      ).rejects.toThrow('Revision conflict');
+    });
+
+    it('6. rejects archival if currentSnapshotId is missing', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue({
+        ...PUBLISHED_ARTICLE,
+        currentSnapshotId: null,
+      });
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Article is missing required publication snapshot metadata.');
+    });
+
+    it('7. rejects archival if referenced snapshot does not exist', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue(null);
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Referenced publication snapshot does not exist.');
+    });
+
+    it('8. rejects archival if snapshot belongs to another article', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue({
+        ...VALID_SNAPSHOT,
+        articleId: 'another-article-id',
+      });
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Snapshot does not belong to this article.');
+    });
+
+    it('9. rejects archival if snapshot revision does not match publishedRevision', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue({
+        ...VALID_SNAPSHOT,
+        snapshotRevision: 7, // Mismatch!
+      });
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Snapshot revision mismatch with article published revision.');
+    });
+
+    it('10. propagates audit write failure to abort archival transaction', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(PUBLISHED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue(VALID_SNAPSHOT);
+      repositoryMock.updateArticleStatus.mockResolvedValue({
+        ...PUBLISHED_ARTICLE,
+        status: ArticleStatus.ARCHIVED,
+      });
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit DB write error'),
+      );
+
+      await expect(
+        service.archiveArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow('Audit DB write error');
+    });
+  });
+
+  describe('restoreArticle (AUTHOR-08)', () => {
+    const ARCHIVED_ARTICLE = {
+      ...VALID_ARTICLE_DRAFT,
+      status: ArticleStatus.ARCHIVED,
+      publishedSlug: 'relational-database-concurrency',
+      publishedRevision: 8,
+      draftRevision: 10, // Has 2 uncommitted private draft edits!
+      currentSnapshotId: SNAPSHOT_ID,
+      publishedAt: new Date('2026-10-25T12:00:00Z'),
+    };
+
+    const VALID_SNAPSHOT = {
+      id: SNAPSHOT_ID,
+      articleId: ARTICLE_ID,
+      snapshotRevision: 8,
+      publishedSlug: 'relational-database-concurrency',
+    };
+
+    it('11. restores an eligible owned archived article successfully serving existing snapshot', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(ARCHIVED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue(VALID_SNAPSHOT);
+      repositoryMock.updateArticleStatus.mockResolvedValue({
+        ...ARCHIVED_ARTICLE,
+        status: ArticleStatus.PUBLISHED,
+      });
+
+      const res = await service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, {
+        expectedRevision: 10,
+      });
+
+      expect(res.status).toBe(ArticleStatus.PUBLISHED);
+      expect(res.publishedSlug).toBe('relational-database-concurrency');
+      expect(res.publishedRevision).toBe(8); // Stays at 8! Does not jump to 10!
+      expect(res.draftRevision).toBe(10);
+      expect(repositoryMock.createSnapshot).not.toHaveBeenCalled(); // No new snapshot!
+      expect(repositoryMock.updateArticleStatus).toHaveBeenCalledWith(
+        ARTICLE_ID,
+        'PUBLISHED',
+        expect.anything(),
+      );
+      expect(auditServiceMock.recordTransactional).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'article.restored',
+          resourceType: 'ARTICLE',
+          resourceId: ARTICLE_ID,
+          outcome: 'SUCCESS',
+        }),
+      );
+    });
+
+    it('12. rejects restoration of an already published article with ConflictException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue({
+        ...ARCHIVED_ARTICLE,
+        status: ArticleStatus.PUBLISHED,
+      });
+
+      await expect(
+        service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 10 }),
+      ).rejects.toThrow('Article is already published.');
+    });
+
+    it('13. rejects restoration of a draft article with BadRequestException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(VALID_ARTICLE_DRAFT);
+
+      await expect(
+        service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 8 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('14. rejects restoration when article belongs to another author (NotFoundException)', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(null);
+
+      await expect(
+        service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 10 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('15. rejects restoration with stale revision with ConflictException', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(ARCHIVED_ARTICLE);
+
+      await expect(
+        service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 9 }),
+      ).rejects.toThrow('Revision conflict');
+    });
+
+    it('16. propagates audit write failure to abort restore transaction', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(ARCHIVED_ARTICLE);
+      repositoryMock.findSnapshotById.mockResolvedValue(VALID_SNAPSHOT);
+      repositoryMock.updateArticleStatus.mockResolvedValue({
+        ...ARCHIVED_ARTICLE,
+        status: ArticleStatus.PUBLISHED,
+      });
+      auditServiceMock.recordTransactional.mockRejectedValue(
+        new Error('Audit DB write error'),
+      );
+
+      await expect(
+        service.restoreArticle(VALID_AUTHOR, ARTICLE_ID, { expectedRevision: 10 }),
+      ).rejects.toThrow('Audit DB write error');
     });
   });
 });
