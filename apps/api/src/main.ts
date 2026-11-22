@@ -89,8 +89,8 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   // ── Start ─────────────────────────────────────────────────────────────
-  await app.listen(port);
-  logger.log(`API running on: http://localhost:${port}/api/v1`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`API running on: http://0.0.0.0:${port}/api/v1`);
   logger.log(`Environment: ${nodeEnv}`);
 }
 
