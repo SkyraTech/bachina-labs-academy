@@ -57,6 +57,9 @@ export class OriginGuard implements CanActivate {
 
     // Helper: verify if the request's Host header matches a trusted server host (prevent Host header poisoning)
     const isTrustedHost = (h: string): boolean => {
+      if (this.allowedOrigins.includes('*')) {
+        return true;
+      }
       const rawPort = this.configService?.get ? this.configService.get<any>('app.port', 3000) : 3000;
       const port = typeof rawPort === 'number' ? rawPort : 3000;
       const trustedHosts = [
@@ -70,12 +73,20 @@ export class OriginGuard implements CanActivate {
           trustedHosts.push(new URL(ao).host.toLowerCase());
         } catch {}
       }
-      return trustedHosts.includes(h.trim().toLowerCase());
+      const lower = h.trim().toLowerCase();
+      if (/^bachina-labs-academy.*\.vercel\.app$/i.test(lower)) {
+        return true;
+      }
+      return trustedHosts.includes(lower);
     };
 
     // Helper: test if an origin URL is allowed (configured frontend origin or trusted server's own host)
     const isAllowed = (originUrl: string): boolean => {
-      if (this.allowedOrigins.includes(originUrl)) {
+      if (
+        this.allowedOrigins.includes('*') ||
+        this.allowedOrigins.includes(originUrl) ||
+        /^https:\/\/bachina-labs-academy.*\.vercel\.app$/i.test(originUrl)
+      ) {
         return true;
       }
       if (host && isTrustedHost(host)) {
@@ -83,13 +94,38 @@ export class OriginGuard implements CanActivate {
           return true;
         }
       }
+      const forwardedHost = request.headers['x-forwarded-host'];
+      if (forwardedHost) {
+        const fwdStr = (typeof forwardedHost === 'string' ? forwardedHost.split(',')[0].trim() : '').toLowerCase();
+        if (fwdStr && (originUrl.toLowerCase() === `http://${fwdStr}` || originUrl.toLowerCase() === `https://${fwdStr}`)) {
+          return true;
+        }
+      }
       return false;
     };
 
-    // Helper: test if origin strictly matches trusted server's own host
+    // Helper: test if origin strictly matches trusted server's own host or proxy frontend
     const isSameHost = (originUrl: string): boolean => {
-      if (!host || !isTrustedHost(host)) return false;
-      return originUrl === `http://${host}` || originUrl === `https://${host}`;
+      if (
+        this.allowedOrigins.includes('*') ||
+        this.allowedOrigins.includes(originUrl) ||
+        /^https:\/\/bachina-labs-academy.*\.vercel\.app$/i.test(originUrl)
+      ) {
+        return true;
+      }
+      if (host && isTrustedHost(host)) {
+        if (originUrl === `http://${host}` || originUrl === `https://${host}`) {
+          return true;
+        }
+      }
+      const forwardedHost = request.headers['x-forwarded-host'];
+      if (forwardedHost) {
+        const fwdStr = (typeof forwardedHost === 'string' ? forwardedHost.split(',')[0].trim() : '').toLowerCase();
+        if (fwdStr && (originUrl.toLowerCase() === `http://${fwdStr}` || originUrl.toLowerCase() === `https://${fwdStr}`)) {
+          return true;
+        }
+      }
+      return false;
     };
 
     // 2. Validate Origin header if present
