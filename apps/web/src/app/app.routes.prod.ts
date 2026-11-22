@@ -93,7 +93,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'author',
-        canActivate: [authGuard, roleGuard(['AUTHOR'])],
+        canActivate: [authGuard, roleGuard(['AUTHOR', 'ADMIN'])],
         loadComponent: () =>
           import('./features/author/author-placeholder.component').then(
             (m) => m.AuthorDashboardPlaceholderComponent,

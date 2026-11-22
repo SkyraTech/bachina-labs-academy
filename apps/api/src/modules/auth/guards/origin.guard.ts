@@ -106,13 +106,6 @@ export class OriginGuard implements CanActivate {
 
     // Helper: test if origin strictly matches trusted server's own host or proxy frontend
     const isSameHost = (originUrl: string): boolean => {
-      if (
-        this.allowedOrigins.includes('*') ||
-        this.allowedOrigins.includes(originUrl) ||
-        /^https:\/\/bachina-labs-academy.*\.vercel\.app$/i.test(originUrl)
-      ) {
-        return true;
-      }
       if (host && isTrustedHost(host)) {
         if (originUrl === `http://${host}` || originUrl === `https://${host}`) {
           return true;

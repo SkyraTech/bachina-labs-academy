@@ -116,20 +116,43 @@ describe('roleGuard', () => {
     expect(result).toEqual({ commands: ['/admin'], extras: undefined });
   });
 
-  it('6. should permit either AUTHOR or ADMIN when route allows both (e.g. account security)', async () => {
+  it('6. should permit either AUTHOR or ADMIN when route allows both (e.g. author studio & account security)', async () => {
     authStateMock.ensureHydrated.mockReturnValue(of(true));
     const guard = roleGuard(['AUTHOR', 'ADMIN']);
 
     authStateMock.currentUser.mockReturnValue(mockAuthor);
     const authorRes = await TestBed.runInInjectionContext(() =>
-      firstValueFrom(guard({} as ActivatedRouteSnapshot, { url: '/account/security' } as RouterStateSnapshot) as Observable<boolean | UrlTree>)
+      firstValueFrom(guard({} as ActivatedRouteSnapshot, { url: '/author' } as RouterStateSnapshot) as Observable<boolean | UrlTree>)
     );
     expect(authorRes).toBe(true);
 
     authStateMock.currentUser.mockReturnValue(mockAdmin);
     const adminRes = await TestBed.runInInjectionContext(() =>
-      firstValueFrom(guard({} as ActivatedRouteSnapshot, { url: '/account/security' } as RouterStateSnapshot) as Observable<boolean | UrlTree>)
+      firstValueFrom(guard({} as ActivatedRouteSnapshot, { url: '/author' } as RouterStateSnapshot) as Observable<boolean | UrlTree>)
     );
     expect(adminRes).toBe(true);
+  });
+
+  it('7. should deny READER accessing Author Studio routes allowed for AUTHOR and ADMIN and redirect to /', async () => {
+    const mockReader: CurrentUser = {
+      id: 'reader-1',
+      email: 'reader@skyra-tech.com',
+      role: 'READER',
+      status: 'ACTIVE',
+      emailVerifiedAt: '2026-10-15T00:00:00Z',
+    };
+    authStateMock.ensureHydrated.mockReturnValue(of(true));
+    authStateMock.currentUser.mockReturnValue(mockReader);
+
+    const guard = roleGuard(['AUTHOR', 'ADMIN']);
+    const result = await TestBed.runInInjectionContext(() =>
+      firstValueFrom(guard({} as ActivatedRouteSnapshot, { url: '/author' } as RouterStateSnapshot) as Observable<boolean | UrlTree>)
+    );
+
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/']);
+    expect(result).toEqual({
+      commands: ['/'],
+      extras: undefined,
+    });
   });
 });

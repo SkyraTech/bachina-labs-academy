@@ -35,7 +35,7 @@ export const guestGuard: CanActivateFn = (
         if (returnUrl.startsWith('/admin') && user?.role === 'ADMIN') {
           return router.parseUrl(returnUrl);
         }
-        if (returnUrl.startsWith('/author') && user?.role === 'AUTHOR') {
+        if (returnUrl.startsWith('/author') && (user?.role === 'AUTHOR' || user?.role === 'ADMIN')) {
           return router.parseUrl(returnUrl);
         }
         if (returnUrl.startsWith('/account')) {

@@ -32,6 +32,8 @@ export class DashboardLayoutComponent {
 
   protected readonly mobileDrawerOpen = signal(false);
   protected readonly signingOut = signal(false);
+  protected readonly currentUrl = signal(this.router.url);
+  protected readonly isAuthorRoute = computed(() => (this.currentUrl() || '').startsWith('/author'));
   protected readonly isStudioEditRoute = signal(this.matchesStudioEditRoute(this.router.url));
 
   constructor() {
@@ -41,7 +43,9 @@ export class DashboardLayoutComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((e) => {
-        this.isStudioEditRoute.set(this.matchesStudioEditRoute(e.urlAfterRedirects || e.url));
+        const url = e.urlAfterRedirects || e.url;
+        this.currentUrl.set(url);
+        this.isStudioEditRoute.set(this.matchesStudioEditRoute(url));
       });
   }
 
@@ -57,15 +61,29 @@ export class DashboardLayoutComponent {
   });
   readonly userRole = computed(() => this.currentUser()?.role ?? '');
   readonly workspaceBadge = computed(() => {
-    return this.userRole() === 'ADMIN' ? 'Admin Workspace' : 'Studio Workspace';
+    if (this.userRole() === 'ADMIN') {
+      return this.isAuthorRoute() ? 'Author Studio (Admin)' : 'Admin Workspace';
+    }
+    return 'Studio Workspace';
   });
 
   protected readonly sidebarItems = computed<readonly SidebarItem[]>(() => {
     const role = this.userRole();
 
     if (role === 'ADMIN') {
+      if (this.isAuthorRoute()) {
+        return [
+          { label: 'Admin Console', path: '/admin', iconType: 'shield' },
+          { label: 'Overview', path: '/author', iconType: 'home' },
+          { label: 'Articles', path: '/author/articles', iconType: 'file' },
+          { label: 'New Draft', path: '/author/articles/new', iconType: 'pencil' },
+          { label: 'Account Security', path: '/account/security', iconType: 'cog' },
+        ];
+      }
+
       return [
         { label: 'Admin Hub', path: '/admin', iconType: 'shield' },
+        { label: 'Author Studio', path: '/author', iconType: 'pencil' },
         { label: 'Users', path: '/admin/users', iconType: 'users' },
         { label: 'Articles', path: '/admin/articles', iconType: 'file' },
         { label: 'Comments', path: '/admin/comments', iconType: 'chat' },

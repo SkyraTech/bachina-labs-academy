@@ -111,4 +111,36 @@ describe('guestGuard', () => {
     expect(router.parseUrl).toHaveBeenCalledWith('/account/security');
     expect(result).toEqual({ url: '/account/security' });
   });
+
+  it('should redirect authenticated ADMIN to /author when returnUrl specifies Author Studio', async () => {
+    authStateMock.ensureHydrated.mockReturnValue(of(true));
+    authStateMock.currentUser.mockReturnValue(mockAdmin);
+
+    const route = {
+      queryParamMap: convertToParamMap({ returnUrl: '/author' }),
+    } as unknown as ActivatedRouteSnapshot;
+
+    const result = await TestBed.runInInjectionContext(() =>
+      firstValueFrom(guestGuard(route, {} as RouterStateSnapshot) as Observable<boolean | UrlTree>)
+    );
+
+    expect(router.parseUrl).toHaveBeenCalledWith('/author');
+    expect(result).toEqual({ url: '/author' });
+  });
+
+  it('should redirect authenticated ADMIN to /author/articles when returnUrl specifies author articles', async () => {
+    authStateMock.ensureHydrated.mockReturnValue(of(true));
+    authStateMock.currentUser.mockReturnValue(mockAdmin);
+
+    const route = {
+      queryParamMap: convertToParamMap({ returnUrl: '/author/articles' }),
+    } as unknown as ActivatedRouteSnapshot;
+
+    const result = await TestBed.runInInjectionContext(() =>
+      firstValueFrom(guestGuard(route, {} as RouterStateSnapshot) as Observable<boolean | UrlTree>)
+    );
+
+    expect(router.parseUrl).toHaveBeenCalledWith('/author/articles');
+    expect(result).toEqual({ url: '/author/articles' });
+  });
 });

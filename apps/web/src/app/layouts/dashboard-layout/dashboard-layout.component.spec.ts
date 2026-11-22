@@ -68,7 +68,7 @@ describe('DashboardLayoutComponent', () => {
     expect(labels).not.toContain('Admin Hub');
   });
 
-  it('should render admin sidebar navigation when user is ADMIN', () => {
+  it('should render admin sidebar navigation when user is ADMIN and support Author Studio workspace switching', () => {
     mockUserSignal.set({
       id: 'admin-1',
       email: 'admin@skyra-tech.com',
@@ -80,6 +80,7 @@ describe('DashboardLayoutComponent', () => {
 
     const labels = component['sidebarItems']().map((i) => i.label);
     expect(labels).toContain('Admin Hub');
+    expect(labels).toContain('Author Studio');
     expect(labels).toContain('Users');
     expect(labels).toContain('Articles');
     expect(labels).toContain('Comments');
@@ -87,6 +88,19 @@ describe('DashboardLayoutComponent', () => {
     expect(labels).toContain('Tags');
     expect(labels).toContain('Account Security');
     expect(labels).not.toContain('Overview');
+    expect(component.workspaceBadge()).toBe('Admin Workspace');
+
+    // Switch URL to Author Studio while ADMIN
+    component['currentUrl'].set('/author');
+    fixture.detectChanges();
+
+    const authorModeLabels = component['sidebarItems']().map((i) => i.label);
+    expect(authorModeLabels).toContain('Admin Console');
+    expect(authorModeLabels).toContain('Overview');
+    expect(authorModeLabels).toContain('Articles');
+    expect(authorModeLabels).toContain('New Draft');
+    expect(authorModeLabels).toContain('Account Security');
+    expect(component.workspaceBadge()).toBe('Author Studio (Admin)');
   });
 
   it('should sign out user and navigate to /login when sign out is clicked', () => {

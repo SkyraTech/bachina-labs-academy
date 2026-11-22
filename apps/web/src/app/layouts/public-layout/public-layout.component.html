@@ -31,10 +31,16 @@
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <app-theme-selector></app-theme-selector>
 
-        <div class="hidden md:flex items-center gap-2 ml-1">
-          <a routerLink="/login" class="header-signin">Sign in</a>
-          <a routerLink="/register" class="header-btn">Get started</a>
-        </div>
+        @if (isAuthenticated()) {
+          <div class="hidden md:flex items-center gap-2 ml-1">
+            <a [routerLink]="workspaceDestination()" class="header-btn">{{ workspaceLabel() }}</a>
+          </div>
+        } @else {
+          <div class="hidden md:flex items-center gap-2 ml-1">
+            <a routerLink="/login" class="header-signin">Sign in</a>
+            <a routerLink="/register" class="header-btn">Get started</a>
+          </div>
+        }
 
         <!-- Mobile / Tablet Hamburger -->
         <button
@@ -73,10 +79,16 @@
             </a>
           }
         </nav>
-        <div class="pt-4 mt-4 border-t border-[var(--color-border)] flex md:hidden flex-col gap-2">
-          <a routerLink="/login" (click)="closeMobileMenu()" class="header-signin text-center py-2.5">Sign in</a>
-          <a routerLink="/register" (click)="closeMobileMenu()" class="header-btn text-center py-2.5">Get started</a>
-        </div>
+        @if (isAuthenticated()) {
+          <div class="pt-4 mt-4 border-t border-[var(--color-border)] flex md:hidden flex-col gap-2">
+            <a [routerLink]="workspaceDestination()" (click)="closeMobileMenu()" class="header-btn text-center py-2.5">{{ workspaceLabel() }}</a>
+          </div>
+        } @else {
+          <div class="pt-4 mt-4 border-t border-[var(--color-border)] flex md:hidden flex-col gap-2">
+            <a routerLink="/login" (click)="closeMobileMenu()" class="header-signin text-center py-2.5">Sign in</a>
+            <a routerLink="/register" (click)="closeMobileMenu()" class="header-btn text-center py-2.5">Get started</a>
+          </div>
+        }
       </div>
     }
   </header>

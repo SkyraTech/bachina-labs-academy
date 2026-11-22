@@ -47,9 +47,7 @@ export function sanitizeRedirectUrl(
   }
 
   // Role destination separation: prevent unauthorized navigation across workspaces
-  if (role === 'ADMIN' && trimmed.startsWith('/author')) {
-    return defaultDestination;
-  }
+  // ADMIN is authorized to access both /admin and /author workspaces.
   if (role === 'AUTHOR' && trimmed.startsWith('/admin')) {
     return defaultDestination;
   }

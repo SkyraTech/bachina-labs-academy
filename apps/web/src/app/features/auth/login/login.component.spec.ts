@@ -221,5 +221,21 @@ describe('LoginComponent', () => {
       expect(sanitizeRedirectUrl('/admin', 'READER')).toBe('/');
       expect(sanitizeRedirectUrl('/articles/intro-to-angular', 'READER')).toBe('/articles/intro-to-angular');
     });
+
+    it('should permit ADMIN to access Author Studio destinations while keeping /admin as default', () => {
+      expect(sanitizeRedirectUrl(null, 'ADMIN')).toBe('/admin');
+      expect(sanitizeRedirectUrl('/author', 'ADMIN')).toBe('/author');
+      expect(sanitizeRedirectUrl('/author/articles', 'ADMIN')).toBe('/author/articles');
+      expect(sanitizeRedirectUrl('/author/articles/new', 'ADMIN')).toBe('/author/articles/new');
+      expect(sanitizeRedirectUrl('/author/articles/uuid-123/edit', 'ADMIN')).toBe('/author/articles/uuid-123/edit');
+      expect(sanitizeRedirectUrl('/admin/users', 'ADMIN')).toBe('/admin/users');
+    });
+
+    it('should prevent AUTHOR from accessing ADMIN workspace', () => {
+      expect(sanitizeRedirectUrl(null, 'AUTHOR')).toBe('/author');
+      expect(sanitizeRedirectUrl('/admin', 'AUTHOR')).toBe('/author');
+      expect(sanitizeRedirectUrl('/admin/users', 'AUTHOR')).toBe('/author');
+      expect(sanitizeRedirectUrl('/author/articles', 'AUTHOR')).toBe('/author/articles');
+    });
   });
 });
