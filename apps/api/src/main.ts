@@ -19,7 +19,8 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
+  const rawPort = process.env.PORT || configService.get<string | number>('PORT', 3000);
+  const port = typeof rawPort === 'number' ? rawPort : parseInt(String(rawPort), 10) || 3000;
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
   const allowedOrigins = configService
     .get<string>('CORS_ALLOWED_ORIGINS', 'http://localhost:4200')
