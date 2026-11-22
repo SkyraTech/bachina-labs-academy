@@ -96,6 +96,7 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((err: unknown) => {
+  console.error('Fatal startup error details:', err);
   const structuredLogger = new StructuredLoggerService();
   structuredLogger.fatal('Fatal startup error', err);
   process.exit(1);
