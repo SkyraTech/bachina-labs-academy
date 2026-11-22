@@ -21,8 +21,20 @@ export class ArticleMediaStorageService {
 
   private readonly logger = new Logger(ArticleMediaStorageService.name);
   private readonly storageRoot: string;
+  private readonly provider: string;
+  private readonly supabaseUrl?: string;
+  private readonly supabaseKey?: string;
+  private readonly supabaseBucket?: string;
 
   constructor(private readonly configService: ConfigService) {
+    this.provider = this.configService.get<string>('STORAGE_PROVIDER') || 'local';
+    this.supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    this.supabaseKey = this.configService.get<string>('SUPABASE_SECRET_KEY');
+    this.supabaseBucket =
+      this.configService.get<string>('SUPABASE_STORAGE_BUCKET') ||
+      this.configService.get<string>('STORAGE_BUCKET') ||
+      'Article-media';
+
     const configuredDir = this.configService.get<string>('ARTICLE_MEDIA_STORAGE_DIR');
     const baseDir = path.normalize(
       configuredDir
@@ -109,6 +121,11 @@ export class ArticleMediaStorageService {
    * Prevents overwriting existing assets or following pre-existing symlinks.
    */
   async saveFile(storageKey: string, buffer: Buffer): Promise<void> {
+    if (this.provider === 'supabase' && this.supabaseUrl && this.supabaseKey) {
+      await this.saveToSupabase(storageKey, buffer);
+      return;
+    }
+
     const filePath = this.resolveSafePath(storageKey);
     const dir = path.dirname(filePath);
 
@@ -133,6 +150,10 @@ export class ArticleMediaStorageService {
    * Verifies symlink containment and file type before streaming bytes.
    */
   async readFile(storageKey: string): Promise<Buffer> {
+    if (this.provider === 'supabase' && this.supabaseUrl && this.supabaseKey) {
+      return await this.readFromSupabase(storageKey);
+    }
+
     const filePath = this.resolveSafePath(storageKey);
     try {
       const stat = await fs.promises.lstat(filePath);
@@ -166,6 +187,11 @@ export class ArticleMediaStorageService {
    * Path-contained to guarantee never deleting outside the storage root.
    */
   async deleteFile(storageKey: string): Promise<void> {
+    if (this.provider === 'supabase' && this.supabaseUrl && this.supabaseKey) {
+      await this.deleteFromSupabase(storageKey);
+      return;
+    }
+
     try {
       const filePath = this.resolveSafePath(storageKey);
       const stat = await fs.promises.lstat(filePath).catch(() => null);
@@ -190,6 +216,65 @@ export class ArticleMediaStorageService {
         return 'webp';
       default:
         throw new BadRequestException(`Unsupported MIME type: ${mimeType}`);
+    }
+  }
+
+  private async saveToSupabase(storageKey: string, buffer: Buffer): Promise<void> {
+    const ext = path.extname(storageKey).slice(1).toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    const uploadUrl = `${this.supabaseUrl}/storage/v1/object/${this.supabaseBucket}/${storageKey}`;
+
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.supabaseKey}`,
+        apikey: this.supabaseKey || '',
+        'Content-Type': mimeType,
+        'x-upsert': 'false',
+      },
+      body: new Uint8Array(buffer),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      this.logger.error(`Supabase upload failed (${res.status}): ${errText}`);
+      if (res.status === 409 || errText.includes('already exists')) {
+        throw new BadRequestException('Storage object already exists.');
+      }
+      throw new BadRequestException(`Failed to persist media in Supabase storage: ${res.statusText}`);
+    }
+  }
+
+  private async readFromSupabase(storageKey: string): Promise<Buffer> {
+    const downloadUrl = `${this.supabaseUrl}/storage/v1/object/${this.supabaseBucket}/${storageKey}`;
+    const res = await fetch(downloadUrl, {
+      headers: {
+        Authorization: `Bearer ${this.supabaseKey}`,
+        apikey: this.supabaseKey || '',
+      },
+    });
+
+    if (!res.ok) {
+      this.logger.warn(`Supabase storage file missing for key ${storageKey} (${res.status})`);
+      throw new NotFoundException('Requested media file could not be found.');
+    }
+
+    const arrayBuf = await res.arrayBuffer();
+    return Buffer.from(arrayBuf);
+  }
+
+  private async deleteFromSupabase(storageKey: string): Promise<void> {
+    const deleteUrl = `${this.supabaseUrl}/storage/v1/object/${this.supabaseBucket}/${storageKey}`;
+    try {
+      await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${this.supabaseKey}`,
+          apikey: this.supabaseKey || '',
+        },
+      });
+    } catch (err: unknown) {
+      this.logger.error(`Failed to delete Supabase storage file for key ${storageKey}: ${String(err)}`);
     }
   }
 }
