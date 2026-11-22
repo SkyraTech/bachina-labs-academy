@@ -1,12 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm build:web",
   "outputDirectory": "apps/web/dist/web/browser",
   "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://bachina-labs-academy.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://bachina-labs-academy.onrender.com/health"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
 }
-
