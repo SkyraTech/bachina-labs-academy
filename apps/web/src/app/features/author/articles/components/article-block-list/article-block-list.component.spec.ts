@@ -121,21 +121,19 @@ describe('ArticleBlockListComponent', () => {
     expect(stateMock.reorderBlocks).toHaveBeenCalledWith(['b-2', 'b-1']);
   });
 
-  it('6. should confirm before deleting block', async () => {
+  it('6. should keep block deletion disabled and not invoke state.deleteBlock (P1-EDITOR-HARD-DELETE-CONTAIN-01)', async () => {
     await component.onDeleteBlock(sampleBlocks[0]);
 
-    expect(dialogMock.danger).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Delete Content Block',
-    }));
-    expect(stateMock.deleteBlock).toHaveBeenCalledWith('b-1');
+    expect(dialogMock.danger).not.toHaveBeenCalled();
+    expect(stateMock.deleteBlock).not.toHaveBeenCalled();
   });
 
-  it('7. should not delete if confirmation is cancelled', async () => {
-    dialogMock.danger.mockResolvedValue(false);
-
-    await component.onDeleteBlock(sampleBlocks[0]);
-
-    expect(stateMock.deleteBlock).not.toHaveBeenCalled();
+  it('7. should render delete button disabled in DOM with containment explanation title', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const deleteBtn = el.querySelector('button[aria-label^="Delete block"]') as HTMLButtonElement;
+    expect(deleteBtn).toBeTruthy();
+    expect(deleteBtn.disabled).toBe(true);
+    expect(deleteBtn.getAttribute('title')).toContain('Block deletion is temporarily disabled');
   });
 
   it('8. should render two-row block rail cards with accessible move and delete controls', () => {
@@ -146,7 +144,7 @@ describe('ArticleBlockListComponent', () => {
     expect(cards[0].textContent).toContain('Heading 1');
     expect(cards[0].querySelector('button[aria-label="Move block up"]')).toBeTruthy();
     expect(cards[0].querySelector('button[aria-label="Move block down"]')).toBeTruthy();
-    expect(cards[0].querySelector('button[aria-label="Delete block"]')).toBeTruthy();
+    expect(cards[0].querySelector('button[aria-label="Delete block (temporarily disabled)"]')).toBeTruthy();
   });
 
   it('9. onAddBlock(IMAGE) should open media picker and NOT call createBlock immediately', async () => {

@@ -63,36 +63,43 @@
           <div>
             @switch (state.saveState()) {
               @case ('SAVED') {
-                <span class="save-status-pill save-status-saved">
+                <span class="save-status-pill save-status-saved" role="status" aria-live="polite">
                   <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span>Saved</span>
+                  <span>{{ lastSavedFormatted() ? ('All changes saved · ' + lastSavedFormatted()) : 'All changes saved' }}</span>
                 </span>
               }
               @case ('DIRTY') {
-                <span class="save-status-pill save-status-dirty">
+                <span class="save-status-pill save-status-dirty" role="status" aria-live="polite">
                   <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                   <span>Unsaved changes</span>
                 </span>
               }
               @case ('SAVING') {
-                <span class="save-status-pill save-status-saving">
+                <span class="save-status-pill save-status-saving" role="status" aria-live="polite">
                   <svg class="animate-spin w-3 h-3 text-[var(--color-brand)]" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Saving...</span>
+                  <span>Saving changes...</span>
                 </span>
               }
               @case ('CONFLICT') {
-                <span class="save-status-pill save-status-error">
+                <span class="save-status-pill save-status-error" role="status" aria-live="assertive">
                   <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
                   <span>Revision Conflict</span>
                 </span>
               }
               @case ('ERROR') {
-                <span class="save-status-pill save-status-error">
+                <span class="save-status-pill save-status-error" role="status" aria-live="assertive">
                   <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                  <span>Save Failed</span>
+                  <span>Failed to save</span>
+                  <button
+                    type="button"
+                    (click)="state.saveAllPendingChanges()"
+                    class="ml-1 text-xs underline font-semibold hover:text-red-700 cursor-pointer"
+                  >
+                    Retry
+                  </button>
                 </span>
               }
             }

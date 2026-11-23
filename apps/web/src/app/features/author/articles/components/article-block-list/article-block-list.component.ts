@@ -161,16 +161,9 @@ export class ArticleBlockListComponent {
   }
 
   async onDeleteBlock(block: ArticleBlock): Promise<void> {
-    const confirmed = await this.dialog.danger({
-      title: 'Delete Content Block',
-      message: `Are you sure you want to delete this ${block.type} block? This action cannot be undone.`,
-      confirmLabel: 'Delete Block',
-      cancelLabel: 'Keep Block',
-    });
-
-    if (confirmed) {
-      await this.state.deleteBlock(block.id);
-    }
+    void block;
+    // P1-EDITOR-HARD-DELETE-CONTAIN-01: Block deletion is temporarily disabled pending durable soft-deletion support
+    return;
   }
 
   getBlockSnippet(block: ArticleBlock): string {

@@ -348,24 +348,23 @@ export class ArticleBlocksService {
         );
       }
 
+      // 3. Lifecycle check: ARCHIVED articles cannot be modified
+      if (article.status === 'ARCHIVED') {
+        throw new ConflictException('Cannot modify an archived article.');
+      }
+
       // 4. Find block belonging to this article
       const block = await this.repository.findBlockById(blockId, articleId, tx);
       if (!block) {
         throw new NotFoundException('Block not found.');
       }
 
-      // 5. Delete block
-      await this.repository.deleteBlock(blockId, tx);
-
-      // 6. Defer position constraint and compact remaining block positions
-      await this.repository.deferPositionConstraint(tx);
-      await this.repository.reindexPositionsAfterDelete(articleId, block.position, tx);
-
-      // 7. Increment draft revision once
-      await this.repository.incrementDraftRevision(articleId, article.draftRevision, tx);
-
-      this.logger.debug(
-        `Deleted block ${blockId} from article ${articleId}. Remaining blocks compacted.`,
+      // 5. SAFETY CONTAINMENT (P1-EDITOR-HARD-DELETE-CONTAIN-01):
+      // Block deletion is temporarily disabled to prevent permanent hard-deletion of ArticleBlock rows
+      // pending durable soft-deletion support. Fail closed before any destructive repository operation,
+      // position compaction, or revision mutation occurs.
+      throw new ConflictException(
+        'Block deletion is temporarily disabled pending durable soft-deletion support.',
       );
     });
   }

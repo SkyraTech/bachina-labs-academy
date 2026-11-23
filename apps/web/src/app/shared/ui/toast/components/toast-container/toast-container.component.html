@@ -33,6 +33,15 @@
           <h4 class="toast-title">{{ toast.title }}</h4>
         }
         <p class="toast-message">{{ toast.message }}</p>
+        @if (toast.action) {
+          <button
+            type="button"
+            (click)="toast.action.run(); dismiss(toast)"
+            class="toast-action-btn mt-2 inline-flex items-center px-2.5 py-1 text-xs font-semibold text-[var(--color-brand)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-brand)]/40 rounded-md shadow-xs transition-colors cursor-pointer"
+          >
+            {{ toast.action.label }}
+          </button>
+        }
       </div>
 
       <button

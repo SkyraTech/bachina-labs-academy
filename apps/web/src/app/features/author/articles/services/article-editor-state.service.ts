@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ArticleEditorApiService } from './article-editor-api.service';
 import {
+  ArticleBlock,
   ArticleBlockType,
   EditableArticle,
   SaveState,
@@ -22,6 +23,12 @@ export interface MetadataEditorHandler {
   discard: () => void;
 }
 
+export interface DeletedBlockRecord {
+  readonly block: ArticleBlock;
+  readonly position: number;
+  readonly deletedAt: number;
+}
+
 @Injectable()
 export class ArticleEditorStateService {
   private readonly api = inject(ArticleEditorApiService);
@@ -39,6 +46,13 @@ export class ArticleEditorStateService {
   readonly isMetadataDirty = signal<boolean>(false);
   readonly pendingBlockId = signal<string | null>(null);
   readonly showUnsavedSwitchDialog = signal<boolean>(false);
+
+  /** Recovery buffer for deleted content blocks (TICKET-005) */
+  readonly deletionHistory = signal<DeletedBlockRecord[]>([]);
+  readonly canUndo = computed(() => this.deletionHistory().length > 0);
+
+  /** Accurate timestamp of last confirmed save (TICKET-006) */
+  readonly lastSavedAt = signal<Date | null>(null);
 
   private blockEditorHandler: BlockEditorHandler | null = null;
   private metadataEditorHandler: MetadataEditorHandler | null = null;
@@ -194,6 +208,7 @@ export class ArticleEditorStateService {
       this.isMetadataDirty.set(false);
       if (!this.isBlockDirty()) {
         this.saveState.set('SAVED');
+        this.lastSavedAt.set(new Date());
       } else {
         this.saveState.set('DIRTY');
       }
@@ -258,6 +273,7 @@ export class ArticleEditorStateService {
         this.saveState.set('DIRTY');
       } else {
         this.saveState.set('SAVED');
+        this.lastSavedAt.set(new Date());
       }
       this.toast.success(`${type} block added.`);
       return true;
@@ -325,6 +341,7 @@ export class ArticleEditorStateService {
       this.isBlockDirty.set(false);
       if (!this.isMetadataDirty()) {
         this.saveState.set('SAVED');
+        this.lastSavedAt.set(new Date());
       } else {
         this.saveState.set('DIRTY');
       }
@@ -338,46 +355,48 @@ export class ArticleEditorStateService {
 
   /**
    * Deletes a draft block and compacts remaining positions.
+   * P1-EDITOR-HARD-DELETE-CONTAIN-01: Block deletion is temporarily disabled pending durable soft-deletion support.
+   * Fails closed to prevent permanent physical hard-deletion of ArticleBlock rows.
    */
-  async deleteBlock(blockId: string): Promise<boolean> {
+  async deleteBlock(blockId: string, options?: { immediate?: boolean }): Promise<boolean> {
+    void blockId;
+    void options;
+    this.toast.error('Block deletion is temporarily disabled pending durable soft-deletion support.');
+    return false;
+  }
+
+  /**
+   * Restores the most recently deleted block from the recovery buffer (TICKET-005).
+   * Re-inserts at original position, compacts positions, and selects restored block.
+   */
+  undoDeleteBlock(): boolean {
+    const history = this.deletionHistory();
+    if (history.length === 0) return false;
+
+    const record = history[history.length - 1];
+    this.deletionHistory.set(history.slice(0, -1));
+
     const current = this.article();
     if (!current) return false;
 
-    if (this.isSaving()) return false;
+    const blocks = [...current.blocks];
+    const insertIndex = Math.min(Math.max(0, record.position), blocks.length);
+    blocks.splice(insertIndex, 0, record.block);
 
-    this.saveState.set('SAVING');
-    this.conflictMessage.set(null);
+    const reindexed = blocks.map((b, idx) => ({
+      ...b,
+      position: idx,
+    }));
 
-    try {
-      await firstValueFrom(
-        this.api.deleteBlock(current.id, blockId, current.draftRevision),
-      );
+    this.article.set({
+      ...current,
+      blocks: reindexed,
+    });
 
-      const remainingBlocks = current.blocks
-        .filter((b) => b.id !== blockId)
-        .sort((a, b) => a.position - b.position)
-        .map((b, index) => ({
-          ...b,
-          position: index,
-        }));
-
-      this.article.set({
-        ...current,
-        draftRevision: current.draftRevision + 1,
-        blocks: remainingBlocks,
-      });
-
-      if (this.selectedBlockId() === blockId) {
-        this.selectedBlockId.set(remainingBlocks[0]?.id ?? null);
-      }
-
-      this.saveState.set('SAVED');
-      this.toast.success('Block deleted.');
-      return true;
-    } catch (err: unknown) {
-      this.handleMutationError(err, 'Failed to delete block.');
-      return false;
-    }
+    this.selectedBlockId.set(record.block.id);
+    this.markDirty();
+    this.toast.success('Block restored.');
+    return true;
   }
 
   /**
@@ -407,6 +426,7 @@ export class ArticleEditorStateService {
       });
 
       this.saveState.set('SAVED');
+      this.lastSavedAt.set(new Date());
       this.toast.success('Blocks reordered.');
       return true;
     } catch (err: unknown) {
@@ -450,6 +470,7 @@ export class ArticleEditorStateService {
       });
 
       this.saveState.set('SAVED');
+      this.lastSavedAt.set(new Date());
       const actionWord = current.status === 'PUBLISHED' ? 'Republished' : 'Published';
       this.toast.success(`Article ${actionWord} successfully.`);
       return true;
@@ -481,6 +502,7 @@ export class ArticleEditorStateService {
         this.api.duplicateArticle(current.id),
       );
       this.saveState.set('SAVED');
+      this.lastSavedAt.set(new Date());
       this.toast.success('Article draft duplicated successfully.');
       return duplicated;
     } catch (err: unknown) {
@@ -558,7 +580,11 @@ export class ArticleEditorStateService {
       if (!blockOk) return false;
     }
 
-    return !this.hasUnsavedChanges();
+    const saved = !this.hasUnsavedChanges();
+    if (saved) {
+      this.lastSavedAt.set(new Date());
+    }
+    return saved;
   }
 
   /**

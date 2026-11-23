@@ -59,7 +59,7 @@ export class ArticleBlocksController {
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions or unverified email.' })
   @ApiNotFoundResponse({ description: 'Article or media asset not found.' })
-  @ApiConflictResponse({ description: 'Draft revision conflict or archived lifecycle state.' })
+  @ApiConflictResponse({ description: 'Draft revision conflict, archived lifecycle state, or block deletion temporarily disabled.' })
   async createBlock(
     @CurrentUser() user: AuthenticatedUser,
     @Param('articleId', new ParseUUIDPipe({ version: '4' })) articleId: string,
@@ -83,7 +83,7 @@ export class ArticleBlocksController {
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions or unverified email.' })
   @ApiNotFoundResponse({ description: 'Article not found.' })
-  @ApiConflictResponse({ description: 'Draft revision conflict or archived lifecycle state.' })
+  @ApiConflictResponse({ description: 'Draft revision conflict, archived lifecycle state, or block deletion temporarily disabled.' })
   async reorderBlocks(
     @CurrentUser() user: AuthenticatedUser,
     @Param('articleId', new ParseUUIDPipe({ version: '4' })) articleId: string,
@@ -107,7 +107,7 @@ export class ArticleBlocksController {
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions or unverified email.' })
   @ApiNotFoundResponse({ description: 'Article or block not found.' })
-  @ApiConflictResponse({ description: 'Draft revision conflict or archived lifecycle state.' })
+  @ApiConflictResponse({ description: 'Draft revision conflict, archived lifecycle state, or block deletion temporarily disabled.' })
   async updateBlock(
     @CurrentUser() user: AuthenticatedUser,
     @Param('articleId', new ParseUUIDPipe({ version: '4' })) articleId: string,
@@ -132,7 +132,7 @@ export class ArticleBlocksController {
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions or unverified email.' })
   @ApiNotFoundResponse({ description: 'Article or block not found.' })
-  @ApiConflictResponse({ description: 'Draft revision conflict or archived lifecycle state.' })
+  @ApiConflictResponse({ description: 'Draft revision conflict, archived lifecycle state, or block deletion temporarily disabled.' })
   async deleteBlock(
     @CurrentUser() user: AuthenticatedUser,
     @Param('articleId', new ParseUUIDPipe({ version: '4' })) articleId: string,

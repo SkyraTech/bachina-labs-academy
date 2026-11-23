@@ -316,22 +316,61 @@ describe('ArticleBlocksService', () => {
   });
 
   describe('deleteBlock', () => {
-    it('deletes block, defers constraint, compacts positions, and increments revision', async () => {
+    it('fails closed with ConflictException and prevents physical deletion or revision changes (P1-EDITOR-HARD-DELETE-CONTAIN-01)', async () => {
       repositoryMock.findArticleForUpdate.mockResolvedValue(mockArticle as any);
       repositoryMock.findBlockById.mockResolvedValue(mockBlock as any);
 
-      await service.deleteBlock(mockUser, mockArticle.id, mockBlock.id, {
-        expectedRevision: 5,
-      });
+      await expect(
+        service.deleteBlock(mockUser, mockArticle.id, mockBlock.id, {
+          expectedRevision: 5,
+        }),
+      ).rejects.toThrow('Block deletion is temporarily disabled pending durable soft-deletion support.');
 
-      expect(repositoryMock.deleteBlock).toHaveBeenCalledWith(mockBlock.id, expect.anything());
-      expect(repositoryMock.deferPositionConstraint).toHaveBeenCalled();
-      expect(repositoryMock.reindexPositionsAfterDelete).toHaveBeenCalledWith(
-        mockArticle.id,
-        mockBlock.position,
-        expect.anything(),
-      );
-      expect(repositoryMock.incrementDraftRevision).toHaveBeenCalledWith(mockArticle.id, 5, expect.anything());
+      // Zero destructive or mutating calls executed
+      expect(repositoryMock.deleteBlock).not.toHaveBeenCalled();
+      expect(repositoryMock.deferPositionConstraint).not.toHaveBeenCalled();
+      expect(repositoryMock.reindexPositionsAfterDelete).not.toHaveBeenCalled();
+      expect(repositoryMock.incrementDraftRevision).not.toHaveBeenCalled();
+    });
+
+    it('masks non-existent or foreign-owned article with NotFoundException before containment check', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(null);
+
+      await expect(
+        service.deleteBlock(mockUser, mockArticle.id, mockBlock.id, {
+          expectedRevision: 5,
+        }),
+      ).rejects.toThrow('Article not found.');
+
+      expect(repositoryMock.deleteBlock).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException if block does not exist on article', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue(mockArticle as any);
+      repositoryMock.findBlockById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteBlock(mockUser, mockArticle.id, mockBlock.id, {
+          expectedRevision: 5,
+        }),
+      ).rejects.toThrow('Block not found.');
+
+      expect(repositoryMock.deleteBlock).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException if article is ARCHIVED', async () => {
+      repositoryMock.findArticleForUpdate.mockResolvedValue({
+        ...mockArticle,
+        status: 'ARCHIVED',
+      } as any);
+
+      await expect(
+        service.deleteBlock(mockUser, mockArticle.id, mockBlock.id, {
+          expectedRevision: 5,
+        }),
+      ).rejects.toThrow('Cannot modify an archived article.');
+
+      expect(repositoryMock.deleteBlock).not.toHaveBeenCalled();
     });
 
     it('rejects missing or invalid expectedRevision with BadRequestException', async () => {
@@ -352,6 +391,8 @@ describe('ArticleBlocksService', () => {
           expectedRevision: 99,
         }),
       ).rejects.toThrow('Draft revision conflict');
+
+      expect(repositoryMock.deleteBlock).not.toHaveBeenCalled();
     });
   });
 

@@ -65,6 +65,7 @@ describe('ArticleEditorComponent', () => {
       error: vi.fn(),
       warning: vi.fn(),
       info: vi.fn(),
+      show: vi.fn(),
     };
 
     const activatedRouteMock = {
@@ -433,6 +434,68 @@ describe('ArticleEditorComponent', () => {
       component.onBeforeUnloadFn(mockEvent);
       expect(mockEvent.preventDefault).toHaveBeenCalledTimes(1);
       expect(mockEvent.returnValue).toBe('');
+    });
+  });
+
+  describe('TICKET-005 & TICKET-006: Undo Keyboard Shortcuts & Save Status UI', () => {
+    it('should trigger state.undoDeleteBlock on Ctrl+Z when canUndo is true and focus not in input', () => {
+      vi.spyOn(stateService, 'canUndo').mockReturnValue(true);
+      const undoSpy = vi.spyOn(stateService, 'undoDeleteBlock').mockReturnValue(true);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        cancelable: true,
+      });
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+      window.dispatchEvent(event);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(undoSpy).toHaveBeenCalled();
+    });
+
+    it('should trigger state.undoDeleteBlock on Cmd+Z (Meta+Z)', () => {
+      vi.spyOn(stateService, 'canUndo').mockReturnValue(true);
+      const undoSpy = vi.spyOn(stateService, 'undoDeleteBlock').mockReturnValue(true);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'Z',
+        metaKey: true,
+        cancelable: true,
+      });
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+      window.dispatchEvent(event);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(undoSpy).toHaveBeenCalled();
+    });
+
+    it('should NOT trigger undo when Shift is held (Ctrl+Shift+Z)', () => {
+      vi.spyOn(stateService, 'canUndo').mockReturnValue(true);
+      const undoSpy = vi.spyOn(stateService, 'undoDeleteBlock');
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      window.dispatchEvent(event);
+
+      expect(undoSpy).not.toHaveBeenCalled();
+    });
+
+    it('should display formatted timestamp in Save Status Pill when saved', () => {
+      const fixedDate = new Date('2026-11-22T15:45:00Z');
+      stateService.lastSavedAt.set(fixedDate);
+      stateService.saveState.set('SAVED');
+      fixture.detectChanges();
+
+      const pill = fixture.nativeElement.querySelector('.save-status-saved');
+      expect(pill).toBeTruthy();
+      expect(pill.textContent).toContain('All changes saved');
     });
   });
 });

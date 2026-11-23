@@ -21,6 +21,7 @@ describe('ArticleEditorStateService', () => {
   let toastMock: {
     success: ReturnType<typeof vi.fn>;
     error: ReturnType<typeof vi.fn>;
+    show: ReturnType<typeof vi.fn>;
   };
 
   const mockArticle: EditableArticle = {
@@ -79,6 +80,7 @@ describe('ArticleEditorStateService', () => {
     toastMock = {
       success: vi.fn(),
       error: vi.fn(),
+      show: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -211,19 +213,19 @@ describe('ArticleEditorStateService', () => {
     expect(service.currentRevision()).toBe(2);
   });
 
-  it('7. should delete block and reconcile remaining positions', async () => {
+  it('7. should fail closed on deleteBlock to prevent hard deletion (P1-EDITOR-HARD-DELETE-CONTAIN-01)', async () => {
     await service.loadArticle('art-100');
-
-    apiMock.deleteBlock.mockReturnValue(of(undefined));
 
     const success = await service.deleteBlock('block-1');
 
-    expect(success).toBe(true);
-    expect(apiMock.deleteBlock).toHaveBeenCalledWith('art-100', 'block-1', 1);
-    expect(service.blocks().length).toBe(1);
-    expect(service.blocks()[0].id).toBe('block-2');
-    expect(service.blocks()[0].position).toBe(0); // position compacted contiguously
-    expect(service.currentRevision()).toBe(2);
+    expect(success).toBe(false);
+    expect(apiMock.deleteBlock).not.toHaveBeenCalled();
+    expect(service.blocks().length).toBe(2);
+    expect(service.blocks()[0].id).toBe('block-1');
+    expect(service.currentRevision()).toBe(1);
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'Block deletion is temporarily disabled pending durable soft-deletion support.',
+    );
   });
 
   it('8. should reorder blocks and reconcile state', async () => {
@@ -497,5 +499,96 @@ describe('ArticleEditorStateService', () => {
     expect(apiMock.updateBlock).not.toHaveBeenCalled();
     expect(service.currentRevision()).toBe(1);
     expect(service.saveState()).toBe('SAVED');
+  });
+
+  describe('TICKET-005: Block deletion safety containment (P1-EDITOR-HARD-DELETE-CONTAIN-01)', () => {
+    it('T5-01: should fail closed on deleteBlock without modifying state or calling API', async () => {
+      await service.loadArticle('art-100');
+      expect(service.blocks().length).toBe(2);
+      expect(service.canUndo()).toBe(false);
+
+      const ok = await service.deleteBlock('block-1');
+
+      expect(ok).toBe(false);
+      expect(apiMock.deleteBlock).not.toHaveBeenCalled();
+      expect(service.blocks().length).toBe(2);
+      expect(service.deletionHistory().length).toBe(0);
+      expect(service.canUndo()).toBe(false);
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'Block deletion is temporarily disabled pending durable soft-deletion support.',
+      );
+    });
+
+    it('T5-02: should preserve SAVED state and not mark dirty or update lastSavedAt on rejected deleteBlock', async () => {
+      await service.loadArticle('art-100');
+      expect(service.saveState()).toBe('SAVED');
+      expect(service.lastSavedAt()).toBeNull();
+
+      await service.deleteBlock('block-1');
+
+      expect(service.saveState()).toBe('SAVED');
+      expect(service.hasUnsavedChanges()).toBe(false);
+      expect(service.lastSavedAt()).toBeNull();
+    });
+
+    it('T5-03: should safely return false when undoDeleteBlock is called with empty buffer', async () => {
+      await service.loadArticle('art-100');
+      expect(service.canUndo()).toBe(false);
+
+      const result = service.undoDeleteBlock();
+      expect(result).toBe(false);
+      expect(service.blocks().length).toBe(2);
+    });
+
+    it('T5-04: should maintain canUndo as false when deletion is contained', async () => {
+      await service.loadArticle('art-100');
+      expect(service.canUndo()).toBe(false);
+
+      await service.deleteBlock('block-1');
+      expect(service.canUndo()).toBe(false);
+    });
+  });
+
+  describe('TICKET-006: Autosave status feedback and timestamps', () => {
+    it('T6-01: should record lastSavedAt timestamp upon successful metadata update', async () => {
+      await service.loadArticle('art-100');
+      expect(service.lastSavedAt()).toBeNull();
+
+      apiMock.updateDraftMetadata.mockReturnValue(
+        of({
+          ...mockArticle,
+          title: 'Brand New Title',
+          draftRevision: 2,
+        }),
+      );
+
+      await service.updateMetadata({ title: 'Brand New Title' });
+
+      expect(service.saveState()).toBe('SAVED');
+      expect(service.lastSavedAt()).toBeInstanceOf(Date);
+    });
+
+    it('T6-02: should record lastSavedAt timestamp upon successful block creation and update', async () => {
+      await service.loadArticle('art-100');
+
+      apiMock.createBlock.mockReturnValue(
+        of({
+          id: 'block-new',
+          articleId: 'art-100',
+          type: 'CODE' as const,
+          position: 2,
+          content: { code: 'console.log(1);' },
+          mediaAssetId: null,
+          schemaVersion: 1,
+          createdAt: '2026-10-25T11:00:00Z',
+          updatedAt: '2026-10-25T11:00:00Z',
+          draftRevision: 2,
+        }),
+      );
+
+      await service.createBlock('CODE', { code: 'console.log(1);' });
+      expect(service.saveState()).toBe('SAVED');
+      expect(service.lastSavedAt()).toBeInstanceOf(Date);
+    });
   });
 });

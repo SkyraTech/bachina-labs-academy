@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { ToastMessage, ToastType } from '../models/toast.model';
+import { ToastAction, ToastMessage, ToastType } from '../models/toast.model';
 
 /**
  * Reactive, signal-driven Toast notification service.
@@ -24,6 +24,7 @@ export class ToastService {
     message: string;
     title?: string;
     duration?: number;
+    action?: ToastAction;
   }): string {
     const now = Date.now();
     const current = this.toasts();
@@ -51,6 +52,7 @@ export class ToastService {
       title: config.title,
       duration,
       createdAt: now,
+      action: config.action,
     };
 
     // Prepend new toast and enforce maximum limit

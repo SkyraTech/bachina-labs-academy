@@ -3,9 +3,11 @@ import {
   ChangeDetectionStrategy,
   inject,
   signal,
+  computed,
   effect,
   OnInit,
   DestroyRef,
+  HostListener,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -52,6 +54,31 @@ export class ArticleEditorComponent implements OnInit {
   readonly state = inject(ArticleEditorStateService);
 
   readonly mobileTab = signal<'outline' | 'content' | 'settings'>('content');
+
+  readonly lastSavedFormatted = computed(() => {
+    const date = this.state.lastSavedAt();
+    if (!date) return null;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  });
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+      const target = event.target;
+      const isElement = typeof Element !== 'undefined' && target instanceof Element;
+      const isInput = isElement && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        (target as HTMLElement).isContentEditable ||
+        Boolean(target.closest('.tiptap')) ||
+        Boolean(target.closest('.ProseMirror'))
+      );
+      if (!isInput && this.state.canUndo()) {
+        event.preventDefault();
+        this.state.undoDeleteBlock();
+      }
+    }
+  }
 
   private pendingNavigationPromise: Promise<boolean> | null = null;
   private beforeUnloadListenerAttached = false;
