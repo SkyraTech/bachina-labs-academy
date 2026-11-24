@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { ApiClientService } from '../../../../core/api';
 import {
   ArticleBlock,
@@ -179,9 +179,13 @@ export class ArticleEditorApiService {
    * DELETE /api/v1/articles/:articleId?expectedRevision=N
    */
   deleteArticle(articleId: string, expectedRevision: number): Observable<void> {
-    return this.api.delete<void>(`articles/${articleId}`, {
-      params: { expectedRevision },
-    });
+    // SAFETY CONTAINMENT (P1-SAFETY-BASELINE-02):
+    // Prevent frontend service from dispatching destructive delete operation.
+    void articleId;
+    void expectedRevision;
+    return throwError(
+      () => new Error('Article deletion is temporarily disabled pending durable soft-deletion support.'),
+    );
   }
 
   /**

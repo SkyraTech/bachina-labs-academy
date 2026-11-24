@@ -854,25 +854,23 @@ describe('ArticlesService', () => {
       ).rejects.toThrow('Cannot delete an article that has published history');
     });
 
-    it('successfully deletes an eligible draft with matching expectedRevision', async () => {
+    it('fails closed with 409 ConflictException pending durable soft-deletion support', async () => {
       mockTx.findArticleForUpdate.mockResolvedValue({
         ...MOCK_ARTICLE,
         draftRevision: 3,
       });
       mockTx.countSnapshots.mockResolvedValue(0);
-      mockTx.deleteArticle.mockResolvedValue(undefined);
 
-      await service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, {
-        expectedRevision: 3,
-      });
-
-      expect(mockTx.findArticleForUpdate).toHaveBeenCalledWith(
-        MOCK_ARTICLE.id,
-        VALID_USER.id,
-        mockTx,
+      await expect(
+        service.deleteEligibleDraft(VALID_USER, MOCK_ARTICLE.id, {
+          expectedRevision: 3,
+        }),
+      ).rejects.toThrow(
+        'Article deletion is temporarily disabled pending durable soft-deletion support.',
       );
-      expect(mockTx.countSnapshots).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
-      expect(mockTx.deleteArticle).toHaveBeenCalledWith(MOCK_ARTICLE.id, mockTx);
+
+      // Verify destructive repository method is NEVER called
+      expect(mockTx.deleteArticle).not.toHaveBeenCalled();
     });
   });
 

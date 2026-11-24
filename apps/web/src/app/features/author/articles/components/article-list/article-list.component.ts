@@ -357,40 +357,12 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   }
 
   async onDelete(article: EditableArticle): Promise<void> {
-    if (this.isActionInProgress(article.id)) return;
-
-    const confirmed = await this.dialog.confirm({
-      title: 'Delete Draft Article',
-      message: `Are you sure you want to permanently delete "${article.title}"? This action cannot be undone.`,
-      confirmLabel: 'Delete Draft',
-      cancelLabel: 'Cancel',
-      type: 'danger',
-      destructive: true,
-      closable: true,
-      dismissableMask: true,
-    });
-
-    if (!confirmed) return;
-
-    this.deletingId.set(article.id);
-    try {
-      await firstValueFrom(this.api.deleteArticle(article.id, article.draftRevision));
-      this.toast.success('Draft article deleted successfully.');
-      this.articles.update((list) => list.filter((a) => a.id !== article.id));
-      this.totalArticles.update((t) => Math.max(0, t - 1));
-      if (this.articles().length === 0 && this.currentPage() > 1) {
-        this.currentPage.update((p) => p - 1);
-        this.loadArticles();
-      }
-    } catch (err: unknown) {
-      const msg =
-        (err as { error?: { message?: string } })?.error?.message ||
-        (err instanceof Error ? err.message : 'Failed to delete draft article.');
-      this.toast.error(msg);
-      this.loadArticles();
-    } finally {
-      this.deletingId.set(null);
-    }
+    // SAFETY CONTAINMENT (P1-SAFETY-BASELINE-02):
+    // Article deletion is temporarily disabled pending durable soft-deletion safety support.
+    // Fail closed immediately without displaying confirmation dialog or calling API.
+    void article;
+    this.toast.error('Article deletion is temporarily disabled pending durable soft-deletion support.');
+    return;
   }
 
   async onArchive(article: EditableArticle): Promise<void> {

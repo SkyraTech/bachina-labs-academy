@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     globals: true,
     root: './',
-    include: ['**/*.spec.ts'],
+    include: ['src/**/*.spec.ts'],
+    exclude: ['test/**', 'node_modules/**', 'dist/**'],
     // Vitest's 5s default is too tight for this suite. Each spec builds a real
     // Nest TestingModule, and Test.compile() pays one-off reflection/DI cost
     // on its first use inside a worker. Under full parallel load (14 files)

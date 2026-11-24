@@ -269,55 +269,49 @@ describe('ArticleListComponent', () => {
     expect(component.isDeletable(draftWithPublishedSlug)).toBe(false);
   });
 
-  it('9. should render Delete button for eligible drafts and omit it for published and archived articles', () => {
+  it('9. should render Delete button for eligible drafts as disabled with containment tooltip', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const deleteButtons = compiled.querySelectorAll('[data-testid="delete-article-btn"]');
+    const deleteButtons = compiled.querySelectorAll<HTMLButtonElement>('[data-testid="delete-article-btn"]');
     expect(deleteButtons.length).toBe(1);
     expect(deleteButtons[0].textContent).toContain('Delete');
+    expect(deleteButtons[0].disabled).toBe(true);
+    expect(deleteButtons[0].getAttribute('title')).toContain('temporarily disabled');
+    expect(deleteButtons[0].getAttribute('aria-label')).toBe('Delete article (temporarily disabled)');
   });
 
-  it('10. should confirm before deleting and dispatch delete request with expectedRevision', async () => {
+  it('10. should fail closed when onDelete is called and never invoke delete API', async () => {
     fixture.detectChanges();
 
     await component.onDelete(mockArticles[1]);
 
-    expect(dialogMock.confirm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Delete Draft Article',
-        message: expect.stringContaining(mockArticles[1].title),
-        confirmLabel: 'Delete Draft',
-        destructive: true,
-      }),
+    expect(dialogMock.confirm).not.toHaveBeenCalled();
+    expect(apiMock.deleteArticle).not.toHaveBeenCalled();
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'Article deletion is temporarily disabled pending durable soft-deletion support.',
     );
-    expect(apiMock.deleteArticle).toHaveBeenCalledWith(mockArticles[1].id, mockArticles[1].draftRevision);
-    expect(toastMock.success).toHaveBeenCalledWith('Draft article deleted successfully.');
-    expect(component.articles().find((a) => a.id === mockArticles[1].id)).toBeUndefined();
-    expect(component.articles().length).toBe(2);
+    expect(component.articles().find((a) => a.id === mockArticles[1].id)).toBeDefined();
+    expect(component.articles().length).toBe(3);
   });
 
-  it('11. should abort deletion if confirmation dialog is cancelled', async () => {
+  it('11. should preserve article list and state without modification when delete is attempted', async () => {
     fixture.detectChanges();
-    dialogMock.confirm.mockResolvedValue(false);
 
     await component.onDelete(mockArticles[1]);
 
     expect(apiMock.deleteArticle).not.toHaveBeenCalled();
     expect(toastMock.success).not.toHaveBeenCalled();
     expect(component.articles().length).toBe(3);
+    expect(component.deletingId()).toBeNull();
   });
 
-  it('12. should handle deletion API error, show error toast, and refresh articles', async () => {
+  it('12. should never alter deletingId or dispatch delete request under containment', async () => {
     fixture.detectChanges();
-    apiMock.deleteArticle.mockReturnValue(
-      throwError(() => ({ error: { message: 'Article is locked by another process' } })),
-    );
 
     await component.onDelete(mockArticles[1]);
 
-    expect(apiMock.deleteArticle).toHaveBeenCalledWith(mockArticles[1].id, mockArticles[1].draftRevision);
-    expect(toastMock.error).toHaveBeenCalledWith('Article is locked by another process');
+    expect(apiMock.deleteArticle).not.toHaveBeenCalled();
     expect(component.deletingId()).toBeNull();
   });
 

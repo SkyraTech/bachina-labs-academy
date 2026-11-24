@@ -555,19 +555,13 @@ export class ArticlesService {
         );
       }
 
-      try {
-        await this.repository.deleteArticle(articleId, tx);
-      } catch (err: unknown) {
-        if (
-          err instanceof Prisma.PrismaClientKnownRequestError &&
-          err.code === 'P2003'
-        ) {
-          throw new ConflictException(
-            'Cannot delete article due to existing restricted relational dependencies.',
-          );
-        }
-        throw err;
-      }
+      // SAFETY CONTAINMENT (P1-SAFETY-BASELINE-02):
+      // Article deletion is temporarily disabled to prevent permanent hard-deletion of Article rows
+      // and physical cascading into ArticleBlock records pending durable soft-deletion support.
+      // Fail closed before any destructive repository operation occurs.
+      throw new ConflictException(
+        'Article deletion is temporarily disabled pending durable soft-deletion support.',
+      );
     });
   }
 
