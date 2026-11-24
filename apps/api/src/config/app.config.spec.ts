@@ -66,4 +66,11 @@ describe('appConfig', () => {
     expect(config.logHealthChecks).toBe('none');
     expect(config.trustProxy).toBe(1);
   });
+
+  it('defaults trustProxy to 1 when RENDER is true and TRUST_PROXY is unset', () => {
+    process.env['RENDER'] = 'true';
+    delete process.env['TRUST_PROXY'];
+    const config = appConfig();
+    expect(config.trustProxy).toBe(1);
+  });
 });

@@ -63,7 +63,7 @@ import jwtConfig from './config/jwt.config';
             ? parseInt(process.env['THROTTLE_LIMIT'], 10)
             : process.env['NODE_ENV'] === 'development'
               ? 1000
-              : 10,
+              : 300,
         },
       ],
     }),

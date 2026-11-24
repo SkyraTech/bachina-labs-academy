@@ -231,7 +231,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Authenticate with email and password',
     description:
@@ -353,7 +353,7 @@ export class AuthController {
    */
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Log out from all devices',
     description:

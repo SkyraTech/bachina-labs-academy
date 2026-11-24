@@ -7,6 +7,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -69,8 +70,20 @@ export class HomeComponent implements OnInit {
       articlesRes: this.api
         .listPublishedArticles({ page: 1, limit: 6 })
         .pipe(
-          catchError(() => {
-            this.error.set('Unable to load recent articles. Please try again.');
+          catchError((err: unknown) => {
+            if (
+              err instanceof HttpErrorResponse &&
+              (err.status === 0 ||
+                err.status === 502 ||
+                err.status === 503 ||
+                err.status === 504)
+            ) {
+              this.error.set(
+                'Unable to load recent articles. The server is waking up, please wait a moment and click Retry.',
+              );
+            } else {
+              this.error.set('Unable to load recent articles. Please try again.');
+            }
             return of(null as PublicArticleListResponse | null);
           }),
         ),

@@ -168,6 +168,18 @@ export class LoginComponent {
             this.serverError.set('Please provide a valid email address and password.');
             return;
           }
+
+          if (
+            err.status === 0 ||
+            err.status === 502 ||
+            err.status === 503 ||
+            err.status === 504
+          ) {
+            this.serverError.set(
+              'The server is currently waking up or temporarily unreachable. Please wait a few seconds and try again.',
+            );
+            return;
+          }
         }
 
         this.serverError.set('Unable to complete sign in. Please check your network connection and retry.');

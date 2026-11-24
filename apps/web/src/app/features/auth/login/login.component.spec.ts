@@ -175,6 +175,24 @@ describe('LoginComponent', () => {
     expect(component.serverError()).toContain('Too many login attempts');
   });
 
+  it('should display server waking-up error on 502/504/0 response', () => {
+    const errorResponse = new HttpErrorResponse({
+      status: 504,
+      statusText: 'Gateway Timeout',
+    });
+    authApiSpy.login.mockReturnValue(throwError(() => errorResponse));
+
+    component.onSubmit({
+      email: 'author@skyra-tech.com',
+      password: 'valid-password-1234',
+      rememberMe: false,
+    });
+
+    expect(component.serverError()).toContain(
+      'server is currently waking up or temporarily unreachable',
+    );
+  });
+
   it('should prevent duplicate submission while already submitting', () => {
     component.submitting.set(true);
     component.onSubmit({

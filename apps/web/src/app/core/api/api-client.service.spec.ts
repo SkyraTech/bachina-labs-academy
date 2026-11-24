@@ -1,8 +1,9 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApiClientService } from './api-client.service';
-import { API_BASE_URL } from './api-config';
+import { API_BASE_URL, API_RETRY_DELAY } from './api-config';
 
 describe('ApiClientService', () => {
   let service: ApiClientService;
@@ -15,6 +16,7 @@ describe('ApiClientService', () => {
         provideHttpClientTesting(),
         ApiClientService,
         { provide: API_BASE_URL, useValue: '/api/v1' },
+        { provide: API_RETRY_DELAY, useValue: 0 },
       ],
     });
 
@@ -48,6 +50,39 @@ describe('ApiClientService', () => {
     expect(req.request.method).toBe('GET');
     expect(req.request.withCredentials).toBe(true);
     req.flush({ id: '123' });
+  });
+
+  it('should retry GET requests on gateway timeout (504) and succeed on recovery', async () => {
+    let result: { id: string } | null = null;
+    service.get<{ id: string }>('/articles/public').subscribe((data) => {
+      result = data;
+    });
+
+    const req1 = httpTesting.expectOne('/api/v1/articles/public');
+    req1.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+
+    // Allow timer(0) to emit
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const req2 = httpTesting.expectOne('/api/v1/articles/public');
+    req2.flush({ id: 'recovered-123' });
+
+    expect(result).toEqual({ id: 'recovered-123' });
+  });
+
+  it('should not retry on client errors (e.g. 401)', () => {
+    let errorStatus: number | null = null;
+    service.get<{ id: string }>('/protected').subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
+    });
+
+    const req1 = httpTesting.expectOne('/api/v1/protected');
+    req1.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    httpTesting.expectNone('/api/v1/protected');
+    expect(errorStatus).toBe(401);
   });
 
   it('should send POST requests with body and withCredentials: true', () => {

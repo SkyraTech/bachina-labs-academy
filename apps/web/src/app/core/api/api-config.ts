@@ -28,3 +28,11 @@ export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
   providedIn: 'root',
   factory: () => '/api/v1',
 });
+
+/**
+ * Injection token for transient cold-start / gateway retry delay (defaults to 1500ms).
+ */
+export const API_RETRY_DELAY = new InjectionToken<number>('API_RETRY_DELAY', {
+  providedIn: 'root',
+  factory: () => 1500,
+});

@@ -36,7 +36,10 @@ export default registerAs('app', () => {
     )
       .split(',')
       .map((o) => o.trim()),
-    trustProxy: validateTrustProxy(process.env['TRUST_PROXY']),
+    trustProxy: validateTrustProxy(
+      process.env['TRUST_PROXY'] ??
+        (process.env['RENDER'] === 'true' ? '1' : undefined),
+    ),
     serviceName: process.env['SERVICE_NAME'] ?? 'bachina-labs-api',
     logLevel: process.env['LOG_LEVEL'] ?? (process.env['NODE_ENV'] === 'production' ? 'info' : 'debug'),
     logHealthChecks: process.env['LOG_HEALTH_CHECKS'] ?? 'debug',

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { API_BASE_URL } from './api-config';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, retry, timer, throwError } from 'rxjs';
+import { API_BASE_URL, API_RETRY_DELAY } from './api-config';
 
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
@@ -22,6 +22,7 @@ export interface RequestOptions {
 export class ApiClientService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
+  private readonly retryDelay = inject(API_RETRY_DELAY, { optional: true }) ?? 1500;
 
   /**
    * Resolves an absolute or relative path against the configured API_BASE_URL.
@@ -36,10 +37,28 @@ export class ApiClientService {
   }
 
   get<T>(path: string, options?: RequestOptions): Observable<T> {
-    return this.http.get<T>(this.resolveUrl(path), {
-      withCredentials: true,
-      ...options,
-    });
+    return this.http
+      .get<T>(this.resolveUrl(path), {
+        withCredentials: true,
+        ...options,
+      })
+      .pipe(
+        retry({
+          count: 2,
+          delay: (error, retryCount) => {
+            if (
+              error instanceof HttpErrorResponse &&
+              (error.status === 0 ||
+                error.status === 502 ||
+                error.status === 503 ||
+                error.status === 504)
+            ) {
+              return timer(retryCount * this.retryDelay);
+            }
+            return throwError(() => error);
+          },
+        }),
+      );
   }
 
   post<T>(path: string, body: unknown, options?: RequestOptions): Observable<T> {
