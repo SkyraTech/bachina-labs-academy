@@ -97,4 +97,23 @@ describe('ApiClientService', () => {
     expect(req.request.body).toEqual(payload);
     req.flush({ status: 'ok' });
   });
+
+  it('should retry POST requests when retryOnGateway is true and 504 occurs', async () => {
+    let result: { status: string } | null = null;
+    service
+      .post<{ status: string }>('/auth/login', { email: 'test@example.com' }, { retryOnGateway: true })
+      .subscribe((data) => {
+        result = data;
+      });
+
+    const req1 = httpTesting.expectOne('/api/v1/auth/login');
+    req1.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const req2 = httpTesting.expectOne('/api/v1/auth/login');
+    req2.flush({ status: 'ok' });
+
+    expect(result).toEqual({ status: 'ok' });
+  });
 });

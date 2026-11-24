@@ -46,7 +46,9 @@ export class AuthApiService {
    * Endpoint: POST /api/v1/auth/login
    */
   login(request: LoginRequest): Observable<LoginResponse> {
-    return this.api.post<LoginResponse>('/auth/login', request);
+    return this.api.post<LoginResponse>('/auth/login', request, {
+      retryOnGateway: true,
+    });
   }
 
   /**

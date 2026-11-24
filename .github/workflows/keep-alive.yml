@@ -1,0 +1,20 @@
+name: Production Keep-Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free-tier spin down (15m inactivity threshold)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Render Backend Health Endpoint
+        run: |
+          curl -s -f -m 60 https://bachina-labs-academy.onrender.com/health || echo "Render ping completed with non-zero exit"
+
+      - name: Ping Vercel Frontend
+        run: |
+          curl -s -f -m 60 https://bachina-labs-academy.vercel.app/health || echo "Vercel ping completed with non-zero exit"

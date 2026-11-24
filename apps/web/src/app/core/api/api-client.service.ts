@@ -8,6 +8,7 @@ export interface RequestOptions {
   params?: HttpParams | Record<string, string | number | boolean | readonly (string | number | boolean)[]>;
   reportProgress?: boolean;
   withCredentials?: boolean;
+  retryOnGateway?: boolean;
 }
 
 /**
@@ -44,7 +45,7 @@ export class ApiClientService {
       })
       .pipe(
         retry({
-          count: 2,
+          count: 4,
           delay: (error, retryCount) => {
             if (
               error instanceof HttpErrorResponse &&
@@ -53,7 +54,7 @@ export class ApiClientService {
                 error.status === 503 ||
                 error.status === 504)
             ) {
-              return timer(retryCount * this.retryDelay);
+              return timer(Math.min(retryCount * this.retryDelay, 5000));
             }
             return throwError(() => error);
           },
@@ -62,10 +63,32 @@ export class ApiClientService {
   }
 
   post<T>(path: string, body: unknown, options?: RequestOptions): Observable<T> {
-    return this.http.post<T>(this.resolveUrl(path), body, {
+    const req$ = this.http.post<T>(this.resolveUrl(path), body, {
       withCredentials: true,
       ...options,
     });
+
+    if (options?.retryOnGateway) {
+      return req$.pipe(
+        retry({
+          count: 4,
+          delay: (error, retryCount) => {
+            if (
+              error instanceof HttpErrorResponse &&
+              (error.status === 0 ||
+                error.status === 502 ||
+                error.status === 503 ||
+                error.status === 504)
+            ) {
+              return timer(Math.min(retryCount * this.retryDelay, 5000));
+            }
+            return throwError(() => error);
+          },
+        }),
+      );
+    }
+
+    return req$;
   }
 
   put<T>(path: string, body: unknown, options?: RequestOptions): Observable<T> {

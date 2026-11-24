@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule, DatePipe, NgClass } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { LoadingSkeletonComponent } from '../../shared/ui/loading/loading-skeleton.component';
@@ -60,8 +61,17 @@ export class AuthorDashboardPlaceholderComponent implements OnInit {
         this.dashboard.set(data);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Failed to load author metrics. Please try again.');
+      error: (err: unknown) => {
+        if (
+          err instanceof HttpErrorResponse &&
+          (err.status === 0 || err.status === 502 || err.status === 503 || err.status === 504)
+        ) {
+          this.errorMessage.set(
+            'Failed to load author metrics. The server is waking up, please wait a moment and click Retry.',
+          );
+        } else {
+          this.errorMessage.set('Failed to load author metrics. Please try again.');
+        }
         this.loading.set(false);
       },
     });
