@@ -44,11 +44,12 @@ export class AuthApiService {
   /**
    * Authenticates user credentials and issues HttpOnly session cookies.
    * Endpoint: POST /api/v1/auth/login
+   *
+   * Enforces single-submission invariant: never automatically retried on gateway
+   * timeouts to prevent duplicate session allocation and transactional audit logging.
    */
   login(request: LoginRequest): Observable<LoginResponse> {
-    return this.api.post<LoginResponse>('/auth/login', request, {
-      retryOnGateway: true,
-    });
+    return this.api.post<LoginResponse>('/auth/login', request);
   }
 
   /**

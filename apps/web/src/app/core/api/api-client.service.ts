@@ -68,7 +68,11 @@ export class ApiClientService {
       ...options,
     });
 
-    if (options?.retryOnGateway) {
+    // Enforce invariant: non-idempotent authentication endpoints (e.g. login, register)
+    // must never be retried automatically on gateway timeouts to prevent duplicate sessions or audit logs.
+    const isDisallowedAuthMutation = path.includes('/auth/login') || path.includes('/auth/register');
+
+    if (options?.retryOnGateway && !isDisallowedAuthMutation) {
       return req$.pipe(
         retry({
           count: 4,

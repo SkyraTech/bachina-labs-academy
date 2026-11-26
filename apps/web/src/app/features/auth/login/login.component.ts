@@ -176,13 +176,15 @@ export class LoginComponent {
             err.status === 504
           ) {
             this.serverError.set(
-              'The server is currently waking up or temporarily unreachable. Please wait a few seconds and try again.',
+              'Sign-in could not be confirmed. The server may be starting or temporarily unavailable. Please check your connection and try again.',
             );
             return;
           }
         }
 
-        this.serverError.set('Unable to complete sign in. Please check your network connection and retry.');
+        this.serverError.set(
+          'Sign-in could not be confirmed. The server may be starting or temporarily unavailable. Please check your connection and try again.',
+        );
       },
     });
   }

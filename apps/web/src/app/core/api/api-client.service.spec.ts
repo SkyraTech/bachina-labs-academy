@@ -85,33 +85,82 @@ describe('ApiClientService', () => {
     expect(errorStatus).toBe(401);
   });
 
-  it('should send POST requests with body and withCredentials: true', () => {
+  it('should send POST requests with body and withCredentials: true and default to NO retry', () => {
     const payload = { email: 'user@example.com' };
-    service.post<{ status: string }>('/auth/login', payload).subscribe((res) => {
-      expect(res.status).toBe('ok');
+    let errorStatus: number | null = null;
+    service.post<{ status: string }>('/auth/login', payload).subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
     });
 
     const req = httpTesting.expectOne('/api/v1/auth/login');
     expect(req.request.method).toBe('POST');
     expect(req.request.withCredentials).toBe(true);
     expect(req.request.body).toEqual(payload);
-    req.flush({ status: 'ok' });
+    req.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+
+    // Invariant: POST must not retry by default
+    httpTesting.expectNone('/api/v1/auth/login');
+    expect(errorStatus).toBe(504);
   });
 
-  it('should retry POST requests when retryOnGateway is true and 504 occurs', async () => {
-    let result: { status: string } | null = null;
+  it('should never retry /auth/login POST requests even if retryOnGateway: true is passed', () => {
+    let errorStatus: number | null = null;
     service
       .post<{ status: string }>('/auth/login', { email: 'test@example.com' }, { retryOnGateway: true })
-      .subscribe((data) => {
-        result = data;
+      .subscribe({
+        error: (err) => {
+          errorStatus = err.status;
+        },
       });
 
     const req1 = httpTesting.expectOne('/api/v1/auth/login');
     req1.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
 
+    // Defensive invariant check: login must not retry even with explicit flag
+    httpTesting.expectNone('/api/v1/auth/login');
+    expect(errorStatus).toBe(504);
+  });
+
+  it('should not retry PUT, PATCH, or DELETE requests on gateway error', () => {
+    let putError: number | null = null;
+    let patchError: number | null = null;
+    let deleteError: number | null = null;
+
+    service.put('/test', {}).subscribe({ error: (e) => (putError = e.status) });
+    const reqPut = httpTesting.expectOne('/api/v1/test');
+    reqPut.flush('Bad Gateway', { status: 502, statusText: 'Bad Gateway' });
+    httpTesting.expectNone('/api/v1/test');
+    expect(putError).toBe(502);
+
+    service.patch('/test', {}).subscribe({ error: (e) => (patchError = e.status) });
+    const reqPatch = httpTesting.expectOne('/api/v1/test');
+    reqPatch.flush('Service Unavailable', { status: 503, statusText: 'Service Unavailable' });
+    httpTesting.expectNone('/api/v1/test');
+    expect(patchError).toBe(503);
+
+    service.delete('/test').subscribe({ error: (e) => (deleteError = e.status) });
+    const reqDelete = httpTesting.expectOne('/api/v1/test');
+    reqDelete.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+    httpTesting.expectNone('/api/v1/test');
+    expect(deleteError).toBe(504);
+  });
+
+  it('should retry idempotent POST requests when retryOnGateway is explicitly enabled on non-auth paths', async () => {
+    let result: { status: string } | null = null;
+    service
+      .post<{ status: string }>('/catalog/query', { filter: 'all' }, { retryOnGateway: true })
+      .subscribe((data) => {
+        result = data;
+      });
+
+    const req1 = httpTesting.expectOne('/api/v1/catalog/query');
+    req1.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const req2 = httpTesting.expectOne('/api/v1/auth/login');
+    const req2 = httpTesting.expectOne('/api/v1/catalog/query');
     req2.flush({ status: 'ok' });
 
     expect(result).toEqual({ status: 'ok' });

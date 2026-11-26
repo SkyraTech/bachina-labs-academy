@@ -13,8 +13,8 @@ jobs:
     steps:
       - name: Ping Render Backend Health Endpoint
         run: |
-          curl -s -f -m 60 https://bachina-labs-academy.onrender.com/health || echo "Render ping completed with non-zero exit"
+          curl -sS -f --connect-timeout 15 -m 60 https://bachina-labs-academy.onrender.com/health
 
       - name: Ping Vercel Frontend
         run: |
-          curl -s -f -m 60 https://bachina-labs-academy.vercel.app/health || echo "Vercel ping completed with non-zero exit"
+          curl -sS -f --connect-timeout 15 -m 60 https://bachina-labs-academy.vercel.app/health

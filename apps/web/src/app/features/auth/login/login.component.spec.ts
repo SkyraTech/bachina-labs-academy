@@ -188,8 +188,44 @@ describe('LoginComponent', () => {
       rememberMe: false,
     });
 
-    expect(component.serverError()).toContain(
-      'server is currently waking up or temporarily unreachable',
+    expect(component.serverError()).toBe(
+      'Sign-in could not be confirmed. The server may be starting or temporarily unavailable. Please check your connection and try again.',
+    );
+  });
+
+  it('should display server waking up message on 502 Bad Gateway and 0 network error', () => {
+    const error502 = new HttpErrorResponse({
+      error: 'Bad Gateway',
+      status: 502,
+      statusText: 'Bad Gateway',
+    });
+    authApiSpy.login.mockReturnValue(throwError(() => error502));
+
+    component.onSubmit({
+      email: 'author@skyra-tech.com',
+      password: 'valid-password-1234',
+      rememberMe: false,
+    });
+
+    expect(component.serverError()).toBe(
+      'Sign-in could not be confirmed. The server may be starting or temporarily unavailable. Please check your connection and try again.',
+    );
+
+    const error0 = new HttpErrorResponse({
+      error: new ProgressEvent('error'),
+      status: 0,
+      statusText: 'Unknown Error',
+    });
+    authApiSpy.login.mockReturnValue(throwError(() => error0));
+
+    component.onSubmit({
+      email: 'author@skyra-tech.com',
+      password: 'valid-password-1234',
+      rememberMe: false,
+    });
+
+    expect(component.serverError()).toBe(
+      'Sign-in could not be confirmed. The server may be starting or temporarily unavailable. Please check your connection and try again.',
     );
   });
 

@@ -64,7 +64,7 @@ describe('AuthApiService', () => {
     expect(actual).toEqual(mockResponse);
   });
 
-  it('should post to /api/v1/auth/login with credentials and rememberMe', () => {
+  it('should post to /api/v1/auth/login with credentials and rememberMe (exactly 1 request)', () => {
     const request: LoginRequest = {
       email: 'author@skyra-tech.com',
       password: 'correct-horse-battery-staple',
@@ -91,6 +91,91 @@ describe('AuthApiService', () => {
 
     req.flush(mockResponse);
     expect(actual).toEqual(mockResponse);
+    httpMock.expectNone('/api/v1/auth/login');
+  });
+
+  it('should dispatch exactly one POST request when login encounters HTTP 502 and not retry', () => {
+    const request: LoginRequest = {
+      email: 'author@skyra-tech.com',
+      password: 'correct-horse-battery-staple',
+      rememberMe: false,
+    };
+    let errorStatus: number | null = null;
+    service.login(request).subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
+    });
+
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.flush('Bad Gateway', { status: 502, statusText: 'Bad Gateway' });
+
+    expect(errorStatus).toBe(502);
+    httpMock.expectNone('/api/v1/auth/login');
+  });
+
+  it('should dispatch exactly one POST request when login encounters HTTP 503 and not retry', () => {
+    const request: LoginRequest = {
+      email: 'author@skyra-tech.com',
+      password: 'correct-horse-battery-staple',
+      rememberMe: false,
+    };
+    let errorStatus: number | null = null;
+    service.login(request).subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
+    });
+
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.flush('Service Unavailable', { status: 503, statusText: 'Service Unavailable' });
+
+    expect(errorStatus).toBe(503);
+    httpMock.expectNone('/api/v1/auth/login');
+  });
+
+  it('should dispatch exactly one POST request when login encounters HTTP 504 and not retry', () => {
+    const request: LoginRequest = {
+      email: 'author@skyra-tech.com',
+      password: 'correct-horse-battery-staple',
+      rememberMe: false,
+    };
+    let errorStatus: number | null = null;
+    service.login(request).subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
+    });
+
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.flush('Gateway Timeout', { status: 504, statusText: 'Gateway Timeout' });
+
+    expect(errorStatus).toBe(504);
+    httpMock.expectNone('/api/v1/auth/login');
+  });
+
+  it('should dispatch exactly one POST request when login encounters network error (status 0) and not retry', () => {
+    const request: LoginRequest = {
+      email: 'author@skyra-tech.com',
+      password: 'correct-horse-battery-staple',
+      rememberMe: false,
+    };
+    let errorStatus: number | null = null;
+    service.login(request).subscribe({
+      error: (err) => {
+        errorStatus = err.status;
+      },
+    });
+
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+
+    expect(errorStatus).toBe(0);
+    httpMock.expectNone('/api/v1/auth/login');
   });
 
   it('should post to /api/v1/auth/verify-email with single-use token', () => {
